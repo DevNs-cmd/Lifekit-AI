@@ -1,29 +1,20 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { BullModule } from '@nestjs/bullmq';
+import { configLoads, validate } from './config';
+import { HealthModule } from './health/health.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../../.env',
+      load: configLoads,
+      validate,
+      envFilePath: ['.env', '../../.env'],
     }),
 
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.API_DATABASE_URL,
-      autoLoadEntities: true,
-      synchronize: process.env.NODE_ENV !== 'production',
-    }),
-
-    BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      },
-    }),
+    PrismaModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
-
