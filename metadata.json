@@ -1,0 +1,6 @@
+{
+  "name": "LifeKit",
+  "description": "AI Execution Marketplace for Human Goals featuring interactive mission tracking, AI coaching, and expert marketplace.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
