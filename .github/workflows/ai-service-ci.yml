@@ -2,6 +2,7 @@ name: AI Service CI
 
 # This workflow compiles, lints, and tests the FastAPI Python AI Service.
 # It uses path filtering to only trigger when files inside the AI service or this workflow change.
+# It is designed to be highly resilient and handle empty scaffolds, missing requirements/configs gracefully.
 
 on:
   push:
@@ -30,67 +31,153 @@ jobs:
     name: Validate AI Service
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: apps/ai-service
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check Project Initialization
+        id: check-init
+        run: |
+          echo "============================================="
+          echo "     Checking AI Service Initialization      "
+          echo "============================================="
+          
+          # Check if directory exists
+          if [ ! -d "apps/ai-service" ]; then
+            echo "is_implemented=false" >> $GITHUB_OUTPUT
+            echo "has_requirements=false" >> $GITHUB_OUTPUT
+            echo "Application scaffold detected. Skipping validation."
+            exit 0
+          fi
+          
+          cd apps/ai-service
+          
+          # Check if there are any Python source files in the project
+          PY_FILES=$(find . -maxdepth 4 -type f -name "*.py" -not -path "*/.venv/*" -not -path "*/.*" | wc -l)
+          if [ "$PY_FILES" -eq 0 ]; then
+            echo "is_implemented=false" >> $GITHUB_OUTPUT
+            echo "has_requirements=false" >> $GITHUB_OUTPUT
+            echo "Application scaffold detected. Skipping validation."
+            exit 0
+          fi
+          
+          echo "is_implemented=true" >> $GITHUB_OUTPUT
+          
+          # Check if requirements.txt exists
+          if [ -f requirements.txt ]; then
+            echo "has_requirements=true" >> $GITHUB_OUTPUT
+            echo "requirements.txt found."
+          else
+            echo "has_requirements=false" >> $GITHUB_OUTPUT
+            echo "Warning: requirements.txt is missing."
+          fi
+          
+          # Check if pyproject.toml exists
+          if [ -f pyproject.toml ]; then
+            echo "has_pyproject=true" >> $GITHUB_OUTPUT
+            echo "pyproject.toml found."
+          else
+            echo "has_pyproject=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Python
+        if: steps.check-init.outputs.is_implemented == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: apps/ai-service/requirements.txt
+          cache: ${{ steps.check-init.outputs.has_requirements == 'true' && 'pip' || '' }}
+          cache-dependency-path: ${{ steps.check-init.outputs.has_requirements == 'true' && 'apps/ai-service/requirements.txt' || '' }}
 
       - name: Install Dependencies
+        if: steps.check-init.outputs.is_implemented == 'true'
         run: |
+          cd apps/ai-service
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then
+            echo "Installing dependencies from requirements.txt..."
             pip install -r requirements.txt
+          elif [ -f pyproject.toml ]; then
+            echo "Installing dependencies using pyproject.toml..."
+            pip install .
           else
-            echo "requirements.txt not found. Skipping dependency installation."
+            echo "Warning: Neither requirements.txt nor pyproject.toml was found. Skipping dependency installation."
           fi
 
       - name: Run Ruff (Linter)
+        if: steps.check-init.outputs.is_implemented == 'true'
         run: |
+          cd apps/ai-service
+          
+          # Detect whether Ruff is configured
+          HAS_RUFF=false
           if command -v ruff &> /dev/null; then
-            echo "Ruff is installed, running lint checks..."
-            ruff check .
+            HAS_RUFF=true
           elif [ -f pyproject.toml ] && grep -q "\[tool.ruff\]" pyproject.toml; then
-            echo "Ruff is configured in pyproject.toml. Installing and running..."
+            echo "Ruff is configured in pyproject.toml. Installing..."
             pip install ruff
+            HAS_RUFF=true
+          elif [ -f ruff.toml ]; then
+            echo "ruff.toml found. Installing Ruff..."
+            pip install ruff
+            HAS_RUFF=true
+          fi
+          
+          if [ "$HAS_RUFF" = "true" ]; then
+            echo "Executing Ruff check..."
             ruff check .
           else
-            echo "Ruff is not installed or configured. Skipping lint check."
+            echo "Ruff is not configured or installed. Skipping linter."
           fi
 
       - name: Run Black (Formatter)
+        if: steps.check-init.outputs.is_implemented == 'true'
         run: |
+          cd apps/ai-service
+          
+          # Detect whether Black is configured
+          HAS_BLACK=false
           if command -v black &> /dev/null; then
-            echo "Black is installed, running format checks..."
-            black --check .
+            HAS_BLACK=true
           elif [ -f pyproject.toml ] && grep -q "\[tool.black\]" pyproject.toml; then
-            echo "Black is configured in pyproject.toml. Installing and running..."
+            echo "Black is configured in pyproject.toml. Installing..."
             pip install black
+            HAS_BLACK=true
+          fi
+          
+          if [ "$HAS_BLACK" = "true" ]; then
+            echo "Executing Black formatting check..."
             black --check .
           else
-            echo "Black is not installed or configured. Skipping format check."
+            echo "Black is not configured or installed. Skipping formatting check."
           fi
 
       - name: Run pytest (Tests)
+        if: steps.check-init.outputs.is_implemented == 'true'
         run: |
-          if [ -d "tests" ] || find . -maxdepth 3 -name "test_*.py" -o -name "*_test.py" | grep -q .; then
-            echo "Test files found. Installing pytest and running..."
-            pip install pytest
+          cd apps/ai-service
+          
+          # Detect whether tests exist
+          HAS_TESTS=false
+          if [ -d "tests" ] || find . -maxdepth 3 -name "test_*.py" -o -name "*_test.py" -not -path "*/.venv/*" | grep -q .; then
+            HAS_TESTS=true
+          fi
+          
+          if [ "$HAS_TESTS" = "true" ]; then
+            echo "Tests detected. Checking for pytest..."
+            if ! command -v pytest &> /dev/null; then
+              echo "pytest is missing from environment. Installing pytest..."
+              pip install pytest
+            fi
+            echo "Executing pytest..."
             pytest
           else
-            echo "No test files or 'tests' directory found. Skipping unit tests."
+            echo "No tests configured."
           fi
 
-      - name: Compile Python Files (Syntax Check)
+      - name: Compile Python Files
+        if: steps.check-init.outputs.is_implemented == 'true'
         run: |
-          echo "Compiling all Python files to check for syntax errors..."
-          python -m compileall .
+          cd apps/ai-service
+          echo "Compiling Python files to check for syntax errors..."
+          python -m compileall -q -x "\.venv" .
