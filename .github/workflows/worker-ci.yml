@@ -1,0 +1,81 @@
+name: Worker CI
+
+# This workflow builds, lints, and tests the background worker application.
+# It uses path filtering to only trigger when files inside the worker app or this workflow change.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/worker/**'
+      - '.github/workflows/worker-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/worker/**'
+      - '.github/workflows/worker-ci.yml'
+
+# Cancel in-progress runs for the same reference to optimize GitHub runner usage.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/worker
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: apps/worker/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Lint Code
+        run: |
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.lint ? 0 : 1)" 2>/dev/null; then
+            echo "Lint script found. Running 'npm run lint'..."
+            npm run lint
+          else
+            echo "No lint script found in package.json. Skipping linting."
+          fi
+
+      - name: Run Tests
+        run: |
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.test ? 0 : 1)" 2>/dev/null; then
+            echo "Test script found. Running 'npm run test'..."
+            npm run test
+          else
+            echo "No test script found in package.json. Skipping unit tests."
+          fi
+
+      - name: Build Application
+        run: |
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.build ? 0 : 1)" 2>/dev/null; then
+            echo "Build script found. Running 'npm run build'..."
+            npm run build
+          else
+            echo "No build script found in package.json. Skipping compilation."
+          fi

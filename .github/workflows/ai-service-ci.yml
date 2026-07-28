@@ -1,0 +1,96 @@
+name: AI Service CI
+
+# This workflow compiles, lints, and tests the FastAPI Python AI Service.
+# It uses path filtering to only trigger when files inside the AI service or this workflow change.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/ai-service/**'
+      - '.github/workflows/ai-service-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/ai-service/**'
+      - '.github/workflows/ai-service-ci.yml'
+
+# Cancel in-progress runs for the same reference to optimize GitHub runner usage.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate AI Service
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/ai-service
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: apps/ai-service/requirements.txt
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "requirements.txt not found. Skipping dependency installation."
+          fi
+
+      - name: Run Ruff (Linter)
+        run: |
+          if command -v ruff &> /dev/null; then
+            echo "Ruff is installed, running lint checks..."
+            ruff check .
+          elif [ -f pyproject.toml ] && grep -q "\[tool.ruff\]" pyproject.toml; then
+            echo "Ruff is configured in pyproject.toml. Installing and running..."
+            pip install ruff
+            ruff check .
+          else
+            echo "Ruff is not installed or configured. Skipping lint check."
+          fi
+
+      - name: Run Black (Formatter)
+        run: |
+          if command -v black &> /dev/null; then
+            echo "Black is installed, running format checks..."
+            black --check .
+          elif [ -f pyproject.toml ] && grep -q "\[tool.black\]" pyproject.toml; then
+            echo "Black is configured in pyproject.toml. Installing and running..."
+            pip install black
+            black --check .
+          else
+            echo "Black is not installed or configured. Skipping format check."
+          fi
+
+      - name: Run pytest (Tests)
+        run: |
+          if [ -d "tests" ] || find . -maxdepth 3 -name "test_*.py" -o -name "*_test.py" | grep -q .; then
+            echo "Test files found. Installing pytest and running..."
+            pip install pytest
+            pytest
+          else
+            echo "No test files or 'tests' directory found. Skipping unit tests."
+          fi
+
+      - name: Compile Python Files (Syntax Check)
+        run: |
+          echo "Compiling all Python files to check for syntax errors..."
+          python -m compileall .

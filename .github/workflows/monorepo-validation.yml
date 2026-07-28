@@ -1,0 +1,118 @@
+name: Monorepo Validation
+
+# This workflow validates the structural integrity of the monorepo.
+# It ensures that required folders, configuration files, and packages exist where expected.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Cancel in-progress runs for the same reference to optimize GitHub runner usage.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-structure:
+    name: Validate Workspace Structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Structure Check
+        run: |
+          echo "============================================="
+          echo "      Running Workspace Structure Audit      "
+          echo "============================================="
+          
+          # Initialize validation variables
+          FAILED=0
+          
+          # Create Markdown step summary header
+          echo "### :mag: Monorepo Structural Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "This run checked the essential files and folder structure of the monorepo to ensure consistency." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource / Rule | Expected Location | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
+
+          # Helper function for directories
+          check_directory() {
+            local name=$1
+            local path=$2
+            if [ -d "$path" ]; then
+              echo "[OK] Directory '$name' exists at '$path'"
+              echo "| **Folder**: \`$name\` | \`$path\` | :white_check_mark: Present | Directory verified successfully. |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "[ERROR] Directory '$name' is MISSING at '$path'"
+              echo "| **Folder**: \`$name\` | \`$path\` | :x: Missing | **Critical folder is missing from repository.** |" >> $GITHUB_STEP_SUMMARY
+              FAILED=1
+            fi
+          }
+
+          # Helper function for files
+          check_file() {
+            local name=$1
+            local path=$2
+            if [ -f "$path" ]; then
+              echo "[OK] File '$name' exists at '$path'"
+              echo "| **File**: \`$name\` | \`$path\` | :white_check_mark: Present | File verified successfully. |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "[ERROR] File '$name' is MISSING at '$path'"
+              echo "| **File**: \`$name\` | \`$path\` | :x: Missing | **Critical configuration file is missing.** |" >> $GITHUB_STEP_SUMMARY
+              FAILED=1
+            fi
+          }
+
+          # 1. Check Required Folders
+          check_directory "Apps Root" "apps"
+          check_directory "Packages Root" "packages"
+          check_directory "Infrastructure Configurations" "infrastructure"
+          check_directory "System Documentation" "docs"
+          check_directory "Shared Types Package" "packages/shared-types"
+
+          # 2. Check Required Configuration Files
+          check_file "docker-compose.yml" "docker-compose.yml"
+          check_file "Web Frontend package.json" "apps/web/package.json"
+          check_file "Core API Backend package.json" "apps/api/package.json"
+          check_file "Background Worker package.json" "apps/worker/package.json"
+          check_file "Shared Types package.json" "packages/shared-types/package.json"
+          
+          # 3. Check Python AI Service configuration (requirements.txt or pyproject.toml)
+          if [ -f "apps/ai-service/requirements.txt" ]; then
+            check_file "AI Service requirements.txt" "apps/ai-service/requirements.txt"
+          elif [ -f "apps/ai-service/pyproject.toml" ]; then
+            check_file "AI Service pyproject.toml" "apps/ai-service/pyproject.toml"
+          else
+            echo "[ERROR] Python AI Service configuration file (requirements.txt or pyproject.toml) is MISSING in apps/ai-service"
+            echo "| **Python Config** | \`apps/ai-service/\` | :x: Missing | No \`requirements.txt\` or \`pyproject.toml\` found. |" >> $GITHUB_STEP_SUMMARY
+            FAILED=1
+          fi
+
+          # 4. Check Docker / Reverse Proxy configurations
+          check_file "NGINX default.conf" "infrastructure/nginx/default.conf"
+
+          echo "============================================="
+          if [ $FAILED -eq 1 ]; then
+            echo "   STATUS: STRUCTURAL VALIDATION FAILED!    "
+            echo "============================================="
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> [!CAUTION]" >> $GITHUB_STEP_SUMMARY
+            echo "> One or more validation checks have failed. Please inspect the log above and make sure the required monorepo layout is maintained." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "   STATUS: STRUCTURAL VALIDATION PASSED!    "
+            echo "============================================="
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> [!NOTE]" >> $GITHUB_STEP_SUMMARY
+            echo "> All required folders and files were found in the correct locations. The repository layout conforms to standards." >> $GITHUB_STEP_SUMMARY
+          fi
