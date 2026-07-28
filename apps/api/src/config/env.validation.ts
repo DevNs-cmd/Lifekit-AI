@@ -22,20 +22,20 @@ export class EnvironmentVariables {
   PORT: number = 4000;
 
   @IsString()
-  DATABASE_URL: string;
+  DATABASE_URL !: string;
 
   @IsString()
-  REDIS_URL: string;
+  REDIS_URL !: string;
 
   @IsString()
-  JWT_SECRET: string;
+  JWT_SECRET !: string;
 
   @IsString()
-  JWT_REFRESH_SECRET: string;
+  JWT_REFRESH_SECRET !: string;
 
   @IsString()
   @IsUrl({ require_tld: false }, { message: 'AI_SERVICE_URL must be a valid URL' })
-  AI_SERVICE_URL: string;
+  AI_SERVICE_URL !: string;
 
   @IsString()
   @IsOptional()
