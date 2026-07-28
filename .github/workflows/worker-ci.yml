@@ -1,0 +1,147 @@
+name: Worker CI
+
+# This workflow builds, lints, and tests the background worker application.
+# It uses path filtering to only trigger when files inside the worker app or this workflow change.
+# It is designed to be highly resilient and handle empty scaffolds or missing scripts gracefully.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/worker/**'
+      - '.github/workflows/worker-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/worker/**'
+      - '.github/workflows/worker-ci.yml'
+
+# Cancel in-progress runs for the same reference to optimize GitHub runner usage.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check Project Initialization
+        id: check-init
+        run: |
+          echo "============================================="
+          echo "      Checking Worker App Initialization      "
+          echo "============================================="
+          
+          # Check if directory exists
+          if [ ! -d "apps/worker" ]; then
+            echo "is_implemented=false" >> $GITHUB_OUTPUT
+            echo "lock_exists=false" >> $GITHUB_OUTPUT
+            echo "Application scaffold detected. Skipping validation."
+            exit 0
+          fi
+          
+          cd apps/worker
+          
+          # Check if package.json exists
+          if [ ! -f package.json ]; then
+            echo "is_implemented=false" >> $GITHUB_OUTPUT
+            echo "lock_exists=false" >> $GITHUB_OUTPUT
+            echo "Application scaffold detected. Skipping validation."
+            exit 0
+          fi
+          
+          # Check if there are any source files in apps/worker
+          # Find any .ts, .tsx, .js, or .jsx files, ignoring node_modules and dotfolders
+          CODE_FILES=$(find . -maxdepth 4 -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" \) -not -path "*/node_modules/*" -not -path "*/.*" | wc -l)
+          if [ "$CODE_FILES" -eq 0 ]; then
+            echo "is_implemented=false" >> $GITHUB_OUTPUT
+            echo "lock_exists=false" >> $GITHUB_OUTPUT
+            echo "Application scaffold detected. Skipping validation."
+            exit 0
+          fi
+          
+          echo "is_implemented=true" >> $GITHUB_OUTPUT
+          
+          # Check if package-lock.json exists
+          if [ -f package-lock.json ]; then
+            echo "lock_exists=true" >> $GITHUB_OUTPUT
+            echo "Found package-lock.json. Will use npm ci for installation."
+          else
+            echo "lock_exists=false" >> $GITHUB_OUTPUT
+            echo "Warning: package-lock.json is missing."
+          fi
+
+      - name: Setup Node.js
+        if: steps.check-init.outputs.is_implemented == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          # Enable dependency caching only if package-lock.json is present
+          cache: ${{ steps.check-init.outputs.lock_exists == 'true' && 'npm' || '' }}
+          cache-dependency-path: ${{ steps.check-init.outputs.lock_exists == 'true' && 'apps/worker/package-lock.json' || '' }}
+
+      - name: Install Dependencies
+        if: steps.check-init.outputs.is_implemented == 'true'
+        run: |
+          cd apps/worker
+          if [ "${{ steps.check-init.outputs.lock_exists }}" = "true" ]; then
+            npm ci
+          else
+            echo "Warning: package-lock.json is missing. Falling back to 'npm install'."
+            npm install
+          fi
+
+      - name: Lint Code
+        if: steps.check-init.outputs.is_implemented == 'true'
+        run: |
+          cd apps/worker
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.lint ? 0 : 1)" 2>/dev/null; then
+            echo "Lint script found. Running 'npm run lint'..."
+            npm run lint
+          else
+            echo "Skipping lint - lint script not found."
+          fi
+
+      - name: Run Tests
+        if: steps.check-init.outputs.is_implemented == 'true'
+        run: |
+          cd apps/worker
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.test ? 0 : 1)" 2>/dev/null; then
+            echo "Test script found. Running 'npm run test'..."
+            npm run test
+          else
+            echo "No tests configured."
+          fi
+
+      - name: Run E2E Tests
+        if: steps.check-init.outputs.is_implemented == 'true'
+        run: |
+          cd apps/worker
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.['test:e2e'] ? 0 : 1)" 2>/dev/null; then
+            echo "E2E test script found. Running 'npm run test:e2e'..."
+            npm run test:e2e
+          else
+            echo "No e2e tests configured."
+          fi
+
+      - name: Build Application
+        if: steps.check-init.outputs.is_implemented == 'true'
+        run: |
+          cd apps/worker
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.build ? 0 : 1)" 2>/dev/null; then
+            echo "Build script found. Running 'npm run build'..."
+            npm run build
+          else
+            echo "Skipping build - build script not found."
+          fi
