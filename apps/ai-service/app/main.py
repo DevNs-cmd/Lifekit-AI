@@ -9,6 +9,8 @@ memory management, and other AI-powered features.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.modules.orchestrator.router import router as orchestrator_router
+from app.modules.memory.router import router as memory_router
 
 app = FastAPI(
     title="LifeKit AI Service",
@@ -23,6 +25,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(orchestrator_router)
+app.include_router(memory_router)
 
 
 @app.get("/health")
