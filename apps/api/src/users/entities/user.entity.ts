@@ -17,6 +17,18 @@ export class User {
   @ApiProperty({ description: 'User preferences profile', type: () => UserPreference, required: false })
   preference?: UserPreference | null;
 
+  @ApiProperty({ description: 'Phone number of the user', example: '+1234567890', required: false })
+  phone?: string | null;
+
+  @ApiProperty({ description: 'Date of birth of the user', example: '1990-01-01', required: false })
+  dateOfBirth?: Date | string | null;
+
+  @ApiProperty({ description: 'Profession of the user', example: 'Software Engineer', required: false })
+  profession?: string | null;
+
+  @ApiProperty({ description: 'Profile photo URL of the user', example: 'https://example.com/photo.jpg', required: false })
+  profilePhoto?: string | null;
+
   @ApiProperty({ description: 'Creation date', example: '2026-07-28T12:00:00Z' })
   createdAt!: Date;
 
