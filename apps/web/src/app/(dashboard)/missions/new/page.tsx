@@ -164,10 +164,19 @@ export default function NewMissionPage() {
                   <h2 className="text-xl font-bold text-[hsl(var(--text-primary))] mb-6">Building your mission plan…</h2>
                   <div className="space-y-2 text-left">
                     {genSteps.map((s, i) => (
-                      <div key={s} className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-all ${i === genStep ? "bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]" : i < genStep ? "text-[hsl(var(--success))]" : "text-[hsl(var(--text-secondary))]"}`}>
-                        {i < genStep ? <Check className="h-4 w-4" /> : i === genStep ? <Loader2 className="h-4 w-4 animate-spin" /> : <div className="h-4 w-4 rounded-full border-2 border-[hsl(var(--border))]" />}
-                        {s}
-                      </div>
+                      i > genStep ? null : (
+                        <div
+                          key={s}
+                          className={`animate-slide-down-fade flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-colors ${i === genStep ? "bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]" : "text-[hsl(var(--success))]"}`}
+                          style={{ animationDelay: `0ms` }}
+                        >
+                          {i < genStep
+                            ? <Check className="h-4 w-4 shrink-0" />
+                            : <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                          }
+                          {s}
+                        </div>
+                      )
                     ))}
                   </div>
                 </CardContent>
@@ -183,26 +192,52 @@ export default function NewMissionPage() {
                 </div>
                 <Card className="border-[hsl(var(--primary))]/30">
                   <CardContent className="p-5 space-y-5">
-                    <div>
-                      <p className="text-xs font-semibold text-[hsl(var(--primary))] uppercase tracking-wide mb-1">Mission Title</p>
-                      <h3 className="text-lg font-bold text-[hsl(var(--text-primary))]">{generatedPlan.title}</h3>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-[hsl(var(--primary))] uppercase tracking-wide mb-1">Mission Title</p>
+                        <h3 className="text-lg font-bold text-[hsl(var(--text-primary))]">{generatedPlan.title}</h3>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => { setStep(1); setGeneratedPlan(null); }}
+                        disabled={isSaving}
+                      >
+                        Edit Details
+                      </Button>
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wide mb-1">Category</p>
                       <CategoryBadge category={generatedPlan.category} />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wide mb-2">Milestones ({generatedPlan.milestones.length})</p>
-                      <div className="space-y-2">
-                        {generatedPlan.milestones.map((m, i) => (
-                          <div key={m.id ?? i} className="flex items-start gap-3 rounded-lg bg-[hsl(var(--background-subtle))] p-3">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--secondary))] text-[hsl(var(--primary))] text-xs font-bold">{i + 1}</span>
-                            <div>
-                              <p className="text-sm font-semibold text-[hsl(var(--text-primary))]">{m.title}</p>
-                              <p className="text-xs text-[hsl(var(--text-secondary))]">{m.description}</p>
-                            </div>
-                          </div>
-                        ))}
+                      <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wide mb-3">Roadmap ({generatedPlan.milestones.length} phases)</p>
+                      <div className="relative">
+                        {/* Vertical connector line */}
+                        <div className="absolute left-3.5 top-4 bottom-4 w-0.5 bg-[hsl(var(--border))]" aria-hidden />
+                        <div className="space-y-0">
+                          {generatedPlan.milestones.map((m, i) => {
+                            const isLast = i === generatedPlan.milestones.length - 1;
+                            return (
+                              <div key={m.id ?? i} className="relative flex gap-4 pb-5 last:pb-0">
+                                {/* Node */}
+                                <div className="relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-[hsl(var(--primary))] bg-[hsl(var(--card))] text-[hsl(var(--primary))] text-xs font-bold">
+                                  {i + 1}
+                                </div>
+                                {/* Content */}
+                                <div className={`flex-1 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background-subtle))] p-3 ${!isLast ? "mb-0" : ""}`}>
+                                  <div className="flex items-start gap-2 mb-1">
+                                    <p className="text-sm font-semibold text-[hsl(var(--text-primary))] leading-snug">{m.title}</p>
+                                  </div>
+                                  {m.description && (
+                                    <p className="text-xs text-[hsl(var(--text-secondary))] leading-relaxed">{m.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -222,10 +257,9 @@ export default function NewMissionPage() {
                   </CardContent>
                 </Card>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button className="flex-1" onClick={handleActivate} loading={isSaving}>Activate Mission</Button>
+                  <Button className="flex-1 sm:flex-none" onClick={handleActivate} loading={isSaving}>Activate Mission</Button>
                   <Button variant="outline" onClick={handleSaveDraft} disabled={isSaving}>Save as Draft</Button>
-                  <Button variant="ghost" onClick={() => { setStep(1); setGeneratedPlan(null); }}>Edit Details</Button>
-                  <Button variant="ghost" onClick={() => handleSubmit(handleGenerate)()}>Regenerate</Button>
+                  <Button variant="outline" onClick={() => handleSubmit(handleGenerate)()} disabled={isSaving}>Regenerate</Button>
                 </div>
               </div>
             )}
@@ -234,7 +268,7 @@ export default function NewMissionPage() {
 
         {step === 3 && (
           <div className="mt-4 flex justify-start">
-            <Button variant="ghost" size="sm" onClick={() => setStep(1)} leftIcon={<ChevronLeft className="h-4 w-4" />}>Back to goal</Button>
+            <Button variant="ghost" size="sm" onClick={() => { setStep(1); setGeneratedPlan(null); }} leftIcon={<ChevronLeft className="h-4 w-4" />}>Back to goal</Button>
           </div>
         )}
       </div>

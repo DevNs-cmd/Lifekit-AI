@@ -1,9 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Bot, ArrowRight, Briefcase, TrendingUp, Heart, Globe, Building2 } from "lucide-react";
+import { Bot, Briefcase, TrendingUp, Heart, Globe, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_AGENTS } from "@/lib/api/ai";
 import { MOCK_MISSIONS } from "@/constants/mock-data";
@@ -32,11 +31,9 @@ export default function AgentsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-black text-[hsl(var(--text-primary))] flex items-center gap-2">
-          <Bot className="h-7 w-7 text-[hsl(var(--primary))]" /> Specialist AI Agents
+          <Bot className="h-7 w-7 text-[hsl(var(--primary))]" /> AI Agents
         </h1>
-        <p className="text-sm text-[hsl(var(--text-secondary))] mt-1">
-          Each agent is an expert in their domain — they use your mission context and memory to give personalised guidance.
-        </p>
+
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -108,33 +105,13 @@ export default function AgentsPage() {
                     </div>
                   </div>
                 )}
-
-                {/* CTA */}
-                <Button
-                  size="sm"
-                  className="w-full mt-auto"
-                  disabled={!agent.isAvailable}
-                  rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`${ROUTES.AGENTS}/${agent.id}`);
-                  }}
-                >
-                  Start interaction
-                </Button>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Info banner */}
-      <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background-subtle))] p-4 flex items-start gap-3">
-        <Bot className="h-4 w-4 text-[hsl(var(--primary))] mt-0.5 shrink-0" />
-        <p className="text-xs text-[hsl(var(--text-secondary))] leading-relaxed">
-          <span className="font-semibold text-[hsl(var(--text-primary))]">How agents work:</span> Each agent has full access to your active missions and Life Memory. Responses are always in context — not generic advice. Any changes to your missions require your explicit confirmation.
-        </p>
-      </div>
+
     </div>
   );
 }

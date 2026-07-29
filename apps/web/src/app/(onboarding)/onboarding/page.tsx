@@ -247,12 +247,18 @@ export default function OnboardingPage() {
                   <h2 className="text-2xl font-bold text-[hsl(var(--text-primary))] mb-3">Building your first mission…</h2>
                   <div className="space-y-2 mt-6">
                     {analysisSteps.map((s, i) => (
-                      <div key={s} className={cn("flex items-center gap-2 text-sm rounded-lg px-4 py-2 transition-all",
-                        i < analysisStep ? "text-[hsl(var(--success))]" : i === analysisStep ? "text-[hsl(var(--primary))] bg-[hsl(var(--secondary))]" : "text-[hsl(var(--text-secondary))]"
-                      )}>
-                        {i < analysisStep ? <Check className="h-4 w-4" /> : i === analysisStep ? <Loader2 className="h-4 w-4 animate-spin" /> : <div className="h-4 w-4 rounded-full border-2 border-[hsl(var(--border))]" />}
-                        {s}
-                      </div>
+                      i > analysisStep ? null : (
+                        <div key={s} className={cn(
+                          "animate-slide-down-fade flex items-center gap-2 text-sm rounded-lg px-4 py-2 transition-colors",
+                          i < analysisStep ? "text-[hsl(var(--success))]" : "text-[hsl(var(--primary))] bg-[hsl(var(--secondary))]"
+                        )}>
+                          {i < analysisStep
+                            ? <Check className="h-4 w-4 shrink-0" />
+                            : <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                          }
+                          {s}
+                        </div>
+                      )
                     ))}
                   </div>
                 </div>

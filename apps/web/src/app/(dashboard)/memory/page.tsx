@@ -96,14 +96,6 @@ export default function MemoryPage() {
         </Button>
       </div>
 
-      {/* Privacy notice */}
-      <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background-subtle))] p-4 flex items-start gap-3">
-        <Brain className="h-4 w-4 text-[hsl(var(--primary))] mt-0.5 shrink-0" />
-        <p className="text-xs text-[hsl(var(--text-secondary))] leading-relaxed">
-          <span className="font-semibold text-[hsl(var(--text-primary))]">Your memory is private.</span> This information is only used to personalise your AI Coach responses and mission recommendations. You can edit or delete any memory at any time.
-        </p>
-      </div>
-
       {/* Search + category filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">

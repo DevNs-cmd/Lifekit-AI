@@ -4,7 +4,7 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft, Pause, Play, MoreHorizontal, Target,
-  Calendar, Clock, CheckCircle, Plus, PauseCircle,
+  Calendar, Clock, CheckCircle, Plus, PauseCircle, Pencil,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,10 @@ import { CategoryBadge } from "@/components/shared/category-badge";
 import { ProgressRing } from "@/components/shared/progress-ring";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/shared/form-field";
 import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, formatDate, cn } from "@/lib/utils";
@@ -34,6 +38,24 @@ export default function MissionDetailPage() {
   );
   const [pauseDialogOpen, setPauseDialogOpen] = React.useState(false);
 
+  // Edit mission state
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [editFields, setEditFields] = React.useState({
+    title: baseMission?.title ?? "",
+    goal: baseMission?.goal ?? "",
+    targetDate: baseMission?.targetDate ?? "",
+    weeklyAvailableHours: baseMission?.weeklyAvailableHours?.toString() ?? "",
+    budgetAmount: baseMission?.budgetAmount?.toString() ?? "",
+  });
+  // Local overrides applied after save — typed against a known shape
+  const [overrides, setOverrides] = React.useState<{
+    title?: string;
+    goal?: string;
+    targetDate?: string;
+    weeklyAvailableHours?: number;
+    budgetAmount?: number;
+  }>({});
+
   if (!baseMission) {
     return (
       <div className="p-6">
@@ -47,9 +69,25 @@ export default function MissionDetailPage() {
     );
   }
 
-  const mission = { ...baseMission, status };
+  const mission = { ...baseMission, ...overrides, status };
   const isPaused = status === "paused";
   const isActive = status === "active";
+
+  function handleSaveEdit() {
+    setOverrides({
+      title: editFields.title.trim() || baseMission?.title,
+      goal: editFields.goal.trim() || baseMission?.goal,
+      targetDate: editFields.targetDate || undefined,
+      weeklyAvailableHours: editFields.weeklyAvailableHours
+        ? Number(editFields.weeklyAvailableHours)
+        : undefined,
+      budgetAmount: editFields.budgetAmount
+        ? Number(editFields.budgetAmount)
+        : undefined,
+    });
+    setEditOpen(false);
+    toast.success("Mission updated.");
+  }
 
   function handlePause() {
     setStatus("paused");
@@ -152,24 +190,29 @@ export default function MissionDetailPage() {
                 Resume
               </Button>
             ) : null}
-            <Button variant="ghost" size="icon-sm" aria-label="More actions">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  setEditFields({
+                    title: mission.title,
+                    goal: mission.goal,
+                    targetDate: mission.targetDate ?? "",
+                    weeklyAvailableHours: mission.weeklyAvailableHours?.toString() ?? "",
+                    budgetAmount: mission.budgetAmount?.toString() ?? "",
+                  });
+                  setEditOpen(true);
+                }}>
+                  <Pencil className="h-4 w-4 mr-2" />Edit Mission
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </div>
-
-      {/* ── Progress bar ── */}
-      <div>
-        <div className="flex justify-between text-xs text-[hsl(var(--text-secondary))] mb-1.5">
-          <span>Overall progress</span>
-          <span className="font-semibold">{mission.progress}%</span>
-        </div>
-        <Progress
-          value={mission.progress}
-          className="h-2"
-          indicatorClassName={isPaused ? "bg-amber-400" : undefined}
-        />
       </div>
 
       {/* ── Tabs ── */}
@@ -498,6 +541,70 @@ export default function MissionDetailPage() {
         onConfirm={handlePause}
         variant="warning"
       />
+
+      {/* ── Edit mission dialog ── */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" /> Edit Mission
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <FormField label="Title" htmlFor="edit-title" required>
+              <Input
+                id="edit-title"
+                value={editFields.title}
+                onChange={e => setEditFields(p => ({ ...p, title: e.target.value }))}
+                placeholder="Mission title"
+              />
+            </FormField>
+            <FormField label="Goal" htmlFor="edit-goal" required>
+              <Input
+                id="edit-goal"
+                value={editFields.goal}
+                onChange={e => setEditFields(p => ({ ...p, goal: e.target.value }))}
+                placeholder="What do you want to achieve?"
+              />
+            </FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Target date" htmlFor="edit-date">
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={editFields.targetDate}
+                  onChange={e => setEditFields(p => ({ ...p, targetDate: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Hours / week" htmlFor="edit-hours">
+                <Input
+                  id="edit-hours"
+                  type="number"
+                  min={1}
+                  max={168}
+                  placeholder="e.g. 10"
+                  value={editFields.weeklyAvailableHours}
+                  onChange={e => setEditFields(p => ({ ...p, weeklyAvailableHours: e.target.value }))}
+                />
+              </FormField>
+            </div>
+            <FormField label="Budget (INR)" htmlFor="edit-budget">
+              <Input
+                id="edit-budget"
+                type="number"
+                min={0}
+                placeholder="e.g. 25000"
+                value={editFields.budgetAmount}
+                onChange={e => setEditFields(p => ({ ...p, budgetAmount: e.target.value }))}
+              />
+            </FormField>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

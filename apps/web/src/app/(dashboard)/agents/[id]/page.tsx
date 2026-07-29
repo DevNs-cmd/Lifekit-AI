@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft, Send, Bot, RefreshCw, CheckCircle,
   Briefcase, TrendingUp, Heart, Globe, Building2,
-  Target, Brain, Sparkles, ChevronRight,
+  Target, Brain, ChevronRight,
 } from "lucide-react";
 import { LucideProps } from "lucide-react";
 import * as React from "react";
@@ -72,12 +72,6 @@ export default function AgentDetailPage() {
   const relatedMissions = MOCK_MISSIONS.filter(m =>
     agent.relatedCategories.includes(m.category) && m.status === "active"
   );
-
-  const suggestedPrompts = agent.capabilities.map((cap, i) => ({
-    id: String(i),
-    label: cap,
-    prompt: `Help me with: ${cap}`,
-  }));
 
   async function handleSend(text?: string) {
     const msg = (text ?? input).trim();
@@ -202,27 +196,6 @@ export default function AgentDetailPage() {
 
             <Separator />
 
-            {/* Suggested prompts */}
-            <div>
-              <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wider mb-2">
-                Suggested prompts
-              </p>
-              <div className="space-y-1.5">
-                {suggestedPrompts.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleSend(p.prompt)}
-                    className="w-full rounded-lg border border-[hsl(var(--border))] px-3 py-2 text-left text-xs text-[hsl(var(--text-secondary))] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--secondary))] transition-colors"
-                  >
-                    <Sparkles className="h-3 w-3 inline mr-1.5 opacity-60" />
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
             {/* Memory indicator */}
             <div className={cn("rounded-xl border p-3", cfg.border, cfg.bg)}>
               <div className="flex items-center gap-2 mb-1.5">
@@ -291,22 +264,6 @@ export default function AgentDetailPage() {
               </h2>
               <p className="text-sm text-[hsl(var(--text-secondary))] max-w-sm mb-6 leading-relaxed">
                 {agent.description}
-              </p>
-              {/* Mobile suggested prompts (desktop shows in sidebar) */}
-              <div className="flex flex-wrap gap-2 justify-center lg:hidden">
-                {suggestedPrompts.slice(0, 3).map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleSend(p.prompt)}
-                    className="rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-xs text-[hsl(var(--text-secondary))] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--primary))] transition-colors"
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              {/* Desktop prompt hint */}
-              <p className="hidden lg:block text-xs text-[hsl(var(--text-secondary))] mt-4">
-                ← Use the sidebar to browse suggested prompts
               </p>
             </div>
           ) : (
