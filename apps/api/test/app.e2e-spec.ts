@@ -1,11 +1,9 @@
-`import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
+import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import  request from 'supertest';
 import { AuthModule } from '../src/auth/auth.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { UserRepository } from '../src/users/repositories/user.repository';
-import { SessionRepository } from '../src/auth/repositories/session.repository';
 import { configLoads, validate } from '../src/config';
 
 describe('Authentication API (e2e)', () => {
@@ -35,7 +33,6 @@ describe('Authentication API (e2e)', () => {
     await app.init();
 
     await prisma.session.deleteMany({});
-    await prisma.userPreference.deleteMany({});
     await prisma.user.deleteMany({});
   });
 
