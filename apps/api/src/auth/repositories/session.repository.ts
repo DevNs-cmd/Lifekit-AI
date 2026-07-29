@@ -10,7 +10,7 @@ export class SessionRepository implements ISessionRepository {
 
   async createSession(data: {
     userId: string;
-    token: string;
+    tokenHash: string;
     expiresAt: Date;
     userAgent?: string;
     ipAddress?: string;
@@ -19,7 +19,7 @@ export class SessionRepository implements ISessionRepository {
       return await this.prisma.session.create({
         data: {
           userId: data.userId,
-          token: data.token,
+          token: data.tokenHash,
           expiresAt: data.expiresAt,
           userAgent: data.userAgent ?? null,
           ipAddress: data.ipAddress ?? null,
@@ -30,10 +30,10 @@ export class SessionRepository implements ISessionRepository {
     }
   }
 
-  async findSessionByToken(token: string): Promise<Session | null> {
+  async findSessionByTokenHash(tokenHash: string): Promise<Session | null> {
     try {
       return await this.prisma.session.findUnique({
-        where: { token },
+        where: { token: tokenHash },
       });
     } catch (error) {
       handlePrismaError(error);
@@ -50,10 +50,10 @@ export class SessionRepository implements ISessionRepository {
     }
   }
 
-  async deleteSession(token: string): Promise<Session> {
+  async deleteSessionByTokenHash(tokenHash: string): Promise<Session> {
     try {
       return await this.prisma.session.delete({
-        where: { token },
+        where: { token: tokenHash },
       });
     } catch (error) {
       handlePrismaError(error);

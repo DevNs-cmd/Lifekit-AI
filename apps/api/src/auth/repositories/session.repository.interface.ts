@@ -3,13 +3,13 @@ import { Session } from '../entities/session.entity';
 export interface ISessionRepository {
   createSession(data: {
     userId: string;
-    token: string;
+    tokenHash: string;
     expiresAt: Date;
     userAgent?: string;
     ipAddress?: string;
   }): Promise<Session>;
-  findSessionByToken(token: string): Promise<Session | null>;
+  findSessionByTokenHash(tokenHash: string): Promise<Session | null>;
   findSessionsByUser(userId: string): Promise<Session[]>;
-  deleteSession(token: string): Promise<Session>;
+  deleteSessionByTokenHash(tokenHash: string): Promise<Session>;
   deleteExpiredSessions(): Promise<{ count: number }>;
 }
