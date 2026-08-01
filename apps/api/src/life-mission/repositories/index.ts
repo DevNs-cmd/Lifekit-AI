@@ -1,2 +1,2 @@
-export * from './life-mission.repository.interface';
-export * from './life-mission.repository';
+export * from "./life-mission.repository.interface";
+export * from "./life-mission.repository";

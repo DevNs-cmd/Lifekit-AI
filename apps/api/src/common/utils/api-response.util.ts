@@ -32,8 +32,8 @@ export class ErrorResponse {
     readonly message: string | string[],
     readonly error: string,
     readonly path: string,
+    readonly errorCode?: string,
   ) {
     this.timestamp = new Date().toISOString();
   }
 }
-export * from '../utils/api-response.util';

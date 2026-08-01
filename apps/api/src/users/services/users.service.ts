@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, UnauthorizedException, Logger } from '@nestjs/common';
-import { UserRepository } from '../repositories/user.repository';
-import { SessionRepository } from '../../auth/repositories/session.repository';
-import { UpdateProfileDto } from '../dto/update-profile.dto';
-import { ChangePasswordDto } from '../dto/change-password.dto';
-import { UserProfile } from '../interfaces/user-profile.interface';
-import { comparePassword, hashPassword } from '../../auth/utils';
-import { User } from '../entities/user.entity';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  Logger,
+} from "@nestjs/common";
+import { UserRepository } from "../repositories/user.repository";
+import { SessionRepository } from "../../auth/repositories/session.repository";
+import { UpdateProfileDto } from "../dto/update-profile.dto";
+import { ChangePasswordDto } from "../dto/change-password.dto";
+import { UserProfile } from "../interfaces/user-profile.interface";
+import { comparePassword, hashPassword } from "../../auth/utils";
+import { User } from "../entities/user.entity";
 
 @Injectable()
 export class UsersService {
@@ -24,7 +29,7 @@ export class UsersService {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       this.logger.warn(`User with ID ${userId} not found`);
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
     return this.mapToProfile(user);
   }
@@ -33,11 +38,16 @@ export class UsersService {
    * Updates the profile of the current authenticated user.
    * Only editable fields are allowed to be updated.
    */
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserProfile> {
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<UserProfile> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      this.logger.warn(`User with ID ${userId} not found during profile update`);
-      throw new NotFoundException('User not found');
+      this.logger.warn(
+        `User with ID ${userId} not found during profile update`,
+      );
+      throw new NotFoundException("User not found");
     }
 
     // Call update on the repository
@@ -52,11 +62,16 @@ export class UsersService {
   async updatePreferences(userId: string, data: any): Promise<any> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      this.logger.warn(`User with ID ${userId} not found during preferences update`);
-      throw new NotFoundException('User not found');
+      this.logger.warn(
+        `User with ID ${userId} not found during preferences update`,
+      );
+      throw new NotFoundException("User not found");
     }
 
-    const updatedPreference = await this.userRepository.updatePreferences(userId, data);
+    const updatedPreference = await this.userRepository.updatePreferences(
+      userId,
+      data,
+    );
     return {
       theme: updatedPreference.theme,
       notificationsEnabled: updatedPreference.notificationsEnabled,
@@ -70,18 +85,26 @@ export class UsersService {
    * Verifies current password, hashes new password, updates repository,
    * and invalidates all refresh token sessions for security.
    */
-  async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ success: boolean; message: string }> {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      this.logger.warn(`User with ID ${userId} not found during password change`);
-      throw new NotFoundException('User not found');
+      this.logger.warn(
+        `User with ID ${userId} not found during password change`,
+      );
+      throw new NotFoundException("User not found");
     }
 
     // Verify current password
-    const isPasswordValid = await comparePassword(dto.currentPassword, user.passwordHash);
+    const isPasswordValid = await comparePassword(
+      dto.currentPassword,
+      user.passwordHash,
+    );
     if (!isPasswordValid) {
       this.logger.warn(`Invalid current password provided for user: ${userId}`);
-      throw new UnauthorizedException('Invalid current password');
+      throw new UnauthorizedException("Invalid current password");
     }
 
     // Hash the new password and update user
@@ -94,15 +117,20 @@ export class UsersService {
       for (const session of sessions) {
         await this.sessionRepository.deleteSessionByTokenHash(session.token);
       }
-      this.logger.log(`Invalidated ${sessions.length} sessions for user: ${userId}`);
+      this.logger.log(
+        `Invalidated ${sessions.length} sessions for user: ${userId}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to fully invalidate sessions for user: ${userId}`, (error as Error).stack);
+      this.logger.error(
+        `Failed to fully invalidate sessions for user: ${userId}`,
+        (error as Error).stack,
+      );
     }
 
     this.logger.log(`Password changed successfully for user: ${userId}`);
     return {
       success: true,
-      message: 'Password changed successfully',
+      message: "Password changed successfully",
     };
   }
 

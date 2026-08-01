@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { ISessionRepository } from './session.repository.interface';
-import { Session } from '../entities/session.entity';
-import { handlePrismaError } from '../../common/utils/prisma-error.util';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import { ISessionRepository } from "./session.repository.interface";
+import { Session } from "../entities/session.entity";
+import { handlePrismaError } from "../../common/utils/prisma-error.util";
 
 @Injectable()
 export class SessionRepository implements ISessionRepository {

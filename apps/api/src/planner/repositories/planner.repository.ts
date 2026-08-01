@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { IPlannerRepository } from './planner.repository.interface';
-import { CreatePlanDto } from '../dto/create-plan.dto';
-import { UpdatePlanDto } from '../dto/update-plan.dto';
-import { Plan } from '../entities/plan.entity';
-import { PaginationParams, PaginatedResult } from '../../common/interfaces/pagination.interface';
-import { handlePrismaError } from '../../common/utils/prisma-error.util';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import { IPlannerRepository } from "./planner.repository.interface";
+import { CreatePlanDto } from "../dto/create-plan.dto";
+import { UpdatePlanDto } from "../dto/update-plan.dto";
+import { Plan } from "../entities/plan.entity";
+import {
+  PaginationParams,
+  PaginatedResult,
+} from "../../common/interfaces/pagination.interface";
+import { handlePrismaError } from "../../common/utils/prisma-error.util";
 
 @Injectable()
 export class PlannerRepository implements IPlannerRepository {
@@ -58,7 +61,7 @@ export class PlannerRepository implements IPlannerRepository {
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         }),
         this.prisma.plan.count({ where }),
       ]);

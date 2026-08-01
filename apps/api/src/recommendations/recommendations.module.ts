@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { PrismaModule } from '../prisma/prisma.module';
-import { RecommendationRepository } from './repositories/recommendation.repository';
+import { Module } from "@nestjs/common";
+import { PrismaModule } from "../prisma/prisma.module";
+import { RecommendationRepository } from "./repositories/recommendation.repository";
 
 @Module({
   imports: [PrismaModule],

@@ -4,22 +4,22 @@ import {
   Injectable,
   Logger,
   NestInterceptor,
-} from '@nestjs/common';
-import { Request, Response } from 'express';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+} from "@nestjs/common";
+import { Request, Response } from "express";
+import { Observable } from "rxjs";
+import { tap } from "rxjs/operators";
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger('HTTP');
+  private readonly logger = new Logger("HTTP");
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const ctx = context.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
     const { method, url } = request;
-    const userAgent = request.get('user-agent') || '';
-    const ip = request.ip || '';
+    const userAgent = request.get("user-agent") || "";
+    const ip = request.ip || "";
     const startTime = Date.now();
 
     return next.handle().pipe(
@@ -33,7 +33,8 @@ export class LoggingInterceptor implements NestInterceptor {
         },
         error: (err: any) => {
           const duration = Date.now() - startTime;
-          const statusCode = err instanceof HttpException ? err.getStatus() : 500;
+          const statusCode =
+            err instanceof HttpException ? err.getStatus() : 500;
           this.logger.error(
             `${method} ${url} ${statusCode} - ${userAgent} - ${ip} - ${duration}ms - Error: ${err.message || err}`,
           );
@@ -42,4 +43,4 @@ export class LoggingInterceptor implements NestInterceptor {
     );
   }
 }
-import { HttpException } from '@nestjs/common';
+import { HttpException } from "@nestjs/common";

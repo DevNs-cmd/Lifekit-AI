@@ -1,1 +1,1 @@
-export * from './marketplace-listing.entity';
+export * from "./marketplace-listing.entity";

@@ -1,17 +1,23 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { ILifeMissionRepository } from './life-mission.repository.interface';
-import { CreateLifeMissionDto } from '../dto/create-life-mission.dto';
-import { UpdateLifeMissionDto } from '../dto/update-life-mission.dto';
-import { LifeMission } from '../entities/life-mission.entity';
-import { PaginationParams, PaginatedResult } from '../../common/interfaces/pagination.interface';
-import { handlePrismaError } from '../../common/utils/prisma-error.util';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import { ILifeMissionRepository } from "./life-mission.repository.interface";
+import { CreateLifeMissionDto } from "../dto/create-life-mission.dto";
+import { UpdateLifeMissionDto } from "../dto/update-life-mission.dto";
+import { LifeMission } from "../entities/life-mission.entity";
+import {
+  PaginationParams,
+  PaginatedResult,
+} from "../../common/interfaces/pagination.interface";
+import { handlePrismaError } from "../../common/utils/prisma-error.util";
 
 @Injectable()
 export class LifeMissionRepository implements ILifeMissionRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createMission(userId: string, data: CreateLifeMissionDto): Promise<LifeMission> {
+  async createMission(
+    userId: string,
+    data: CreateLifeMissionDto,
+  ): Promise<LifeMission> {
     try {
       return await this.prisma.lifeMission.create({
         data: {
@@ -52,12 +58,12 @@ export class LifeMissionRepository implements ILifeMissionRepository {
 
       if (filters?.status) {
         const statusUpper = filters.status.toUpperCase();
-        if (statusUpper === 'PENDING') {
+        if (statusUpper === "PENDING") {
           where.startDate = { gt: now };
-        } else if (statusUpper === 'ACTIVE') {
+        } else if (statusUpper === "ACTIVE") {
           where.startDate = { lte: now };
           where.targetDate = { gte: now };
-        } else if (statusUpper === 'COMPLETED' || statusUpper === 'EXPIRED') {
+        } else if (statusUpper === "COMPLETED" || statusUpper === "EXPIRED") {
           where.targetDate = { lt: now };
         }
       }
@@ -85,7 +91,7 @@ export class LifeMissionRepository implements ILifeMissionRepository {
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         }),
         this.prisma.lifeMission.count({ where }),
       ]);
@@ -102,17 +108,25 @@ export class LifeMissionRepository implements ILifeMissionRepository {
     }
   }
 
-  async updateMission(id: string, data: UpdateLifeMissionDto): Promise<LifeMission> {
+  async updateMission(
+    id: string,
+    data: UpdateLifeMissionDto,
+  ): Promise<LifeMission> {
     try {
       const updateData: any = {};
       if (data.title !== undefined) updateData.title = data.title;
-      if (data.description !== undefined) updateData.description = data.description;
+      if (data.description !== undefined)
+        updateData.description = data.description;
       if (data.goals !== undefined) updateData.goals = data.goals;
       if (data.values !== undefined) updateData.values = data.values;
-      if (data.longTermObjectives !== undefined) updateData.longTermObjectives = data.longTermObjectives;
-      if (data.constraints !== undefined) updateData.constraints = data.constraints;
-      if (data.startDate !== undefined) updateData.startDate = new Date(data.startDate);
-      if (data.targetDate !== undefined) updateData.targetDate = new Date(data.targetDate);
+      if (data.longTermObjectives !== undefined)
+        updateData.longTermObjectives = data.longTermObjectives;
+      if (data.constraints !== undefined)
+        updateData.constraints = data.constraints;
+      if (data.startDate !== undefined)
+        updateData.startDate = new Date(data.startDate);
+      if (data.targetDate !== undefined)
+        updateData.targetDate = new Date(data.targetDate);
 
       return await this.prisma.lifeMission.update({
         where: { id },

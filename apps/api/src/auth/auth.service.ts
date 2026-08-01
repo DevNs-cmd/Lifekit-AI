@@ -1,15 +1,25 @@
-import { Injectable, ConflictException, Logger, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
-import * as jwt from 'jsonwebtoken';
-import { UserRepository } from '../users/repositories/user.repository';
-import { SessionRepository } from './repositories/session.repository';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { User } from '../users/entities/user.entity';
-import { AuthResult, JwtPayload } from './interfaces';
-import { hashPassword, comparePassword, parseDuration, hashRefreshToken } from './utils';
+import {
+  Injectable,
+  ConflictException,
+  Logger,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as crypto from "crypto";
+import * as jwt from "jsonwebtoken";
+import { UserRepository } from "../users/repositories/user.repository";
+import { SessionRepository } from "./repositories/session.repository";
+import { RegisterDto } from "./dto/register.dto";
+import { LoginDto } from "./dto/login.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { User } from "../users/entities/user.entity";
+import { AuthResult, JwtPayload } from "./interfaces";
+import {
+  hashPassword,
+  comparePassword,
+  parseDuration,
+  hashRefreshToken,
+} from "./utils";
 
 @Injectable()
 export class AuthService {
@@ -35,10 +45,16 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<AuthResult> {
-    const existingUser = await this.userRepository.findByEmail(registerDto.email);
+    const existingUser = await this.userRepository.findByEmail(
+      registerDto.email,
+    );
     if (existingUser) {
-      this.logger.warn(`Registration failed — email already in use: ${registerDto.email}`);
-      throw new ConflictException('A user with this email address already exists');
+      this.logger.warn(
+        `Registration failed — email already in use: ${registerDto.email}`,
+      );
+      throw new ConflictException(
+        "A user with this email address already exists",
+      );
     }
 
     const passwordHash = await hashPassword(registerDto.password);
@@ -80,7 +96,11 @@ export class AuthService {
    * @returns Authenticated user and a fresh pair of tokens
    * @throws UnauthorizedException on invalid credentials
    */
-  async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string): Promise<AuthResult> {
+  async login(
+    loginDto: LoginDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<AuthResult> {
     const user = await this.validateUser(loginDto.email, loginDto.password);
 
     const accessToken = this.generateAccessToken(user);
@@ -113,17 +133,20 @@ export class AuthService {
    * @returns Sanitized User entity (with passwordHash removed)
    * @throws UnauthorizedException on failure
    */
-  async validateUser(email: string, pass: string): Promise<Omit<User, 'passwordHash'>> {
+  async validateUser(
+    email: string,
+    pass: string,
+  ): Promise<Omit<User, "passwordHash">> {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       this.logger.warn(`Login failed — user not found for email: ${email}`);
-      throw new UnauthorizedException('Invalid email address or password');
+      throw new UnauthorizedException("Invalid email address or password");
     }
 
     const isPasswordValid = await comparePassword(pass, user.passwordHash);
     if (!isPasswordValid) {
       this.logger.warn(`Login failed — invalid password for email: ${email}`);
-      throw new UnauthorizedException('Invalid email address or password');
+      throw new UnauthorizedException("Invalid email address or password");
     }
 
     return this.sanitizeUser(user);
@@ -154,34 +177,44 @@ export class AuthService {
 
     // Step 1: Verify the refresh token signature and expiration
     try {
-      payload = jwt.verify(rawToken, this.getSecret('refreshSecret')) as JwtPayload;
+      payload = jwt.verify(
+        rawToken,
+        this.getSecret("refreshSecret"),
+      ) as JwtPayload;
     } catch (error) {
-      this.logger.warn('Refresh token verification failed — invalid or expired token');
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      this.logger.warn(
+        "Refresh token verification failed — invalid or expired token",
+      );
+      throw new UnauthorizedException("Invalid or expired refresh token");
     }
 
     // Step 2: Hash the token and look up the session (prevent token exfiltration attacks)
     const tokenHash = hashRefreshToken(rawToken);
-    const session = await this.sessionRepository.findSessionByTokenHash(tokenHash);
+    const session =
+      await this.sessionRepository.findSessionByTokenHash(tokenHash);
 
     if (!session) {
-      this.logger.warn(`Refresh token replay suspected — session not found for user: ${payload.sub}`);
-      throw new UnauthorizedException('Active session not found');
+      this.logger.warn(
+        `Refresh token replay suspected — session not found for user: ${payload.sub}`,
+      );
+      throw new UnauthorizedException("Active session not found");
     }
 
     // Step 3: Check session expiration
     if (new Date(session.expiresAt) < new Date()) {
       await this.sessionRepository.deleteSessionByTokenHash(tokenHash);
       this.logger.warn(`Expired refresh token used for user: ${payload.sub}`);
-      throw new UnauthorizedException('Refresh token session has expired');
+      throw new UnauthorizedException("Refresh token session has expired");
     }
 
     // Step 4: Verify the user still exists
     const user = await this.userRepository.findById(payload.sub);
     if (!user) {
       await this.sessionRepository.deleteSessionByTokenHash(tokenHash);
-      this.logger.warn(`User deleted but refresh token used — cleaning up session. sub: ${payload.sub}`);
-      throw new UnauthorizedException('User not found');
+      this.logger.warn(
+        `User deleted but refresh token used — cleaning up session. sub: ${payload.sub}`,
+      );
+      throw new UnauthorizedException("User not found");
     }
 
     // Step 5: Refresh Token Rotation (RTR) — delete old session BEFORE creating new one
@@ -189,7 +222,10 @@ export class AuthService {
     try {
       await this.sessionRepository.deleteSessionByTokenHash(tokenHash);
     } catch (error) {
-      this.logger.error(`Failed to delete old session during RTR for user: ${user.id}`, (error as Error).stack);
+      this.logger.error(
+        `Failed to delete old session during RTR for user: ${user.id}`,
+        (error as Error).stack,
+      );
       // Continue — if delete failed (e.g. already deleted), rotation still proceeds
     }
 
@@ -225,11 +261,11 @@ export class AuthService {
     try {
       const tokenHash = hashRefreshToken(refreshToken);
       await this.sessionRepository.deleteSessionByTokenHash(tokenHash);
-      this.logger.log('User logged out — session deleted successfully');
+      this.logger.log("User logged out — session deleted successfully");
     } catch (error) {
       // Log the error but do not throw — logout should be idempotent
       this.logger.error(
-        'Logout session deletion encountered an issue (session may already be deleted)',
+        "Logout session deletion encountered an issue (session may already be deleted)",
         (error as Error).stack,
       );
     }
@@ -249,7 +285,7 @@ export class AuthService {
    * @returns Signed JWT string
    */
   private signToken(
-    user: Omit<User, 'passwordHash'> | User,
+    user: Omit<User, "passwordHash"> | User,
     secret: string,
     expiresIn: string,
   ): string {
@@ -258,8 +294,8 @@ export class AuthService {
     };
 
     return jwt.sign(payload, secret, {
-      expiresIn: expiresIn as jwt.SignOptions['expiresIn'],
-      jwtid: crypto.randomBytes(32).toString('hex'),
+      expiresIn: expiresIn as jwt.SignOptions["expiresIn"],
+      jwtid: crypto.randomBytes(32).toString("hex"),
     });
   }
 
@@ -267,19 +303,25 @@ export class AuthService {
    * Generates a signed Access JWT.
    * @param user The user object (sanitized or full)
    */
-  private generateAccessToken(user: Omit<User, 'passwordHash'> | User): string {
-    return this.signToken(user, this.getSecret('secret'), this.getExpiry('expiresIn', '15m'));
+  private generateAccessToken(user: Omit<User, "passwordHash"> | User): string {
+    return this.signToken(
+      user,
+      this.getSecret("secret"),
+      this.getExpiry("expiresIn", "15m"),
+    );
   }
 
   /**
    * Generates a signed Refresh JWT.
    * @param user The user object (sanitized or full)
    */
-  private generateRefreshToken(user: Omit<User, 'passwordHash'> | User): string {
+  private generateRefreshToken(
+    user: Omit<User, "passwordHash"> | User,
+  ): string {
     return this.signToken(
       user,
-      this.getSecret('refreshSecret'),
-      this.getExpiry('refreshExpiresIn', '7d'),
+      this.getSecret("refreshSecret"),
+      this.getExpiry("refreshExpiresIn", "7d"),
     );
   }
 
@@ -288,7 +330,7 @@ export class AuthService {
    * Uses an allowlist approach for forward-compatibility with new sensitive fields.
    * @param user Full user entity
    */
-  private sanitizeUser(user: User): Omit<User, 'passwordHash'> {
+  private sanitizeUser(user: User): Omit<User, "passwordHash"> {
     return {
       id: user.id,
       email: user.email,
@@ -304,7 +346,7 @@ export class AuthService {
    * @param key Config key path (e.g., 'secret', 'expiresIn')
    * @param fallback Default value if config is not set
    */
-  private getSecret(key: 'secret' | 'refreshSecret'): string {
+  private getSecret(key: "secret" | "refreshSecret"): string {
     const configKey = `jwt.${key}` as const;
     const secret = this.configService.get<string>(configKey);
     if (!secret) {
@@ -318,7 +360,10 @@ export class AuthService {
    * @param key Config key path (e.g., 'expiresIn', 'refreshExpiresIn')
    * @param fallback Default value if config is not set
    */
-  private getExpiry(key: 'expiresIn' | 'refreshExpiresIn', fallback: string): string {
+  private getExpiry(
+    key: "expiresIn" | "refreshExpiresIn",
+    fallback: string,
+  ): string {
     return this.configService.get<string>(`jwt.${key}`) || fallback;
   }
 
@@ -326,8 +371,7 @@ export class AuthService {
    * Calculates the refresh token expiration offset in milliseconds.
    */
   private getRefreshExpiryMs(): number {
-    const expiry = this.getExpiry('refreshExpiresIn', '7d');
+    const expiry = this.getExpiry("refreshExpiresIn", "7d");
     return parseDuration(expiry);
   }
 }
-

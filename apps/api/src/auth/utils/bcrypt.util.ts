@@ -1,6 +1,6 @@
-import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
-import { AUTH_CONSTANTS } from '../constants/auth.constants';
+import * as bcrypt from "bcrypt";
+import * as crypto from "crypto";
+import { AUTH_CONSTANTS } from "../constants/auth.constants";
 
 /**
  * Hashes a plaintext password using bcrypt.
@@ -17,7 +17,10 @@ export async function hashPassword(password: string): Promise<string> {
  * @param hash Bcrypt hash to compare against
  * @returns A promise that resolves to a boolean indicating match status
  */
-export async function comparePassword(password: string, hash: string): Promise<boolean> {
+export async function comparePassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
 

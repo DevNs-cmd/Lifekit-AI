@@ -1,18 +1,20 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { IUserRepository } from './user.repository.interface';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
-import { UserPreferencesDto } from '../dto/user-preferences.dto';
-import { User } from '../entities/user.entity';
-import { UserPreference } from '../entities/user-preference.entity';
-import { handlePrismaError } from '../../common/utils/prisma-error.util';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import { IUserRepository } from "./user.repository.interface";
+import { CreateUserDto } from "../dto/create-user.dto";
+import { UpdateUserDto } from "../dto/update-user.dto";
+import { UserPreferencesDto } from "../dto/user-preferences.dto";
+import { User } from "../entities/user.entity";
+import { UserPreference } from "../entities/user-preference.entity";
+import { handlePrismaError } from "../../common/utils/prisma-error.util";
 
 @Injectable()
 export class UserRepository implements IUserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createUser(data: CreateUserDto & { passwordHash: string }): Promise<User> {
+  async createUser(
+    data: CreateUserDto & { passwordHash: string },
+  ): Promise<User> {
     try {
       return await this.prisma.user.create({
         data: {
@@ -22,15 +24,16 @@ export class UserRepository implements IUserRepository {
           preference: data.preferences
             ? {
                 create: {
-                  theme: data.preferences.theme ?? 'light',
-                  notificationsEnabled: data.preferences.notificationsEnabled ?? true,
+                  theme: data.preferences.theme ?? "light",
+                  notificationsEnabled:
+                    data.preferences.notificationsEnabled ?? true,
                   goals: data.preferences.goals ?? [],
                   interests: data.preferences.interests ?? [],
                 },
               }
             : {
                 create: {
-                  theme: 'light',
+                  theme: "light",
                   notificationsEnabled: true,
                   goals: [],
                   interests: [],
@@ -72,10 +75,13 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async updateUser(id: string, data: UpdateUserDto & { passwordHash?: string }): Promise<User> {
+  async updateUser(
+    id: string,
+    data: UpdateUserDto & { passwordHash?: string },
+  ): Promise<User> {
     try {
       const { preferences, ...rest } = data;
-      
+
       return await this.prisma.$transaction(async (tx) => {
         // If there are preferences to update, do it alongside user updates
         if (preferences) {
@@ -89,7 +95,7 @@ export class UserRepository implements IUserRepository {
             },
             create: {
               userId: id,
-              theme: preferences.theme ?? 'light',
+              theme: preferences.theme ?? "light",
               notificationsEnabled: preferences.notificationsEnabled ?? true,
               goals: preferences.goals ?? [],
               interests: preferences.interests ?? [],
@@ -124,7 +130,10 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async updatePreferences(userId: string, data: UserPreferencesDto): Promise<UserPreference> {
+  async updatePreferences(
+    userId: string,
+    data: UserPreferencesDto,
+  ): Promise<UserPreference> {
     try {
       return await this.prisma.userPreference.upsert({
         where: { userId },
@@ -136,7 +145,7 @@ export class UserRepository implements IUserRepository {
         },
         create: {
           userId,
-          theme: data.theme ?? 'light',
+          theme: data.theme ?? "light",
           notificationsEnabled: data.notificationsEnabled ?? true,
           goals: data.goals ?? [],
           interests: data.interests ?? [],

@@ -7,70 +7,76 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
-} from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { UsersService } from '../services/users.service';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { UpdateProfileDto } from '../dto/update-profile.dto';
-import { UpdatePreferencesDto } from '../dto/update-preferences.dto';
-import { ChangePasswordDto } from '../dto/change-password.dto';
-import { UserProfile } from '../interfaces/user-profile.interface';
+} from "@nestjs/common";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import { UsersService } from "../services/users.service";
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { UpdateProfileDto } from "../dto/update-profile.dto";
+import { UpdatePreferencesDto } from "../dto/update-preferences.dto";
+import { ChangePasswordDto } from "../dto/change-password.dto";
+import { UserProfile } from "../interfaces/user-profile.interface";
 
-@ApiTags('Users')
-@ApiBearerAuth('JWT-auth')
+@ApiTags("Users")
+@ApiBearerAuth("JWT-auth")
 @UseGuards(JwtAuthGuard)
-@Controller('users')
+@Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   /**
    * Retrieves the authenticated user's profile.
    */
-  @Get('me')
+  @Get("me")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiOperation({ summary: "Get current user profile" })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'User profile retrieved successfully',
+    description: "User profile retrieved successfully",
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid or expired access token',
+    description: "Invalid or expired access token",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'User not found',
+    description: "User not found",
   })
-  async getMe(@CurrentUser('id') userId: string): Promise<UserProfile> {
+  async getMe(@CurrentUser("id") userId: string): Promise<UserProfile> {
     return this.usersService.getCurrentUser(userId);
   }
 
   /**
    * Updates the authenticated user's profile.
    */
-  @Patch('me')
+  @Patch("me")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiOperation({ summary: "Update current user profile" })
   @ApiBody({ type: UpdateProfileDto })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'User profile updated successfully',
+    description: "User profile updated successfully",
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid or expired access token',
+    description: "Invalid or expired access token",
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Validation failed for the provided data',
+    description: "Validation failed for the provided data",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'User not found',
+    description: "User not found",
   })
   async updateMe(
-    @CurrentUser('id') userId: string,
+    @CurrentUser("id") userId: string,
     @Body() updateProfileDto: UpdateProfileDto,
   ): Promise<UserProfile> {
     return this.usersService.updateProfile(userId, updateProfileDto);
@@ -79,36 +85,36 @@ export class UsersController {
   /**
    * Updates the preferences JSON object.
    */
-  @Patch('preferences')
+  @Patch("preferences")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update user preferences' })
+  @ApiOperation({ summary: "Update user preferences" })
   @ApiBody({ type: UpdatePreferencesDto })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Preferences updated successfully',
+    description: "Preferences updated successfully",
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid or expired access token',
+    description: "Invalid or expired access token",
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Request body is not a valid object',
+    description: "Request body is not a valid object",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'User not found',
+    description: "User not found",
   })
   async updatePreferences(
-    @CurrentUser('id') userId: string,
+    @CurrentUser("id") userId: string,
     @Body() preferencesDto: UpdatePreferencesDto,
   ): Promise<any> {
     if (
-      typeof preferencesDto !== 'object' ||
+      typeof preferencesDto !== "object" ||
       preferencesDto === null ||
       Array.isArray(preferencesDto)
     ) {
-      throw new BadRequestException('Request body must be a valid JSON object');
+      throw new BadRequestException("Request body must be a valid JSON object");
     }
     return this.usersService.updatePreferences(userId, preferencesDto);
   }
@@ -116,28 +122,28 @@ export class UsersController {
   /**
    * Changes the authenticated user's password.
    */
-  @Patch('change-password')
+  @Patch("change-password")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Change user password' })
+  @ApiOperation({ summary: "Change user password" })
   @ApiBody({ type: ChangePasswordDto })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Password changed successfully',
+    description: "Password changed successfully",
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid current password',
+    description: "Invalid current password",
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Validation failed for new password',
+    description: "Validation failed for new password",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'User not found',
+    description: "User not found",
   })
   async changePassword(
-    @CurrentUser('id') userId: string,
+    @CurrentUser("id") userId: string,
     @Body() changePasswordDto: ChangePasswordDto,
   ): Promise<{ success: boolean; message: string }> {
     return this.usersService.changePassword(userId, changePasswordDto);

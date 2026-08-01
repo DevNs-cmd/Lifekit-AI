@@ -113,16 +113,33 @@ jobs:
             echo "Skipping lint - lint script not found."
           fi
 
-      - name: Run Tests
+      - name: Type Check Code
         if: steps.check-init.outputs.is_implemented == 'true'
         run: |
           cd apps/api
-          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.test ? 0 : 1)" 2>/dev/null; then
+          npx tsc --noEmit
+
+      - name: Run Tests with Coverage
+        if: steps.check-init.outputs.is_implemented == 'true'
+        run: |
+          cd apps/api
+          if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.['test:cov'] ? 0 : 1)" 2>/dev/null; then
+            echo "Coverage test script found. Running 'npm run test:cov'..."
+            npm run test:cov
+          elif node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.test ? 0 : 1)" 2>/dev/null; then
             echo "Test script found. Running 'npm run test'..."
             npm run test
           else
             echo "No tests configured."
           fi
+
+      - name: Upload Test Coverage
+        if: steps.check-init.outputs.is_implemented == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: apps/api/coverage/
+          retention-days: 7
 
       - name: Run E2E Tests
         if: steps.check-init.outputs.is_implemented == 'true'
@@ -145,3 +162,12 @@ jobs:
           else
             echo "Skipping build - build script not found."
           fi
+
+      - name: Upload Build Artifacts
+        if: steps.check-init.outputs.is_implemented == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: apps/api/dist/
+          retention-days: 7
+

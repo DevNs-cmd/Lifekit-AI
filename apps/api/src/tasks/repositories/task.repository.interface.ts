@@ -1,8 +1,11 @@
-import { CreateTaskDto, TaskStatus } from '../dto/create-task.dto';
-import { UpdateTaskDto } from '../dto/update-task.dto';
-import { TaskFilterDto } from '../dto/task-filter.dto';
-import { Task } from '../entities/task.entity';
-import { PaginationParams, PaginatedResult } from '../../common/interfaces/pagination.interface';
+import { CreateTaskDto, TaskStatus } from "../dto/create-task.dto";
+import { UpdateTaskDto } from "../dto/update-task.dto";
+import { TaskFilterDto } from "../dto/task-filter.dto";
+import { Task } from "../entities/task.entity";
+import {
+  PaginationParams,
+  PaginatedResult,
+} from "../../common/interfaces/pagination.interface";
 
 export interface ITaskRepository {
   createTask(userId: string, data: CreateTaskDto): Promise<Task>;

@@ -1,35 +1,51 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { HealthService } from './health.service';
+import { Controller, Get } from "@nestjs/common";
+import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { HealthService } from "./health.service";
 
-@ApiTags('Health')
-@Controller('health')
+@ApiTags("Health & Monitoring")
+@Controller()
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
-  @Get()
-  @ApiOperation({ summary: 'Check the application and database health status' })
+  @Get("health")
+  @ApiOperation({
+    summary:
+      "Perform comprehensive health checks on the API and its database/caching services",
+  })
   @ApiResponse({
     status: 200,
-    description: 'Application is healthy',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean', example: true },
-        statusCode: { type: 'number', example: 200 },
-        message: { type: 'string', example: 'Request completed successfully' },
-        data: {
-          type: 'object',
-          properties: {
-            status: { type: 'string', example: 'healthy' },
-            timestamp: { type: 'string', example: '2026-07-28T16:00:17.000Z' },
-            version: { type: 'string', example: '0.1.0' },
-          },
-        },
-      },
-    },
+    description: "System is healthy",
   })
-  check() {
-    return this.healthService.getHealth();
+  @ApiResponse({
+    status: 503,
+    description: "One or more database or cache connections are unhealthy",
+  })
+  async check() {
+    return await this.healthService.checkHealth();
+  }
+
+  @Get("ready")
+  @ApiOperation({
+    summary:
+      "Readiness probe to confirm if the API is prepared to accept traffic",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "API is ready to process requests",
+  })
+  async ready() {
+    return await this.healthService.checkHealth();
+  }
+
+  @Get("live")
+  @ApiOperation({
+    summary: "Fast liveness probe to verify if the node container is running",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "API container is active",
+  })
+  live() {
+    return this.healthService.getLiveness();
   }
 }

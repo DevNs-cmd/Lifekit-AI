@@ -1,5 +1,11 @@
-import { Recommendation, RecommendationStatus } from '../entities/recommendation.entity';
-import { PaginationParams, PaginatedResult } from '../../common/interfaces/pagination.interface';
+import {
+  Recommendation,
+  RecommendationStatus,
+} from "../entities/recommendation.entity";
+import {
+  PaginationParams,
+  PaginatedResult,
+} from "../../common/interfaces/pagination.interface";
 
 export interface IRecommendationRepository {
   createRecommendation(
@@ -17,6 +23,9 @@ export interface IRecommendationRepository {
     filters?: { category?: string; status?: RecommendationStatus },
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Recommendation>>;
-  updateRecommendationStatus(id: string, status: RecommendationStatus): Promise<Recommendation>;
+  updateRecommendationStatus(
+    id: string,
+    status: RecommendationStatus,
+  ): Promise<Recommendation>;
   deleteRecommendation(id: string): Promise<Recommendation>;
 }

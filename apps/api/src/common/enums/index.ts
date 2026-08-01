@@ -1,1 +1,1 @@
-export * from './priority-level.enum';
+export * from "./priority-level.enum";

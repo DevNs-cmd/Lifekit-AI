@@ -1,73 +1,91 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from './app.module';
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-import { LoggingInterceptor, TransformInterceptor } from './common/interceptors';
+import { Logger } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { ThrottlerGuard } from "@nestjs/throttler";
+import * as express from "express";
+import helmet from "helmet";
+import compression from "compression";
+
+import { AppModule } from "./app.module";
+import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
+import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
+import { TransformInterceptor } from "./common/interceptors";
+import { TimeoutInterceptor } from "./common/interceptors/timeout.interceptor";
+import { CustomValidationPipe } from "./common/pipes/validation.pipe";
+import { AppConfigService } from "./config";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const logger = new Logger('Bootstrap');
-  const configService = app.get(ConfigService);
+  const logger = new Logger("Bootstrap");
+  const appConfig = app.get(AppConfigService);
 
   // Global prefix for all API routes
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix("api");
 
   // Enable NestJS shutdown hooks for graceful connection termination
   app.enableShutdownHooks();
 
-  // Configure global validation pipe with strict filtering
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  // Register production security middlewares
+  app.use(helmet());
+  app.use(compression());
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-  // Configure global exception filter to return standard JSON error structures
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  // Configure global validation pipe with strict filtering and custom formatting
+  app.useGlobalPipes(new CustomValidationPipe());
+
+  // Configure global exception filters
+  app.useGlobalFilters(
+    new GlobalExceptionFilter(),
+    new PrismaExceptionFilter(),
+  );
 
   // Configure global interceptors for logging and response transformations
   app.useGlobalInterceptors(
-    new LoggingInterceptor(),
     new TransformInterceptor(),
+    new TimeoutInterceptor(),
   );
 
+  // Configure global rate limiting guard
+  app.useGlobalGuards(app.get(ThrottlerGuard));
+
   // Production-ready CORS configuration
-  const corsOrigin = configService.get<string>('app.corsOrigin') || 'http://localhost:3000';
+  const corsOrigin = appConfig.corsOrigin;
   app.enableCors({
-    origin: corsOrigin.includes(',') ? corsOrigin.split(',') : corsOrigin,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    origin: corsOrigin.includes(",") ? corsOrigin.split(",") : corsOrigin,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     credentials: true,
   });
 
   // Swagger API Documentation Setup
-  const config = new DocumentBuilder()
-    .setTitle('LifeKit API')
-    .setDescription('LifeKit Core Backend API')
-    .setVersion('0.1.0')
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle("LifeKit API")
+    .setDescription("LifeKit Core Backend API")
+    .setVersion("0.1.0")
     .addBearerAuth(
       {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Enter your JWT access token to authorize requests',
-        in: 'header',
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        name: "JWT",
+        description: "Enter your JWT access token to authorize requests",
+        in: "header",
       },
-      'JWT-auth',
+      "JWT-auth",
     )
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup("api/docs", app, document);
 
   // Start HTTP Server
-  const port = configService.get<number>('app.port') || 4000;
+  const port = appConfig.port;
   await app.listen(port);
-  logger.log(`LifeKit Backend Foundation is running on: http://localhost:${port}/api`);
-  logger.log(`API Swagger Documentation is available at: http://localhost:${port}/api/docs`);
+  logger.log(
+    `LifeKit Backend Foundation is running on: http://localhost:${port}/api`,
+  );
+  logger.log(
+    `API Swagger Documentation is available at: http://localhost:${port}/api/docs`,
+  );
 }
 bootstrap();

@@ -1,8 +1,8 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { UserRepository } from '../users/repositories/user.repository';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+import { UserRepository } from "../users/repositories/user.repository";
+import { JwtPayload } from "./interfaces/jwt-payload.interface";
 
 /**
  * Passport JWT Strategy for access token verification.
@@ -19,16 +19,14 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
  * - Logs authentication failures without exposing secrets
  */
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
   private readonly logger = new Logger(JwtStrategy.name);
 
-  constructor(
-    private readonly userRepository: UserRepository,
-  ) {
+  constructor(private readonly userRepository: UserRepository) {
     const secret = process.env.JWT_SECRET;
 
     if (!secret) {
-      throw new Error('JWT_SECRET environment variable is not configured');
+      throw new Error("JWT_SECRET environment variable is not configured");
     }
 
     super({
@@ -48,15 +46,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
    */
   async validate(payload: JwtPayload): Promise<any> {
     if (!payload.sub) {
-      this.logger.warn('JWT payload missing sub claim');
-      throw new UnauthorizedException('Invalid token payload');
+      this.logger.warn("JWT payload missing sub claim");
+      throw new UnauthorizedException("Invalid token payload");
     }
 
     const user = await this.userRepository.findById(payload.sub);
 
     if (!user) {
       this.logger.warn(`User not found for token sub: ${payload.sub}`);
-      throw new UnauthorizedException('User associated with this token no longer exists');
+      throw new UnauthorizedException(
+        "User associated with this token no longer exists",
+      );
     }
 
     // Remove sensitive fields before attaching to request

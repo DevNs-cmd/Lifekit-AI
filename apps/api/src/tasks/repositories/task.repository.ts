@@ -1,12 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { ITaskRepository } from './task.repository.interface';
-import { CreateTaskDto, TaskStatus } from '../dto/create-task.dto';
-import { UpdateTaskDto } from '../dto/update-task.dto';
-import { TaskFilterDto } from '../dto/task-filter.dto';
-import { Task } from '../entities/task.entity';
-import { PaginationParams, PaginatedResult } from '../../common/interfaces/pagination.interface';
-import { handlePrismaError } from '../../common/utils/prisma-error.util';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import { ITaskRepository } from "./task.repository.interface";
+import { CreateTaskDto, TaskStatus } from "../dto/create-task.dto";
+import { UpdateTaskDto } from "../dto/update-task.dto";
+import { TaskFilterDto } from "../dto/task-filter.dto";
+import { Task } from "../entities/task.entity";
+import {
+  PaginationParams,
+  PaginatedResult,
+} from "../../common/interfaces/pagination.interface";
+import { handlePrismaError } from "../../common/utils/prisma-error.util";
 
 @Injectable()
 export class TaskRepository implements ITaskRepository {
@@ -76,7 +79,7 @@ export class TaskRepository implements ITaskRepository {
           where,
           skip,
           take: limit,
-          orderBy: { dueDate: 'asc' },
+          orderBy: { dueDate: "asc" },
         }),
         this.prisma.task.count({ where }),
       ]);
@@ -109,11 +112,14 @@ export class TaskRepository implements ITaskRepository {
     try {
       const updateData: any = {};
       if (data.title !== undefined) updateData.title = data.title;
-      if (data.description !== undefined) updateData.description = data.description;
+      if (data.description !== undefined)
+        updateData.description = data.description;
       if (data.status !== undefined) updateData.status = data.status;
       if (data.priority !== undefined) updateData.priority = data.priority;
-      if (data.dueDate !== undefined) updateData.dueDate = new Date(data.dueDate);
-      if (data.assignment !== undefined) updateData.assignment = data.assignment;
+      if (data.dueDate !== undefined)
+        updateData.dueDate = new Date(data.dueDate);
+      if (data.assignment !== undefined)
+        updateData.assignment = data.assignment;
       if (data.planId !== undefined) updateData.planId = data.planId;
 
       const task = await this.prisma.task.update({

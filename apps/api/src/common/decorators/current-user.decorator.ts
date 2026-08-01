@@ -1,5 +1,5 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { User } from '../../users/entities/user.entity';
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
+import { User } from "../../users/entities/user.entity";
 
 /**
  * Custom parameter decorator that extracts the authenticated user from the request.
@@ -16,12 +16,11 @@ export const CurrentUser = createParamDecorator(
 
     if (!user) {
       throw new Error(
-        'CurrentUser decorator requires an authenticated request. ' +
-        'Ensure JwtAuthGuard is applied to the route.'
+        "CurrentUser decorator requires an authenticated request. " +
+          "Ensure JwtAuthGuard is applied to the route.",
       );
     }
 
     return data ? user[data] : user;
   },
 );
-

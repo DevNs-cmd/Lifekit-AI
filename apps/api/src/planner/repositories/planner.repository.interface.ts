@@ -1,7 +1,10 @@
-import { CreatePlanDto } from '../dto/create-plan.dto';
-import { UpdatePlanDto } from '../dto/update-plan.dto';
-import { Plan } from '../entities/plan.entity';
-import { PaginationParams, PaginatedResult } from '../../common/interfaces/pagination.interface';
+import { CreatePlanDto } from "../dto/create-plan.dto";
+import { UpdatePlanDto } from "../dto/update-plan.dto";
+import { Plan } from "../entities/plan.entity";
+import {
+  PaginationParams,
+  PaginatedResult,
+} from "../../common/interfaces/pagination.interface";
 
 export interface IPlannerRepository {
   createPlan(userId: string, data: CreatePlanDto): Promise<Plan>;

@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { IRecommendationRepository } from './recommendation.repository.interface';
-import { Recommendation, RecommendationStatus } from '../entities/recommendation.entity';
-import { PaginationParams, PaginatedResult } from '../../common/interfaces/pagination.interface';
-import { handlePrismaError } from '../../common/utils/prisma-error.util';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import { IRecommendationRepository } from "./recommendation.repository.interface";
+import {
+  Recommendation,
+  RecommendationStatus,
+} from "../entities/recommendation.entity";
+import {
+  PaginationParams,
+  PaginatedResult,
+} from "../../common/interfaces/pagination.interface";
+import { handlePrismaError } from "../../common/utils/prisma-error.util";
 
 @Injectable()
 export class RecommendationRepository implements IRecommendationRepository {
@@ -20,7 +26,7 @@ export class RecommendationRepository implements IRecommendationRepository {
     },
   ): Promise<Recommendation> {
     try {
-      return await this.prisma.recommendation.create({
+      return (await this.prisma.recommendation.create({
         data: {
           userId,
           category: data.category,
@@ -29,7 +35,7 @@ export class RecommendationRepository implements IRecommendationRepository {
           relevanceScore: data.relevanceScore ?? null,
           metadata: data.metadata ?? undefined,
         },
-      }) as unknown as Recommendation;
+      })) as unknown as Recommendation;
     } catch (error) {
       handlePrismaError(error);
     }
@@ -59,7 +65,7 @@ export class RecommendationRepository implements IRecommendationRepository {
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         }),
         this.prisma.recommendation.count({ where }),
       ]);
@@ -76,12 +82,15 @@ export class RecommendationRepository implements IRecommendationRepository {
     }
   }
 
-  async updateRecommendationStatus(id: string, status: RecommendationStatus): Promise<Recommendation> {
+  async updateRecommendationStatus(
+    id: string,
+    status: RecommendationStatus,
+  ): Promise<Recommendation> {
     try {
-      return await this.prisma.recommendation.update({
+      return (await this.prisma.recommendation.update({
         where: { id },
         data: { status },
-      }) as unknown as Recommendation;
+      })) as unknown as Recommendation;
     } catch (error) {
       handlePrismaError(error);
     }
@@ -89,9 +98,9 @@ export class RecommendationRepository implements IRecommendationRepository {
 
   async deleteRecommendation(id: string): Promise<Recommendation> {
     try {
-      return await this.prisma.recommendation.delete({
+      return (await this.prisma.recommendation.delete({
         where: { id },
-      }) as unknown as Recommendation;
+      })) as unknown as Recommendation;
     } catch (error) {
       handlePrismaError(error);
     }

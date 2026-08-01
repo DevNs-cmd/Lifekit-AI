@@ -1,7 +1,12 @@
-import { ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { AuthGuard } from '@nestjs/passport';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import {
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { AuthGuard } from "@nestjs/passport";
+import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 
 /**
  * Production-ready JWT authentication guard.
@@ -16,7 +21,7 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
  * - Use @Public() decorator on routes that should be accessible without auth
  */
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class JwtAuthGuard extends AuthGuard("jwt") {
   private readonly logger = new Logger(JwtAuthGuard.name);
 
   constructor(private readonly reflector: Reflector) {
@@ -52,23 +57,25 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   ): TUser {
     if (err || !user) {
       const request = context.switchToHttp().getRequest();
-      const path = request.url || 'unknown';
-      const method = request.method || 'UNKNOWN';
+      const path = request.url || "unknown";
+      const method = request.method || "UNKNOWN";
 
       // Extract a safe error message from Passport's info object
       const errorMessage =
         err?.message ||
-        (typeof info === 'object' && info?.message) ||
-        (typeof info === 'string' ? info : 'Authentication required');
+        (typeof info === "object" && info?.message) ||
+        (typeof info === "string" ? info : "Authentication required");
 
       this.logger.warn(
         `Authentication failed — ${method} ${path}: ${errorMessage}`,
       );
 
-      throw err || new UnauthorizedException('Invalid or expired authentication token');
+      throw (
+        err ||
+        new UnauthorizedException("Invalid or expired authentication token")
+      );
     }
 
     return user;
   }
 }
-
