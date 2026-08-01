@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("API_DATABASE_URL")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ai_memory {
+  memory_id        Int       @id @default(autoincrement())
+  user_id          Int
+  memory_type      String    @db.VarChar(50)
+  title            String?   @db.VarChar(255)
+  content          String
+  importance_score Decimal?  @db.Decimal(3, 2)
+  embedding_id     String?   @db.VarChar(255)
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  updated_at       DateTime? @default(now()) @db.Timestamp(6)
+  users            users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_memory_user")
+}
+
+model audit_logs {
+  log_id     Int       @id @default(autoincrement())
+  user_id    Int?
+  action     String?   @db.VarChar(255)
+  table_name String?   @db.VarChar(100)
+  record_id  Int?
+  ip_address String?   @db.VarChar(50)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  users      users?    @relation(fields: [user_id], references: [user_id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model goals {
+  goal_id     Int       @id @default(autoincrement())
+  user_id     Int
+  title       String    @db.VarChar(255)
+  description String?
+  category    String?   @db.VarChar(100)
+  target_date DateTime? @db.Date
+  status      String?   @default("In Progress") @db.VarChar(20)
+  progress    Int?      @default(0)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  users       users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_goal_user")
+}
+
+model interests {
+  interest_id   Int       @id @default(autoincrement())
+  user_id       Int
+  interest_name String?   @db.VarChar(100)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  users         users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model journal_images {
+  image_id    Int       @id @default(autoincrement())
+  journal_id  Int
+  image_url   String
+  uploaded_at DateTime? @default(now()) @db.Timestamp(6)
+  journals    journals  @relation(fields: [journal_id], references: [journal_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_journal")
+}
+
+model journals {
+  journal_id     Int              @id @default(autoincrement())
+  user_id        Int
+  title          String?          @db.VarChar(255)
+  content        String
+  mood           String?          @db.VarChar(50)
+  created_at     DateTime?        @default(now()) @db.Timestamp(6)
+  journal_images journal_images[]
+  users          users            @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+}
+
+model marketplace {
+  service_id    Int            @id @default(autoincrement())
+  service_name  String         @db.VarChar(255)
+  provider_name String?        @db.VarChar(255)
+  category      String?        @db.VarChar(100)
+  description   String?
+  price         Decimal?       @db.Decimal(10, 2)
+  rating        Decimal?       @db.Decimal(2, 1)
+  image_url     String?
+  created_at    DateTime?      @default(now()) @db.Timestamp(6)
+  transactions  transactions[]
+}
+
+enum MissionStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model missions {
+  mission_id  Int            @id @default(autoincrement())
+  user_id     Int
+  title       String         @db.VarChar(255)
+  description String?
+  category    String?        @db.VarChar(100)
+  priority    PriorityLevel? @default(MEDIUM)
+  status      MissionStatus? @default(ACTIVE)
+  progress    Int?           @default(0)
+  isArchived  Boolean        @default(false)
+  archivedAt  DateTime?
+  start_date  DateTime?      @default(dbgenerated("CURRENT_DATE")) @db.Date
+  target_date DateTime?      @db.Date
+  created_at  DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at  DateTime?      @default(now()) @db.Timestamp(6)
+  users       users          @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_mission_user")
+  tasks       tasks[]
+
+  @@index([user_id])
+  @@index([user_id, status])
+  @@index([user_id, priority])
+  @@index([user_id, category])
+  @@index([user_id, target_date])
+}
+
+model notifications {
+  notification_id   Int       @id @default(autoincrement())
+  user_id           Int
+  title             String?   @db.VarChar(255)
+  message           String?
+  notification_type String?   @db.VarChar(100)
+  is_read           Boolean?  @default(false)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  users             users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model payments {
+  payment_id        Int          @id @default(autoincrement())
+  transaction_id    Int
+  payment_gateway   String?      @db.VarChar(100)
+  payment_reference String?      @db.VarChar(255)
+  payment_status    String?      @db.VarChar(30)
+  amount            Decimal?     @db.Decimal(10, 2)
+  paid_at           DateTime?    @default(now()) @db.Timestamp(6)
+  transactions      transactions @relation(fields: [transaction_id], references: [transaction_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model preferences {
+  preference_id        Int       @id @default(autoincrement())
+  user_id              Int
+  theme                String?   @db.VarChar(20)
+  language             String?   @db.VarChar(50)
+  notification_enabled Boolean?  @default(true)
+  reminder_time        DateTime? @db.Time(6)
+  timezone             String?   @db.VarChar(100)
+  users                users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model profiles {
+  profile_id      Int       @id @default(autoincrement())
+  user_id         Int       @unique
+  bio             String?
+  profile_picture String?
+  location        String?   @db.VarChar(100)
+  occupation      String?   @db.VarChar(100)
+  website         String?
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  users           users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model skills {
+  skill_id          Int       @id @default(autoincrement())
+  user_id           Int
+  skill_name        String?   @db.VarChar(100)
+  proficiency_level String?   @db.VarChar(50)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  users             users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model tasks {
+  task_id        Int       @id @default(autoincrement())
+  mission_id     Int
+  title          String    @db.VarChar(255)
+  description    String?
+  priority       String?   @default("Medium") @db.VarChar(20)
+  status         String?   @default("Pending") @db.VarChar(20)
+  due_date       DateTime? @db.Date
+  estimated_time Int?
+  completed_at   DateTime? @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  missions       missions  @relation(fields: [mission_id], references: [mission_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_mission")
+}
+
+model templates {
+  template_id   Int       @id @default(autoincrement())
+  template_name String?   @db.VarChar(200)
+  category      String?   @db.VarChar(100)
+  description   String?
+  template_data Json?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model transactions {
+  transaction_id   Int         @id @default(autoincrement())
+  user_id          Int
+  service_id       Int
+  amount           Decimal?    @db.Decimal(10, 2)
+  payment_status   String?     @db.VarChar(30)
+  payment_method   String?     @db.VarChar(50)
+  transaction_date DateTime?   @default(now()) @db.Timestamp(6)
+  payments         payments[]
+  marketplace      marketplace @relation(fields: [service_id], references: [service_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_service")
+  users            users       @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_user")
+}
+
+model users {
+  user_id       Int             @id @default(autoincrement())
+  full_name     String          @db.VarChar(100)
+  email         String          @unique @db.VarChar(255)
+  password_hash String
+  phone         String?         @db.VarChar(15)
+  date_of_birth DateTime?       @db.Date
+  profession    String?         @db.VarChar(100)
+  profile_photo String?
+  preferences   Json?
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?       @default(now()) @db.Timestamp(6)
+  ai_memory     ai_memory[]
+  audit_logs    audit_logs[]
+  goals         goals[]
+  interests     interests[]
+  journals      journals[]
+  missions      missions[]
+  notifications notifications[]
+  user_preferences preferences[]
+  profiles      profiles?
+  skills        skills[]
+  transactions  transactions[]
+}
