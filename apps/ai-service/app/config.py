@@ -28,9 +28,9 @@ class Settings(BaseSettings):
     model_config = {
         "env_prefix": "ai_service_",
         "case_sensitive": False,
-        "env_file": "../../.env",
+        "env_file": ".env",
+        "extra": "ignore",
     }
 
 
 settings = Settings()
-

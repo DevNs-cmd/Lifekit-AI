@@ -1,0 +1,196 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PlanningHorizon {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MemoryType {
+  JOURNAL
+  EVENT
+  INSIGHT
+  DOCUMENT
+  CONVERSATION
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  CANCELLED
+}
+
+enum RecommendationStatus {
+  PENDING
+  ACCEPTED
+  DISMISSED
+}
+
+model User {
+  id                  String               @id @default(uuid()) @db.Uuid
+  email               String               @unique
+  fullName            String
+  passwordHash        String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  preference          UserPreference?
+  sessions            Session[]
+  lifeMissions        LifeMission[]
+  memories            Memory[]
+  plans               Plan[]
+  tasks               Task[]
+  recommendations     Recommendation[]
+  marketplaceListings MarketplaceListing[]
+}
+
+model UserPreference {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @unique @db.Uuid
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme                String?  @default("light")
+  notificationsEnabled Boolean  @default(true)
+  goals                String[]
+  interests            String[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model LifeMission {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @db.Uuid
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title              String
+  description        String
+  goals              String[]
+  values             String[]
+  longTermObjectives String[]
+  constraints        String[]
+  startDate          DateTime
+  targetDate         DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  plans              Plan[]
+
+  @@index([userId])
+}
+
+model Plan {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @db.Uuid
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId       String?         @db.Uuid
+  mission         LifeMission?    @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  title           String
+  goalInput       String
+  planningHorizon PlanningHorizon
+  priority        PriorityLevel
+  constraints     String[]
+  desiredOutcomes String[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  tasks           Task[]
+
+  @@index([userId])
+  @@index([missionId])
+}
+
+model Task {
+  id          String        @id @default(uuid()) @db.Uuid
+  userId      String        @db.Uuid
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId      String?       @db.Uuid
+  plan        Plan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  status      TaskStatus    @default(PENDING)
+  priority    PriorityLevel @default(MEDIUM)
+  dueDate     DateTime
+  assignment  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([planId])
+  @@index([dueDate])
+}
+
+model Memory {
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String     @db.Uuid
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     String
+  type        MemoryType
+  metadata    Json?
+  contextInfo String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
+}
+
+model Recommendation {
+  id             String               @id @default(uuid()) @db.Uuid
+  userId         String               @db.Uuid
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       String
+  title          String
+  description    String
+  relevanceScore Float?
+  metadata       Json?
+  status         RecommendationStatus @default(PENDING)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([category])
+}
+
+model MarketplaceListing {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  description  String
+  category     String
+  tags         String[]
+  price        Float
+  isFree       Boolean  @default(false)
+  stock        Int?
+  isAvailable  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([category])
+}
