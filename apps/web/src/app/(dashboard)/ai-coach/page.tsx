@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Sparkles, Brain, Target, Zap } from "lucide-react";
+import { Bot, Brain, Target, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AICoachPanel } from "@/components/ai/ai-coach-panel";
@@ -18,7 +18,7 @@ const AGENT_QUICK_LINKS = [
 
 export default function AICoachPage() {
   const router = useRouter();
-  const { suggestedPrompts, addMessage, setIsGenerating } = useAICoachStore();
+  const { addMessage } = useAICoachStore();
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
@@ -39,29 +39,6 @@ export default function AICoachPage() {
 
         {/* Sidebar */}
         <div className="space-y-5">
-          {/* Suggested prompts */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-[hsl(var(--primary))]" />
-                <p className="text-sm font-semibold text-[hsl(var(--text-primary))]">Suggested prompts</p>
-              </div>
-              <div className="space-y-1.5">
-                {suggestedPrompts.map((p) => (
-                  <button
-                    key={p.id}
-                    className="w-full text-left rounded-lg px-3 py-2 text-xs text-[hsl(var(--text-secondary))] border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--secondary))] transition-colors"
-                    onClick={() => {
-                      addMessage({ id: Date.now().toString(), role: "user", content: p.prompt, timestamp: new Date().toISOString() });
-                    }}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* AI Planner link */}
           <Card className="border-[hsl(var(--primary))]/30 bg-[hsl(var(--background-subtle))]">
             <CardContent className="p-4">
@@ -73,33 +50,6 @@ export default function AICoachPage() {
               <Button size="sm" variant="outline" className="w-full" onClick={() => router.push(ROUTES.AI_PLANNER)}>
                 Open AI Planner
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* Specialist agents */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Brain className="h-4 w-4 text-[hsl(var(--primary))]" />
-                <p className="text-sm font-semibold text-[hsl(var(--text-primary))]">Specialist Agents</p>
-              </div>
-              <div className="space-y-1.5">
-                {AGENT_QUICK_LINKS.map(({ label, desc, href, color }) => (
-                  <button
-                    key={label}
-                    onClick={() => router.push(href)}
-                    className="flex w-full items-center gap-2.5 rounded-lg p-2 hover:bg-[hsl(var(--secondary))] transition-colors text-left"
-                  >
-                    <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${color}`}>
-                      {label[0]}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-[hsl(var(--text-primary))] truncate">{label}</p>
-                      <p className="text-[10px] text-[hsl(var(--text-secondary))] truncate">{desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
             </CardContent>
           </Card>
 

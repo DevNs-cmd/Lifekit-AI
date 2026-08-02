@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Settings, Sun, Bot, Bell, Shield, Lock, Plug, CreditCard, ChevronRight } from "lucide-react";
+import { Settings, User, Bot, Shield, Lock, Plug, CreditCard, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/constants/routes";
 
@@ -10,16 +10,15 @@ const SETTINGS_SECTIONS = [
     title: "Preferences",
     items: [
       { label: "General",          desc: "Language, timezone, date format",      icon: Settings,    href: ROUTES.SETTINGS_GENERAL },
-      { label: "Appearance",       desc: "Theme, display density",               icon: Sun,         href: ROUTES.SETTINGS_APPEARANCE },
+      { label: "Profile",          desc: "Name, phone, location, bio",           icon: User,        href: "/settings/profile" },
       { label: "AI Preferences",   desc: "Response style, planning depth",       icon: Bot,         href: ROUTES.SETTINGS_AI },
-      { label: "Notifications",    desc: "In-app, email and push settings",      icon: Bell,        href: ROUTES.SETTINGS_GENERAL + "/notifications" },
     ],
   },
   {
     title: "Privacy & Security",
     items: [
       { label: "Privacy",          desc: "Memory, data export, account deletion",icon: Shield,      href: ROUTES.SETTINGS_PRIVACY },
-      { label: "Security",         desc: "Password, 2FA, active sessions",       icon: Lock,        href: ROUTES.SETTINGS_SECURITY },
+      { label: "Security",         desc: "Password, active sessions",       icon: Lock,        href: ROUTES.SETTINGS_SECURITY },
     ],
   },
   {

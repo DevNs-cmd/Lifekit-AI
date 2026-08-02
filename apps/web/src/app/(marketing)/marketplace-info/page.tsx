@@ -54,7 +54,7 @@ export default function MarketingMarketplacePage() {
               <Link href={ROUTES.SIGN_UP}>Browse Marketplace</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/providers">Become a Provider</Link>
+              <Link href={ROUTES.CONTACT}>Become a Provider</Link>
             </Button>
           </div>
         </div>

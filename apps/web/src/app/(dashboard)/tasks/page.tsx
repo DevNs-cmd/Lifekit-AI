@@ -4,7 +4,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckSquare, Plus, X, Pencil, Trash2, MoreHorizontal, Calendar, Clock } from "lucide-react";
+import {
+  CheckSquare, Plus, X, Pencil, Trash2, MoreHorizontal,
+  Calendar, Clock, Flame, Zap, ListTodo, CheckCircle2, PlayCircle,
+  LayoutList, LayoutGrid,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +21,7 @@ import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { KanbanBoard, type KanbanStatus } from "@/components/tasks/kanban-board";
 import { MOCK_TASKS, MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, formatDuration, cn } from "@/lib/utils";
@@ -25,11 +30,13 @@ import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { Task } from "@/types/task";
 
-const PRIORITY_COLORS: Record<string, string> = {
-  low:    "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
-  medium: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300",
-  high:   "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  urgent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+type ViewMode = "list" | "kanban";
+
+const PRIORITY_CONFIG: Record<string, { label: string; pill: string; border: string; icon: typeof Flame }> = {
+  low:    { label: "Low",    pill: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",                border: "border-l-gray-300",   icon: ListTodo },
+  medium: { label: "Medium", pill: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",            border: "border-l-blue-400",   icon: Zap },
+  high:   { label: "High",   pill: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",        border: "border-l-amber-400",  icon: Flame },
+  urgent: { label: "Urgent", pill: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",                border: "border-l-red-500",    icon: Flame },
 };
 
 export default function TasksPage() {
@@ -39,8 +46,9 @@ export default function TasksPage() {
   const preselectedMissionId = params.get("missionId") ?? "";
   const shouldOpenCreate = params.get("create") === "true";
 
-  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS);
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [tasks, setTasks]           = useState<Task[]>(MOCK_TASKS);
+  const [completed, setCompleted]   = useState<Set<string>>(new Set());
+  const [view, setView]             = useState<ViewMode>("list");
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
@@ -85,6 +93,25 @@ export default function TasksPage() {
     });
   }
 
+  /** Called by Kanban when a card is dropped into a new column */
+  function handleKanbanStatusChange(taskId: string, newStatus: KanbanStatus) {
+    setTasks(prev =>
+      prev.map(t =>
+        t.id === taskId
+          ? { ...t, status: newStatus, updatedAt: new Date().toISOString() }
+          : t
+      )
+    );
+    // keep completed set in sync
+    if (newStatus === "completed") {
+      setCompleted(prev => new Set([...prev, taskId]));
+      toast.success("Task moved to Completed ✓");
+    } else {
+      setCompleted(prev => { const n = new Set(prev); n.delete(taskId); return n; });
+      toast(`Task moved to ${newStatus.replace("-", " ")}`);
+    }
+  }
+
   async function onCreateTask(data: CreateTaskFormData) {
     await new Promise(r => setTimeout(r, 300));
     const mission = MOCK_MISSIONS.find(m => m.id === data.missionId);
@@ -123,10 +150,11 @@ export default function TasksPage() {
     toast.success("Task updated.");
   }
 
-  function deleteTask() {
-    if (!deleteTarget) return;
-    setTasks(prev => prev.filter(t => t.id !== deleteTarget.id));
-    setCompleted(prev => { const n = new Set(prev); n.delete(deleteTarget.id); return n; });
+  function deleteTask(task?: Task) {
+    const target = task ?? deleteTarget;
+    if (!target) return;
+    setTasks(prev => prev.filter(t => t.id !== target.id));
+    setCompleted(prev => { const n = new Set(prev); n.delete(target.id); return n; });
     toast("Task deleted.");
     setDeleteTarget(null);
   }
@@ -139,89 +167,94 @@ export default function TasksPage() {
     ? MOCK_MISSIONS.find(m => m.id === preselectedMissionId)
     : null;
 
-  const completedList = filteredTasks.filter(t => completed.has(t.id));
+  const completedList  = filteredTasks.filter(t => completed.has(t.id));
+  const inProgressList = filteredTasks.filter(t => t.status === "in-progress" && !completed.has(t.id));
+  const todayList      = filteredTasks.filter(t => !completed.has(t.id));
+  const urgentCount    = filteredTasks.filter(t => (t.priority === "urgent" || t.priority === "high") && !completed.has(t.id)).length;
 
+  /* ── Task Row (list view) ───────────────────────────────── */
   function TaskRow({ task, showMission = true }: { task: Task; showMission?: boolean }) {
-    const done = completed.has(task.id);
+    const done  = completed.has(task.id);
+    const pcfg  = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.medium;
+    const PIcon = pcfg.icon;
+
     return (
       <div className={cn(
-        "flex items-center gap-3 px-4 py-3 hover:bg-[hsl(var(--background-subtle))] transition-colors group",
-        done && "opacity-60"
+        "relative flex items-start gap-3 px-4 py-4 border-l-[3px] transition-all group",
+        "hover:bg-[hsl(var(--background-subtle))]",
+        done ? "border-l-[hsl(var(--border))] opacity-60" : pcfg.border,
       )}>
         <Checkbox
           checked={done}
           onCheckedChange={() => toggle(task.id)}
+          className="mt-0.5 shrink-0"
           aria-label={`Mark "${task.title}" ${done ? "incomplete" : "complete"}`}
         />
         <div className="flex-1 min-w-0">
-          <p className={cn("text-sm font-medium text-[hsl(var(--text-primary))] truncate", done && "line-through")}>
+          <p className={cn("text-sm font-semibold text-[hsl(var(--text-primary))] leading-snug", done && "line-through")}>
             {task.title}
           </p>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
             {showMission && task.missionTitle && (
-              <span className="text-xs text-[hsl(var(--text-secondary))] truncate">{task.missionTitle}</span>
+              <span className="text-xs text-[hsl(var(--text-secondary))] bg-[hsl(var(--muted))] px-2 py-0.5 rounded-full truncate max-w-[160px]">
+                {task.missionTitle}
+              </span>
             )}
             {task.dueDate && (
-              <span className="text-xs text-[hsl(var(--text-secondary))] flex items-center gap-0.5">
+              <span className="text-xs text-[hsl(var(--text-secondary))] flex items-center gap-1">
                 <Calendar className="h-3 w-3" />{formatDeadline(task.dueDate)}
+                {task.dueTime && <span>· {task.dueTime}</span>}
               </span>
             )}
             {task.estimatedDurationMinutes && (
-              <span className="text-xs text-[hsl(var(--text-secondary))] flex items-center gap-0.5 hidden sm:flex">
+              <span className="text-xs text-[hsl(var(--text-secondary))] items-center gap-1 hidden sm:flex">
                 <Clock className="h-3 w-3" />{formatDuration(task.estimatedDurationMinutes)}
               </span>
             )}
           </div>
         </div>
-
-        {/* Priority badge */}
-        <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full hidden sm:inline capitalize", PRIORITY_COLORS[task.priority] ?? PRIORITY_COLORS.medium)}>
-          {task.priority}
-        </span>
-
-        <StatusBadge status={done ? "completed" : task.status} />
-
-        {/* Actions — visible on hover */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => openEdit(task)}
-            aria-label="Edit task"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="More actions">
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEdit(task)}>
-                <Pencil className="h-4 w-4 mr-2" />Edit task
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toggle(task.id)}>
-                <CheckSquare className="h-4 w-4 mr-2" />
-                {done ? "Mark incomplete" : "Mark complete"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem destructive onClick={() => setDeleteTarget(task)}>
-                <Trash2 className="h-4 w-4 mr-2" />Delete task
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex items-center gap-2 shrink-0 pt-0.5">
+          <span className={cn("hidden sm:flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full", pcfg.pill)}>
+            <PIcon className="h-2.5 w-2.5" />{pcfg.label}
+          </span>
+          <StatusBadge status={done ? "completed" : task.status} />
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="icon-sm" onClick={() => openEdit(task)} aria-label="Edit task">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openEdit(task)}>
+                  <Pencil className="h-4 w-4 mr-2" />Edit task
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggle(task.id)}>
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  {done ? "Mark incomplete" : "Mark complete"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem destructive onClick={() => setDeleteTarget(task)}>
+                  <Trash2 className="h-4 w-4 mr-2" />Delete task
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     );
   }
 
+  /* ── Task Dialog ───────────────────────────────────────── */
   function TaskDialog({ mode }: { mode: "create" | "edit" }) {
-    const isEdit = mode === "edit";
-    const form = isEdit ? editForm : createForm;
+    const isEdit   = mode === "edit";
+    const form     = isEdit ? editForm : createForm;
     const onSubmit = isEdit ? onEditTask : onCreateTask;
-    const isOpen = isEdit ? !!editTarget : createOpen;
-    const setOpen = isEdit
+    const isOpen   = isEdit ? !!editTarget : createOpen;
+    const setOpen  = isEdit
       ? (v: boolean) => { if (!v) setEditTarget(null); }
       : (v: boolean) => { setCreateOpen(v); if (!v) createForm.reset({ missionId: preselectedMissionId, priority: "medium" }); };
 
@@ -236,7 +269,6 @@ export default function TasksPage() {
               <Input id={`${mode}-title`} placeholder="e.g. Complete React advanced patterns module"
                 autoFocus {...form.register("title")} error={!!form.formState.errors.title} />
             </FormField>
-
             <FormField label="Mission" htmlFor={`${mode}-mission`} required error={form.formState.errors.missionId?.message}>
               <Select
                 defaultValue={isEdit ? editTarget?.missionId : (preselectedMissionId || undefined)}
@@ -250,7 +282,6 @@ export default function TasksPage() {
                 </SelectContent>
               </Select>
             </FormField>
-
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Priority" htmlFor={`${mode}-priority`}>
                 <Select
@@ -270,12 +301,10 @@ export default function TasksPage() {
                 <Input id={`${mode}-due`} type="date" {...form.register("dueDate")} />
               </FormField>
             </div>
-
             <FormField label="Est. duration (minutes)" htmlFor={`${mode}-duration`}>
               <Input id={`${mode}-duration`} type="number" min={1} placeholder="e.g. 60"
                 {...form.register("estimatedDurationMinutes")} />
             </FormField>
-
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" loading={form.formState.isSubmitting}>
@@ -288,8 +317,10 @@ export default function TasksPage() {
     );
   }
 
+  /* ── Page ──────────────────────────────────────────────── */
   return (
-    <div className="p-4 sm:p-6 space-y-5 max-w-4xl mx-auto">
+    <div className={cn("p-4 sm:p-6 space-y-5 mx-auto", view === "kanban" ? "max-w-full" : "max-w-4xl")}>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -306,93 +337,158 @@ export default function TasksPage() {
               </button>
             </div>
           ) : (
-            <p className="text-sm text-[hsl(var(--text-secondary))]">
-              {tasks.length} tasks · hover a task to edit
+            <p className="text-sm text-[hsl(var(--text-secondary))] mt-0.5">
+              {tasks.length} tasks · {view === "list" ? "hover a task to edit" : "drag cards to change status"}
             </p>
           )}
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
-          Add Task
-        </Button>
+
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex items-center rounded-lg border border-[hsl(var(--border))] p-0.5 bg-[hsl(var(--background-subtle))]">
+            <button
+              onClick={() => setView("list")}
+              aria-label="List view"
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
+                view === "list"
+                  ? "bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm"
+                  : "text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))]"
+              )}
+            >
+              <LayoutList className="h-3.5 w-3.5" /> List
+            </button>
+            <button
+              onClick={() => setView("kanban")}
+              aria-label="Kanban view"
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
+                view === "kanban"
+                  ? "bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm"
+                  : "text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))]"
+              )}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+            </button>
+          </div>
+
+          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
+            Add Task
+          </Button>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="today">
-        <TabsList>
-          <TabsTrigger value="today">My Day</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="all">All Tasks</TabsTrigger>
-          <TabsTrigger value="done">
-            Completed {completedList.length > 0 && <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{completedList.length}</Badge>}
-          </TabsTrigger>
-        </TabsList>
+      {/* Stats strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total",         value: filteredTasks.length,  icon: <ListTodo className="h-4 w-4" />,     color: "text-[hsl(var(--primary))]",         bg: "bg-[hsl(var(--secondary))]" },
+          { label: "In Progress",   value: inProgressList.length, icon: <PlayCircle className="h-4 w-4" />,   color: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-50 dark:bg-blue-900/20" },
+          { label: "High / Urgent", value: urgentCount,           icon: <Flame className="h-4 w-4" />,        color: "text-amber-600 dark:text-amber-400",  bg: "bg-amber-50 dark:bg-amber-900/20" },
+          { label: "Completed",     value: completedList.length,  icon: <CheckCircle2 className="h-4 w-4" />, color: "text-green-600 dark:text-green-400",  bg: "bg-green-50 dark:bg-green-900/20" },
+        ].map(s => (
+          <div key={s.label} className={cn("rounded-xl p-3 flex items-center gap-3 border border-[hsl(var(--border))]", s.bg)}>
+            <div className={cn("shrink-0", s.color)}>{s.icon}</div>
+            <div>
+              <p className={cn("text-xl font-black leading-none", s.color)}>{s.value}</p>
+              <p className="text-xs text-[hsl(var(--text-secondary))] mt-0.5">{s.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
-        {/* My Day */}
-        <TabsContent value="today" className="mt-4">
-          {filteredTasks.filter(t => !completed.has(t.id)).length === 0 ? (
-            <EmptyState icon={<CheckSquare className="h-8 w-8" />}
-              title={completedList.length > 0 ? "All tasks complete! 🎉" : "No tasks yet"}
-              description={missionContext ? `No tasks for "${missionContext.title}" yet.` : "Add tasks to your missions to see them here."}
-              action={completedList.length === 0 ? { label: "Add a task", onClick: () => setCreateOpen(true), icon: <Plus className="h-4 w-4" /> } : undefined}
-              compact />
-          ) : (
-            <Card>
-              <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
-                {filteredTasks.filter(t => !completed.has(t.id)).map(task => (
-                  <TaskRow key={task.id} task={task} showMission={!missionContext} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      {/* ── Kanban view ── */}
+      {view === "kanban" && (
+        <KanbanBoard
+          tasks={filteredTasks}
+          onStatusChange={handleKanbanStatusChange}
+          onEdit={openEdit}
+          onDelete={t => setDeleteTarget(t)}
+          showMission={!missionContext}
+        />
+      )}
 
-        {/* Upcoming */}
-        <TabsContent value="upcoming" className="mt-4">
-          {filteredTasks.filter(t => t.dueDate && !completed.has(t.id)).length === 0 ? (
-            <EmptyState icon={<Calendar className="h-7 w-7" />} title="No upcoming tasks" description="Tasks with due dates will appear here." compact />
-          ) : (
-            <Card>
-              <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
-                {filteredTasks.filter(t => t.dueDate && !completed.has(t.id)).map(task => (
-                  <TaskRow key={task.id} task={task} showMission={!missionContext} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+      {/* ── List view ── */}
+      {view === "list" && (
+        <Tabs defaultValue="today">
+          <TabsList>
+            <TabsTrigger value="today">My Day</TabsTrigger>
+            <TabsTrigger value="inprogress">
+              In Progress
+              {inProgressList.length > 0 && (
+                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{inProgressList.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="all">All Tasks</TabsTrigger>
+            <TabsTrigger value="done">
+              Completed
+              {completedList.length > 0 && (
+                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{completedList.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* All tasks */}
-        <TabsContent value="all" className="mt-4">
-          {filteredTasks.length === 0 ? (
-            <EmptyState icon={<CheckSquare className="h-7 w-7" />} title="No tasks yet"
-              action={{ label: "Add a task", onClick: () => setCreateOpen(true) }} compact />
-          ) : (
-            <Card>
-              <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
-                {filteredTasks.map(task => (
-                  <TaskRow key={task.id} task={task} showMission={!missionContext} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+          {/* My Day */}
+          <TabsContent value="today" className="mt-4">
+            {todayList.length === 0 ? (
+              <EmptyState icon={<CheckSquare className="h-8 w-8" />}
+                title={completedList.length > 0 ? "All tasks complete! 🎉" : "No tasks yet"}
+                description={missionContext ? `No tasks for "${missionContext.title}" yet.` : "Add tasks to your missions to see them here."}
+                action={completedList.length === 0 ? { label: "Add a task", onClick: () => setCreateOpen(true), icon: <Plus className="h-4 w-4" /> } : undefined}
+                compact />
+            ) : (
+              <Card>
+                <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
+                  {todayList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} />)}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
-        {/* Completed */}
-        <TabsContent value="done" className="mt-4">
-          {completedList.length === 0 ? (
-            <EmptyState icon={<CheckSquare className="h-7 w-7" />} title="No completed tasks yet"
-              description="Completed tasks will appear here. Start checking things off!" compact />
-          ) : (
-            <Card>
-              <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
-                {completedList.map(task => (
-                  <TaskRow key={task.id} task={task} showMission={!missionContext} />
-                ))}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+          {/* In Progress */}
+          <TabsContent value="inprogress" className="mt-4">
+            {inProgressList.length === 0 ? (
+              <EmptyState icon={<PlayCircle className="h-7 w-7" />}
+                title="No in-progress tasks"
+                description="Tasks you've started will appear here."
+                compact />
+            ) : (
+              <Card>
+                <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
+                  {inProgressList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} />)}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* All tasks */}
+          <TabsContent value="all" className="mt-4">
+            {filteredTasks.length === 0 ? (
+              <EmptyState icon={<CheckSquare className="h-7 w-7" />} title="No tasks yet"
+                action={{ label: "Add a task", onClick: () => setCreateOpen(true) }} compact />
+            ) : (
+              <Card>
+                <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
+                  {filteredTasks.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} />)}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Completed */}
+          <TabsContent value="done" className="mt-4">
+            {completedList.length === 0 ? (
+              <EmptyState icon={<CheckSquare className="h-7 w-7" />} title="No completed tasks yet"
+                description="Completed tasks will appear here. Start checking things off!" compact />
+            ) : (
+              <Card>
+                <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
+                  {completedList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} />)}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
 
       <TaskDialog mode="create" />
       <TaskDialog mode="edit" />
@@ -403,7 +499,7 @@ export default function TasksPage() {
         title="Delete this task?"
         description={`"${deleteTarget?.title}" will be permanently removed.`}
         confirmLabel="Delete task"
-        onConfirm={deleteTask}
+        onConfirm={() => deleteTask()}
       />
     </div>
   );

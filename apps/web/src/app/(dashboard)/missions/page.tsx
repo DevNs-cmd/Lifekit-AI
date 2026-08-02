@@ -63,7 +63,7 @@ export default function MissionsPage() {
         <Select value={statusFilter} onValueChange={v => setStatusFilter(v as MissionStatus | "all")}>
           <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="paused">Paused</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>

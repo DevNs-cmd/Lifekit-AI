@@ -1,21 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Camera, User, Shield, Activity, Plus, X, Target, Pencil, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Camera, User, Activity, Plus, X, Target, Pencil, Check } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { FormField } from "@/components/shared/form-field";
 import { CategoryBadge } from "@/components/shared/category-badge";
-import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
 import { useAuthStore } from "@/stores/auth-store";
-import { updateProfileSchema, type UpdateProfileFormData } from "@/lib/validation/schemas";
 import { getInitials, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORIES } from "@/constants/categories";
@@ -23,26 +17,11 @@ import type { Category } from "@/types/common";
 
 export default function ProfilePage() {
   const { user, updateUser, logout } = useAuthStore();
+  const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingGoals, setEditingGoals] = useState(false);
   const [goalDraft, setGoalDraft] = useState<string[]>(user?.personalGoals ?? []);
   const [newGoalText, setNewGoalText] = useState("");
-
-  const { register, handleSubmit, formState: { errors, isSubmitting, isDirty } } = useForm<UpdateProfileFormData>({
-    resolver: zodResolver(updateProfileSchema),
-    defaultValues: {
-      fullName: user?.fullName ?? "",
-      phone: user?.phone ?? "",
-      location: user?.location ?? "",
-      bio: user?.bio ?? "",
-    },
-  });
-
-  async function onSaveProfile(data: UpdateProfileFormData) {
-    await new Promise(r => setTimeout(r, 600));
-    updateUser(data);
-    toast.success("Profile updated successfully.");
-  }
 
   function toggleFocusArea(cat: Category) {
     if (!user) return;
@@ -83,40 +62,46 @@ export default function ProfilePage() {
         <TabsList className="w-full overflow-x-auto justify-start">
           <TabsTrigger value="personal"><User className="h-4 w-4 mr-1.5" />Personal</TabsTrigger>
           <TabsTrigger value="goals">Goals & Interests</TabsTrigger>
-          <TabsTrigger value="security"><Shield className="h-4 w-4 mr-1.5" />Security</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-1.5" />Activity</TabsTrigger>
         </TabsList>
 
         {/* Personal information */}
         <TabsContent value="personal" className="mt-5">
           <Card>
-            <CardHeader><CardTitle className="text-base">Personal Information</CardTitle></CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit(onSaveProfile)} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField label="Full name" htmlFor="fullName" required error={errors.fullName?.message}>
-                    <Input id="fullName" {...register("fullName")} error={!!errors.fullName} />
-                  </FormField>
-                  <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
-                    <Input id="phone" type="tel" {...register("phone")} />
-                  </FormField>
-                  <FormField label="Location" htmlFor="location" error={errors.location?.message}>
-                    <Input id="location" placeholder="City, Country" {...register("location")} />
-                  </FormField>
-                  <div className="flex items-end">
-                    <div className="space-y-1 flex-1">
-                      <p className="text-sm font-medium text-[hsl(var(--text-primary))]">Email</p>
-                      <p className="text-sm text-[hsl(var(--text-secondary))] bg-[hsl(var(--muted))] rounded-lg px-3 py-2">{user?.email}</p>
-                    </div>
-                  </div>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Personal Information</CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  leftIcon={<Pencil className="h-3.5 w-3.5" />}
+                  onClick={() => router.push("/settings/profile")}
+                >
+                  Edit
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wide mb-1">Location</p>
+                  <p className="text-sm text-[hsl(var(--text-primary))]">
+                    {user?.location || <span className="text-[hsl(var(--text-secondary))] italic">Not set</span>}
+                  </p>
                 </div>
-                <FormField label="Bio" htmlFor="bio" error={errors.bio?.message} description="A short description about yourself (max 500 characters)">
-                  <Textarea id="bio" rows={3} placeholder="Tell us about yourself…" {...register("bio")} />
-                </FormField>
-                <div className="flex gap-3 pt-2">
-                  <Button type="submit" loading={isSubmitting} disabled={!isDirty}>Save changes</Button>
+                <div>
+                  <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wide mb-1">Phone</p>
+                  <p className="text-sm text-[hsl(var(--text-primary))]">
+                    {user?.phone || <span className="text-[hsl(var(--text-secondary))] italic">Not set</span>}
+                  </p>
                 </div>
-              </form>
+                <div>
+                  <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wide mb-1">Bio</p>
+                  <p className="text-sm text-[hsl(var(--text-primary))] leading-relaxed">
+                    {user?.bio || <span className="text-[hsl(var(--text-secondary))] italic">No bio added yet.</span>}
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -256,33 +241,6 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
 
-        {/* Security */}
-        <TabsContent value="security" className="mt-5 space-y-5">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Change Password</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <FormField label="Current password" htmlFor="current-password">
-                <Input id="current-password" type="password" autoComplete="current-password" />
-              </FormField>
-              <FormField label="New password" htmlFor="new-password">
-                <Input id="new-password" type="password" autoComplete="new-password" />
-              </FormField>
-              <FormField label="Confirm new password" htmlFor="confirm-password">
-                <Input id="confirm-password" type="password" autoComplete="new-password" />
-              </FormField>
-              <Button onClick={() => toast.success("Password updated!")}>Update password</Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-red-200 dark:border-red-800">
-            <CardHeader><CardTitle className="text-base text-red-600 dark:text-red-400">Danger Zone</CardTitle></CardHeader>
-            <CardContent>
-              <p className="text-sm text-[hsl(var(--text-secondary))] mb-3">Permanently delete your account and all associated data. This action cannot be undone.</p>
-              <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>Delete my account</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* Activity */}
         <TabsContent value="activity" className="mt-5">
           <Card>
@@ -311,15 +269,6 @@ export default function ProfilePage() {
 
         {/* Connected accounts tab removed — available in Settings > Integrations */}
       </Tabs>
-
-      <ConfirmationDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete your account?"
-        description="All your missions, tasks, memories and data will be permanently deleted. This cannot be undone."
-        confirmLabel="Yes, delete my account"
-        onConfirm={() => { logout(); toast("Account deleted."); }}
-      />
     </div>
   );
 }
