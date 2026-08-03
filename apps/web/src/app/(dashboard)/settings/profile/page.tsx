@@ -32,7 +32,7 @@ export default function EditProfilePage() {
     await new Promise(r => setTimeout(r, 500));
     updateUser(data);
     toast.success("Profile updated.");
-    router.push(ROUTES.PROFILE);
+    router.push(ROUTES.SETTINGS);
   }
 
   return (
@@ -42,8 +42,8 @@ export default function EditProfilePage() {
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={() => router.push(ROUTES.PROFILE)}
-          aria-label="Back to profile"
+          onClick={() => router.push(ROUTES.SETTINGS)}
+          aria-label="Back to settings"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -122,7 +122,7 @@ export default function EditProfilePage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push(ROUTES.PROFILE)}
+                onClick={() => router.push(ROUTES.SETTINGS)}
               >
                 Cancel
               </Button>

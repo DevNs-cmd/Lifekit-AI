@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CheckSquare, Plus, X, Pencil, Trash2, MoreHorizontal,
@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { AnimatedNumber } from "@/components/shared/animated-number";
 import { FormField } from "@/components/shared/form-field";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -33,11 +34,26 @@ import type { Task } from "@/types/task";
 type ViewMode = "list" | "kanban";
 
 const PRIORITY_CONFIG: Record<string, { label: string; pill: string; border: string; icon: typeof Flame }> = {
-  low:    { label: "Low",    pill: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",                border: "border-l-gray-300",   icon: ListTodo },
-  medium: { label: "Medium", pill: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",            border: "border-l-blue-400",   icon: Zap },
-  high:   { label: "High",   pill: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",        border: "border-l-amber-400",  icon: Flame },
-  urgent: { label: "Urgent", pill: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",                border: "border-l-red-500",    icon: Flame },
+  low:    { label: "Low",    pill: "priority-low",    border: "border-l-gray-300",  icon: ListTodo },
+  medium: { label: "Medium", pill: "priority-medium", border: "border-l-blue-400",  icon: Zap },
+  high:   { label: "High",   pill: "priority-high",   border: "border-l-amber-400", icon: Flame },
+  urgent: { label: "Urgent", pill: "priority-urgent", border: "border-l-red-500",   icon: Flame },
 };
+
+type TaskDialogProps = { mode: "create" | "edit"; form: UseFormReturn<CreateTaskFormData>; open: boolean; editTarget?: Task | null; preselectedMissionId: string; onOpenChange: (open: boolean) => void; onSubmit: (data: CreateTaskFormData) => Promise<void> };
+
+function TaskDialog({ mode, form, open, editTarget, preselectedMissionId, onOpenChange, onSubmit }: TaskDialogProps) {
+  const isEdit = mode === "edit";
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{isEdit ? "Edit task" : "Add a task"}</DialogTitle></DialogHeader>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <FormField label="Task title" htmlFor={`${mode}-title`} required error={form.formState.errors.title?.message}><Input id={`${mode}-title`} placeholder="e.g. Complete React advanced patterns module" autoFocus {...form.register("title")} error={!!form.formState.errors.title} /></FormField>
+      <FormField label="Mission" htmlFor={`${mode}-mission`} required error={form.formState.errors.missionId?.message}><Select defaultValue={isEdit ? editTarget?.missionId : (preselectedMissionId || undefined)} onValueChange={v => form.setValue("missionId", v)}><SelectTrigger id={`${mode}-mission`} error={!!form.formState.errors.missionId}><SelectValue placeholder="Select a mission" /></SelectTrigger><SelectContent>{MOCK_MISSIONS.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}</SelectContent></Select></FormField>
+      <div className="grid grid-cols-2 gap-3"><FormField label="Priority" htmlFor={`${mode}-priority`}><Select defaultValue={isEdit ? (editTarget?.priority ?? "medium") : "medium"} onValueChange={v => form.setValue("priority", v as CreateTaskFormData["priority"])}><SelectTrigger id={`${mode}-priority`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="urgent">Urgent</SelectItem></SelectContent></Select></FormField><FormField label="Due date" htmlFor={`${mode}-due`}><Input id={`${mode}-due`} type="date" {...form.register("dueDate")} /></FormField></div>
+      <FormField label="Est. duration (minutes)" htmlFor={`${mode}-duration`}><Input id={`${mode}-duration`} type="number" min={1} placeholder="e.g. 60" {...form.register("estimatedDurationMinutes")} /></FormField>
+      <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" loading={form.formState.isSubmitting}>{isEdit ? "Save changes" : "Create task"}</Button></DialogFooter>
+    </form>
+  </DialogContent></Dialog>;
+}
 
 export default function TasksPage() {
   const router = useRouter();
@@ -49,13 +65,12 @@ export default function TasksPage() {
   const [tasks, setTasks]           = useState<Task[]>(MOCK_TASKS);
   const [completed, setCompleted]   = useState<Set<string>>(new Set());
   const [view, setView]             = useState<ViewMode>("list");
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(shouldOpenCreate);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
 
   useEffect(() => {
     if (shouldOpenCreate) {
-      setCreateOpen(true);
       const url = new URL(window.location.href);
       url.searchParams.delete("create");
       window.history.replaceState({}, "", url.toString());
@@ -116,7 +131,7 @@ export default function TasksPage() {
     await new Promise(r => setTimeout(r, 300));
     const mission = MOCK_MISSIONS.find(m => m.id === data.missionId);
     const newTask: Task = {
-      id: `task-${Date.now()}`,
+      id: `task-${crypto.randomUUID()}`,
       userId: "user-1",
       missionId: data.missionId,
       missionTitle: mission?.title ?? "",
@@ -153,9 +168,12 @@ export default function TasksPage() {
   function deleteTask(task?: Task) {
     const target = task ?? deleteTarget;
     if (!target) return;
+    const previousIndex = tasks.findIndex(t => t.id === target.id);
     setTasks(prev => prev.filter(t => t.id !== target.id));
     setCompleted(prev => { const n = new Set(prev); n.delete(target.id); return n; });
-    toast("Task deleted.");
+    toast("Task deleted.", { action: { label: "Undo", onClick: () => setTasks(prev => {
+      const next = [...prev]; next.splice(Math.max(0, previousIndex), 0, target); return next;
+    }) } });
     setDeleteTarget(null);
   }
 
@@ -180,8 +198,8 @@ export default function TasksPage() {
 
     return (
       <div className={cn(
-        "relative flex items-start gap-3 px-4 py-4 border-l-[3px] transition-all group",
-        "hover:bg-[hsl(var(--background-subtle))]",
+        "relative flex items-start gap-3 px-4 py-4 border-l-[3px] transition-all duration-200 group animate-slide-up-fade",
+        "hover:bg-[hsl(var(--background-subtle))] hover:-translate-y-0.5 hover:shadow-md active:scale-95 motion-reduce:transform-none",
         done ? "border-l-[hsl(var(--border))] opacity-60" : pcfg.border,
       )}>
         <Checkbox
@@ -249,7 +267,7 @@ export default function TasksPage() {
   }
 
   /* ── Task Dialog ───────────────────────────────────────── */
-  function TaskDialog({ mode }: { mode: "create" | "edit" }) {
+  function DeprecatedTaskDialog({ mode }: { mode: "create" | "edit" }) {
     const isEdit   = mode === "edit";
     const form     = isEdit ? editForm : createForm;
     const onSubmit = isEdit ? onEditTask : onCreateTask;
@@ -319,12 +337,12 @@ export default function TasksPage() {
 
   /* ── Page ──────────────────────────────────────────────── */
   return (
-    <div className={cn("p-4 sm:p-6 space-y-5 mx-auto", view === "kanban" ? "max-w-full" : "max-w-4xl")}>
+    <div className={cn("p-4 sm:p-6 lg:p-8 space-y-6 mx-auto", view === "kanban" ? "max-w-full" : "max-w-6xl")}>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black text-[hsl(var(--text-primary))]">Tasks</h1>
+          <h1 className="text-3xl font-black tracking-[-0.035em] text-[hsl(var(--text-primary))]">Tasks</h1>
           {missionContext ? (
             <div className="flex items-center gap-2 mt-0.5">
               <p className="text-sm text-[hsl(var(--text-secondary))]">
@@ -381,15 +399,15 @@ export default function TasksPage() {
       {/* Stats strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total",         value: filteredTasks.length,  icon: <ListTodo className="h-4 w-4" />,     color: "text-[hsl(var(--primary))]",         bg: "bg-[hsl(var(--secondary))]" },
-          { label: "In Progress",   value: inProgressList.length, icon: <PlayCircle className="h-4 w-4" />,   color: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-50 dark:bg-blue-900/20" },
-          { label: "High / Urgent", value: urgentCount,           icon: <Flame className="h-4 w-4" />,        color: "text-amber-600 dark:text-amber-400",  bg: "bg-amber-50 dark:bg-amber-900/20" },
-          { label: "Completed",     value: completedList.length,  icon: <CheckCircle2 className="h-4 w-4" />, color: "text-green-600 dark:text-green-400",  bg: "bg-green-50 dark:bg-green-900/20" },
+          { label: "Total", value: filteredTasks.length, icon: <ListTodo className="h-4 w-4" />, tone: "task-tone-total" },
+          { label: "In progress", value: inProgressList.length, icon: <PlayCircle className="h-4 w-4" />, tone: "task-tone-progress" },
+          { label: "High priority", value: urgentCount, icon: <Flame className="h-4 w-4" />, tone: "task-tone-high" },
+          { label: "Completed", value: completedList.length, icon: <CheckCircle2 className="h-4 w-4" />, tone: "task-tone-complete" },
         ].map(s => (
-          <div key={s.label} className={cn("rounded-xl p-3 flex items-center gap-3 border border-[hsl(var(--border))]", s.bg)}>
-            <div className={cn("shrink-0", s.color)}>{s.icon}</div>
+          <div key={s.label} className="rounded-2xl bg-[hsl(var(--card))] p-3.5 flex items-center gap-3 border border-[hsl(var(--border))]/80 shadow-[var(--shadow-xs)]">
+            <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", s.tone)}>{s.icon}</div>
             <div>
-              <p className={cn("text-xl font-black leading-none", s.color)}>{s.value}</p>
+              <p className="text-xl font-black leading-none tabular-nums text-[hsl(var(--text-primary))]"><AnimatedNumber value={s.value} /></p>
               <p className="text-xs text-[hsl(var(--text-secondary))] mt-0.5">{s.label}</p>
             </div>
           </div>
@@ -490,8 +508,8 @@ export default function TasksPage() {
         </Tabs>
       )}
 
-      <TaskDialog mode="create" />
-      <TaskDialog mode="edit" />
+      <TaskDialog mode="create" form={createForm} open={createOpen} preselectedMissionId={preselectedMissionId} onSubmit={onCreateTask} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset({ missionId: preselectedMissionId, priority: "medium" }); }} />
+      <TaskDialog mode="edit" form={editForm} open={!!editTarget} editTarget={editTarget} preselectedMissionId={preselectedMissionId} onSubmit={onEditTask} onOpenChange={(open) => { if (!open) setEditTarget(null); }} />
 
       <ConfirmationDialog
         open={!!deleteTarget}

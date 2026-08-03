@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ROUTES } from "@/constants/routes";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { LegalExplorer } from "@/components/marketing/premium-interactions";
 
 export const metadata = { title: "Terms of Service | LifeKit" };
 
@@ -57,9 +58,15 @@ const SECTIONS = [
 ];
 
 export default function TermsPage() {
+  const explorerSections = SECTIONS.map((section) => ({
+    title: section.title,
+    searchText: section.body,
+    important: /AI-Generated|Payments|Liability|Termination/.test(section.title),
+    content: <p>{section.body}</p>,
+  }));
   return (
-    <div className="py-12 px-4">
-      <div className="mx-auto max-w-3xl">
+    <div className="marketing-page-shell px-4 py-10 sm:py-14">
+      <div className="mx-auto max-w-6xl">
         {/* Back */}
         <Button variant="ghost" size="sm" className="mb-6 -ml-2" asChild>
           <Link href={ROUTES.HOME} className="flex items-center gap-2">
@@ -67,23 +74,13 @@ export default function TermsPage() {
           </Link>
         </Button>
 
-        <h1 className="text-3xl font-black text-[hsl(var(--text-primary))] mb-2">Terms of Service</h1>
-        <p className="text-sm text-[hsl(var(--text-secondary))] mb-8">
-          Last updated: July 2026 · Effective immediately for new accounts.
-        </p>
-
-        <div className="prose max-w-none space-y-8">
-          {SECTIONS.map(section => (
-            <section key={section.title}>
-              <h2 className="text-lg font-bold text-[hsl(var(--text-primary))] mb-3">
-                {section.title}
-              </h2>
-              <p className="text-sm text-[hsl(var(--text-secondary))] leading-relaxed">
-                {section.body}
-              </p>
-            </section>
-          ))}
+        <div className="marketing-story-hero mb-8">
+          <span className="mb-4 inline-flex rounded-full border border-[hsl(var(--primary))]/20 bg-[hsl(var(--primary))]/10 px-3 py-1 text-xs font-bold uppercase tracking-[.14em] text-[hsl(var(--primary))]">Clear terms, plain navigation</span>
+          <h1 className="text-4xl font-black text-[hsl(var(--text-primary))] sm:text-5xl">Terms of Service</h1>
+          <p className="mt-3 text-[hsl(var(--text-secondary))]">Last updated: July 2026 · Effective immediately for new accounts.</p>
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-[hsl(var(--text-secondary))]">Everything governing your LifeKit account, organised so you can find the clause you need without reading a wall of text.</p>
         </div>
+        <LegalExplorer sections={explorerSections} />
 
         <div className="mt-12 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background-subtle))] p-5 text-center">
           <p className="text-sm text-[hsl(var(--text-secondary))]">

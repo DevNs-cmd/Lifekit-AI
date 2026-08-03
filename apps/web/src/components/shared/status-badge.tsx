@@ -31,8 +31,16 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, className, showDot = false }: StatusBadgeProps) {
   const config = STATUS_CONFIG[status] ?? { label: status, variant: "outline" as const };
+  const statusClasses: Partial<Record<Status, string>> = {
+    "not-started": "status-not-started",
+    "in-progress": "status-in-progress",
+    completed: "status-completed",
+    active: "status-active",
+    paused: "status-paused",
+  };
+  const statusClass = statusClasses[status];
   return (
-    <Badge variant={config.variant} className={cn("gap-1.5", className)}>
+    <Badge variant={config.variant} className={cn("gap-1.5", statusClass, className)}>
       {showDot && (
         <span
           className={cn("inline-block h-1.5 w-1.5 rounded-full", {

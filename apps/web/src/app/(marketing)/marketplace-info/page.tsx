@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ROUTES } from "@/constants/routes";
+import { MarketplaceFinder } from "@/components/marketing/page-experiences";
+import { Reveal } from "@/components/marketing/premium-interactions";
 
 const CATEGORIES = [
   { name: "Career",    emoji: "💼", count: "240+", desc: "Mentors, recruiters, career coaches" },
@@ -34,9 +36,9 @@ const PROVIDER_TYPES = [
 
 export default function MarketingMarketplacePage() {
   return (
-    <div className="overflow-hidden">
+    <div className="marketing-page-shell overflow-hidden">
       {/* Hero */}
-      <section className="bg-gradient-to-b from-[hsl(var(--background-subtle))] to-[hsl(var(--background))] py-20 px-4 text-center">
+      <section className="marketing-story-hero text-center">
         <div className="mx-auto max-w-3xl">
           <Badge variant="secondary" className="mb-6 gap-2 px-3 py-1">
             <ShoppingBag className="h-3.5 w-3.5" />
@@ -60,6 +62,7 @@ export default function MarketingMarketplacePage() {
         </div>
       </section>
 
+      <MarketplaceFinder />
       {/* Categories */}
       <section className="py-16 px-4 bg-[hsl(var(--background))]">
         <div className="mx-auto max-w-5xl">
@@ -93,7 +96,7 @@ export default function MarketingMarketplacePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {FEATURED_PROVIDERS.map(p => (
-              <Card key={p.name} className="hover:shadow-md transition-shadow">
+              <Reveal key={p.name}><Card className="marketing-premium-card h-full">
                 <CardContent className="p-5">
                   <div className="h-10 w-10 rounded-xl bg-[hsl(var(--secondary))] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-lg mb-3">
                     {p.name[0]}
@@ -107,7 +110,7 @@ export default function MarketingMarketplacePage() {
                   </div>
                   <Badge variant="secondary" className="text-xs">{p.category}</Badge>
                 </CardContent>
-              </Card>
+              </Card></Reveal>
             ))}
           </div>
         </div>
@@ -116,7 +119,7 @@ export default function MarketingMarketplacePage() {
       {/* Provider types */}
       <section className="py-16 px-4 bg-[hsl(var(--background))]">
         <div className="mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl font-bold text-[hsl(var(--text-primary))] mb-4">What you'll find</h2>
+          <h2 className="text-3xl font-bold text-[hsl(var(--text-primary))] mb-4">What you&apos;ll find</h2>
           <div className="flex flex-wrap gap-2 justify-center mb-10">
             {PROVIDER_TYPES.map(t => (
               <span

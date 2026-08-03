@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, Lock, User, Zap } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +64,7 @@ export default function SignUpPage() {
     formState: { errors, isSubmitting },
   } = useForm<SignUpFormData>({ resolver: zodResolver(signUpSchema) });
 
-  async function onSubmit(_data: SignUpFormData) {
+  async function onSubmit() {
     await new Promise(r => setTimeout(r, 900));
     login({ ...MOCK_USER, onboardingCompleted: false });
     toast.success("Account created! Let's set up your profile.");
@@ -81,15 +81,9 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5 py-2">
       {/* Heading */}
       <div>
-        {/* Mobile-only logo mark */}
-        <div className="flex lg:hidden items-center gap-2 mb-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg lifekit-gradient">
-            <Zap className="h-4 w-4 text-white" />
-          </div>
-        </div>
         <h1 className="text-3xl font-black text-[hsl(var(--text-primary))] tracking-tight">
           Create your account
         </h1>
@@ -99,33 +93,6 @@ export default function SignUpPage() {
       </div>
 
       {/* Social buttons — 3-column grid */}
-      <div className="grid grid-cols-3 gap-2.5">
-        {SOCIAL_PROVIDERS.map(provider => (
-          <Button
-            key={provider.id}
-            type="button"
-            variant="outline"
-            className="flex items-center justify-center gap-2 h-11 font-medium text-sm"
-            loading={socialLoading === provider.id}
-            disabled={socialLoading !== null}
-            onClick={() => handleSocialSignUp(provider.id)}
-            aria-label={`Continue with ${provider.label}`}
-          >
-            {socialLoading !== provider.id && provider.icon}
-            <span className="hidden sm:inline">{provider.label}</span>
-          </Button>
-        ))}
-      </div>
-
-      {/* Divider */}
-      <div className="flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="text-xs text-[hsl(var(--text-secondary))] shrink-0 font-medium px-1">
-          or sign up with email
-        </span>
-        <Separator className="flex-1" />
-      </div>
-
       {/* Email form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <FormField label="Full name" htmlFor="fullName" required error={errors.fullName?.message}>
@@ -226,6 +193,9 @@ export default function SignUpPage() {
           Create free account
         </Button>
       </form>
+
+      <div className="flex items-center gap-3"><Separator className="flex-1" /><span className="shrink-0 px-1 text-xs font-medium text-[hsl(var(--text-secondary))]">or continue with</span><Separator className="flex-1" /></div>
+      <div className="grid grid-cols-3 gap-2.5">{SOCIAL_PROVIDERS.map(provider => <Button key={provider.id} type="button" variant="outline" className="flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium" loading={socialLoading === provider.id} disabled={socialLoading !== null} onClick={() => handleSocialSignUp(provider.id)} aria-label={`Continue with ${provider.label}`}>{socialLoading !== provider.id && provider.icon}<span className="hidden sm:inline">{provider.label}</span></Button>)}</div>
 
       {/* Sign in link */}
       <p className="text-center text-sm text-[hsl(var(--text-secondary))]">

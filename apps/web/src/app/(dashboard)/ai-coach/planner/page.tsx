@@ -228,7 +228,7 @@ export default function AIPlannerPage() {
                   <div className="rounded-lg bg-[hsl(var(--background-subtle))] border border-[hsl(var(--border))] p-3">
                     <p className="font-semibold text-[hsl(var(--text-primary))] mb-1">Overall assessment</p>
                     <p className="text-[hsl(var(--text-secondary))] text-xs leading-relaxed">
-                      Your mission is <strong>{mission.progress}% complete</strong>. At the current pace, you'll reach your goal approximately on time. Consider increasing weekly focus to reduce risk.
+                      Your mission is <strong>{mission.progress}% complete</strong>. At the current pace, you&apos;ll reach your goal approximately on time. Consider increasing weekly focus to reduce risk.
                     </p>
                   </div>
                   {mission.risks.map(risk => (

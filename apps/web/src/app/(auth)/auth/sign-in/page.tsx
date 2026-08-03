@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, Lock, Zap } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +64,7 @@ export default function SignInPage() {
     setError,
   } = useForm<SignInFormData>({ resolver: zodResolver(signInSchema) });
 
-  async function onSubmit(_data: SignInFormData) {
+  async function onSubmit() {
     await new Promise(r => setTimeout(r, 800));
     try {
       login(MOCK_USER);
@@ -85,15 +85,9 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Heading */}
       <div>
-        {/* Mobile-only logo mark */}
-        <div className="flex lg:hidden items-center gap-2 mb-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg lifekit-gradient">
-            <Zap className="h-4 w-4 text-white" />
-          </div>
-        </div>
         <h1 className="text-3xl font-black text-[hsl(var(--text-primary))] tracking-tight">
           Welcome back
         </h1>
@@ -103,33 +97,6 @@ export default function SignInPage() {
       </div>
 
       {/* Social buttons — 3-column grid */}
-      <div className="grid grid-cols-3 gap-2.5">
-        {SOCIAL_PROVIDERS.map(provider => (
-          <Button
-            key={provider.id}
-            type="button"
-            variant="outline"
-            className="flex items-center justify-center gap-2 h-11 font-medium text-sm"
-            loading={socialLoading === provider.id}
-            disabled={socialLoading !== null}
-            onClick={() => handleSocialLogin(provider.id)}
-            aria-label={`Continue with ${provider.label}`}
-          >
-            {socialLoading !== provider.id && provider.icon}
-            <span className="hidden sm:inline">{provider.label}</span>
-          </Button>
-        ))}
-      </div>
-
-      {/* Divider */}
-      <div className="flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="text-xs text-[hsl(var(--text-secondary))] shrink-0 font-medium px-1">
-          or sign in with email
-        </span>
-        <Separator className="flex-1" />
-      </div>
-
       {/* Email / password form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
         {errors.root && (
@@ -194,6 +161,9 @@ export default function SignInPage() {
           Sign in
         </Button>
       </form>
+
+      <div className="flex items-center gap-3"><Separator className="flex-1" /><span className="shrink-0 px-1 text-xs font-medium text-[hsl(var(--text-secondary))]">or continue with</span><Separator className="flex-1" /></div>
+      <div className="grid grid-cols-3 gap-2.5">{SOCIAL_PROVIDERS.map(provider => <Button key={provider.id} type="button" variant="outline" className="flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium" loading={socialLoading === provider.id} disabled={socialLoading !== null} onClick={() => handleSocialLogin(provider.id)} aria-label={`Continue with ${provider.label}`}>{socialLoading !== provider.id && provider.icon}<span className="hidden sm:inline">{provider.label}</span></Button>)}</div>
 
       {/* Sign up link */}
       <p className="text-center text-sm text-[hsl(var(--text-secondary))]">

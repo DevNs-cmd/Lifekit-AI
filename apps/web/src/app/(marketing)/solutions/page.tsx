@@ -3,6 +3,8 @@ import { Briefcase, GraduationCap, Building2, Users, CheckCircle, ArrowRight } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/constants/routes";
+import { SolutionsJourney } from "@/components/marketing/page-experiences";
+import { Reveal } from "@/components/marketing/premium-interactions";
 
 const SOLUTIONS = [
   {
@@ -37,15 +39,15 @@ const SOLUTIONS = [
 
 export default function SolutionsPage() {
   return (
-    <div className="py-16 px-4">
+    <div className="marketing-page-shell">
       <div className="mx-auto max-w-6xl">
-        <div className="text-center mb-16">
+        <div className="marketing-story-hero text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-black text-[hsl(var(--text-primary))]">Solutions for every journey</h1>
           <p className="mt-4 text-lg text-[hsl(var(--text-secondary))] max-w-2xl mx-auto">One platform, personalised for your stage of life.</p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="marketing-content-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
           {SOLUTIONS.map(({ icon: Icon, title, color, headline, desc, goals, href }) => (
-            <Card key={title} className="hover:shadow-md transition-shadow">
+            <Reveal key={title}><Card className="marketing-premium-card h-full">
               <CardContent className="p-6">
                 <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${color} mb-4`}><Icon className="h-5 w-5" /></div>
                 <p className="text-xs font-semibold text-[hsl(var(--primary))] uppercase tracking-wide mb-1">{title}</p>
@@ -62,10 +64,11 @@ export default function SolutionsPage() {
                   <Link href={href}>Get started</Link>
                 </Button>
               </CardContent>
-            </Card>
+            </Card></Reveal>
           ))}
         </div>
       </div>
+      <SolutionsJourney />
     </div>
   );
 }

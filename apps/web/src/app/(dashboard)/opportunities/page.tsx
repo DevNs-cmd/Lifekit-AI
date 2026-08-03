@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Compass, Search, Filter, Bookmark, X, ExternalLink } from "lucide-react";
+import { Compass, Search, Bookmark, X, ExternalLink, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,21 +11,22 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CategoryBadge } from "@/components/shared/category-badge";
+import { SideSheet } from "@/components/ui/side-sheet";
 import { MOCK_OPPORTUNITIES } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Opportunity, OpportunityType } from "@/types/opportunity";
 
-const TYPE_COLORS: Record<string, string> = {
-  job:         "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  internship:  "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
-  scholarship: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  course:      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-  event:       "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
-  grant:       "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-  challenge:   "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
-  service:     "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+const TYPE_STYLES: Record<string, React.CSSProperties> = {
+  job: { backgroundColor: "#edf3ff", color: "#315a9b" },
+  internship: { backgroundColor: "#f3effb", color: "#65508f" },
+  scholarship: { backgroundColor: "#fff3e9", color: "#925a2f" },
+  course: { backgroundColor: "#eaf5ef", color: "#267052" },
+  event: { backgroundColor: "#eaf7fa", color: "#277083" },
+  grant: { backgroundColor: "#fff3e9", color: "#925a2f" },
+  challenge: { backgroundColor: "#fff0f4", color: "#984d68" },
+  service: { backgroundColor: "#f1f2ef", color: "#545b57" },
 };
 
 // Extend mock data with more entries for a realistic feed
@@ -114,6 +116,7 @@ export default function OpportunitiesPage() {
   const [search, setSearch] = React.useState("");
   const [typeFilter, setTypeFilter] = React.useState<OpportunityType | "all">("all");
   const [savedOnly, setSavedOnly] = React.useState(false);
+  const [previewOpportunity, setPreviewOpportunity] = React.useState<Opportunity | null>(null);
 
   const filtered = opportunities.filter((o) => {
     if (o.isDismissed) return false;
@@ -126,28 +129,28 @@ export default function OpportunitiesPage() {
   function toggleSave(id: string) {
     setOpportunities(prev => prev.map(o => o.id === id ? { ...o, isSaved: !o.isSaved, applicationStatus: !o.isSaved ? "saved" : "not-applied" } : o));
     const opp = opportunities.find(o => o.id === id);
-    toast(opp?.isSaved ? "Removed from saved" : "Saved to your list");
+    toast(opp?.isSaved ? "Removed from saved" : "Saved to your list", { action: { label: "Undo", onClick: () => setOpportunities(prev => prev.map(o => o.id === id ? { ...o, isSaved: !!opp?.isSaved, applicationStatus: opp?.applicationStatus ?? "not-applied" } : o)) } });
   }
 
   function dismiss(id: string) {
     setOpportunities(prev => prev.map(o => o.id === id ? { ...o, isDismissed: true } : o));
-    toast("Opportunity dismissed");
+    const dismissed = opportunities.find(o => o.id === id);
+    toast("Opportunity dismissed", { action: { label: "Undo", onClick: () => { setOpportunities(prev => prev.map(o => o.id === id ? { ...o, isDismissed: false } : o)); if (dismissed) setPreviewOpportunity(dismissed); } } });
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-5 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-[hsl(var(--text-primary))] flex items-center gap-2">
-          <Compass className="h-7 w-7 text-[hsl(var(--primary))]" /> Opportunities
-        </h1>
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[hsl(var(--primary))]"><Sparkles className="h-3.5 w-3.5" />Matched for your goals</div>
+        <h1 className="text-3xl font-black tracking-[-0.035em] text-[hsl(var(--text-primary))]">Opportunities</h1>
         <p className="text-sm text-[hsl(var(--text-secondary))] mt-1">
           AI-matched jobs, internships, scholarships, grants and more — based on your active missions.
         </p>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="premium-surface flex flex-wrap items-center gap-3 rounded-2xl p-3">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--text-secondary))] pointer-events-none" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search opportunities…" className="pl-9" aria-label="Search opportunities" />
@@ -185,15 +188,16 @@ export default function OpportunitiesPage() {
           action={{ label: "Clear filters", onClick: () => { setSearch(""); setTypeFilter("all"); setSavedOnly(false); } }}
         />
       ) : (
-        <div className="space-y-3">
+        <motion.div layout className="dense-work-surface grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <AnimatePresence mode="popLayout">
           {filtered.map(opp => (
+            <motion.div key={opp.id} layout layoutId={`opportunity-${opp.id}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: .96 }} transition={{ duration: .22 }}>
             <Card
-              key={opp.id}
-              className="hover:border-[hsl(var(--primary))]/30 hover:shadow-sm transition-all cursor-pointer group"
-              onClick={() => router.push(`${ROUTES.OPPORTUNITIES}/${opp.id}`)}
+              className="group h-full overflow-hidden hover:border-[hsl(var(--primary))]/30"
+              onClick={() => setPreviewOpportunity(opp)}
             >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
+              <CardContent className="flex h-full flex-col p-5">
+                <div className="flex flex-1 items-start gap-4">
                   {/* Logo placeholder */}
                   <div className="h-12 w-12 shrink-0 rounded-xl bg-[hsl(var(--secondary))] flex items-center justify-center text-lg font-bold text-[hsl(var(--primary))]">
                     {opp.organisation[0]}
@@ -203,7 +207,7 @@ export default function OpportunitiesPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full capitalize", TYPE_COLORS[opp.type] ?? TYPE_COLORS.service)}>
+                          <span style={TYPE_STYLES[opp.type] ?? TYPE_STYLES.service} className="border border-black/[0.04] px-2 py-0.5 text-xs font-semibold rounded-full capitalize dark:!bg-[hsl(var(--muted))] dark:!text-[hsl(var(--foreground))]">
                             {opp.type}
                           </span>
                           <CategoryBadge category={opp.category} size="sm" showIcon={false} />
@@ -214,7 +218,7 @@ export default function OpportunitiesPage() {
                       </div>
 
                       {/* Match score */}
-                      <div className="shrink-0 text-center hidden sm:block">
+                      <div className="shrink-0 text-center hidden sm:block rounded-xl bg-[hsl(var(--background-subtle))] p-1.5">
                         <div className={cn(
                           "h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold border-2",
                           opp.matchScore >= 85 ? "border-green-400 text-green-600 bg-green-50 dark:bg-green-900/20" :
@@ -247,7 +251,7 @@ export default function OpportunitiesPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[hsl(var(--border))]" onClick={e => e.stopPropagation()}>
+                <div className="mt-auto flex items-center gap-2 border-t border-[hsl(var(--border))] pt-3" onClick={e => e.stopPropagation()}>
                   <Button
                     size="xs"
                     variant={opp.isSaved ? "secondary" : "outline"}
@@ -270,11 +274,28 @@ export default function OpportunitiesPage() {
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
+                <p className="mt-2 text-[10px] font-semibold text-[hsl(var(--primary))] opacity-0 transition-opacity group-hover:opacity-100">Quick preview · full details available</p>
               </CardContent>
             </Card>
+            </motion.div>
           ))}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       )}
+      <SideSheet
+        open={!!previewOpportunity}
+        onOpenChange={open => !open && setPreviewOpportunity(null)}
+        title={previewOpportunity?.title ?? "Opportunity"}
+        description={previewOpportunity && `${previewOpportunity.organisation} · ${previewOpportunity.matchScore}% match`}
+        footer={previewOpportunity && <><Button variant="outline" onClick={() => toggleSave(previewOpportunity.id)} leftIcon={<Bookmark className="h-4 w-4" />}>{previewOpportunity.isSaved ? "Unsave" : "Save"}</Button><Button onClick={() => router.push(`${ROUTES.OPPORTUNITIES}/${previewOpportunity.id}`)}>Open full details</Button></>}
+      >
+        {previewOpportunity && <div className="space-y-5">
+          <div className="flex flex-wrap gap-2"><Badge className="capitalize">{previewOpportunity.type}</Badge><CategoryBadge category={previewOpportunity.category} />{previewOpportunity.isRemote && <Badge variant="outline">Remote</Badge>}</div>
+          <p className="text-sm leading-6 text-[hsl(var(--text-secondary))]">{previewOpportunity.description}</p>
+          <div className="rounded-2xl bg-[hsl(var(--secondary))] p-4"><p className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--primary))]">Why it matches</p><ul className="mt-2 space-y-2 text-sm">{previewOpportunity.matchReasons.map(reason => <li key={reason}>✦ {reason}</li>)}</ul></div>
+          <div><p className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--text-secondary))]">Requirements</p><div className="mt-2 space-y-2">{previewOpportunity.requirements.map(req => <div key={req.label} className="rounded-xl border border-[hsl(var(--border))] p-3"><strong className="text-sm">{req.label}</strong><p className="text-xs text-[hsl(var(--text-secondary))]">{req.description}</p></div>)}</div></div>
+        </div>}
+      </SideSheet>
     </div>
   );
 }

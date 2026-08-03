@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell, Search, Plus, Menu, Moon, Sun, Monitor } from "lucide-react";
+import { Bell, Search, Plus, Menu, Moon, Sun, Monitor, Sparkles } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
@@ -22,29 +22,26 @@ interface TopBarProps {
 }
 
 export function TopBar({ title }: TopBarProps) {
-  const { toggleCommandMenu, setQuickCreateOpen, setSidebarOpen, unreadNotificationCount } = useUIStore();
+  const { toggleCommandMenu, setQuickCreateOpen, setSidebarOpen, setAiCoachPanelOpen, unreadNotificationCount } = useUIStore();
   const { user, logout } = useAuthStore();
   const { setTheme, theme } = useTheme();
   const router = useRouter();
 
   // Avoid hydration mismatch: theme is undefined on the server
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => { setMounted(true); }, []);
+  const mounted = React.useSyncExternalStore(() => () => {}, () => true, () => false);
 
   function handleLogout() {
     logout();
     router.replace(ROUTES.SIGN_IN);
   }
 
-  function ThemeIcon() {
-    if (!mounted) return <Monitor className="h-4 w-4" />;
-    if (theme === "dark") return <Moon className="h-4 w-4" />;
-    if (theme === "light") return <Sun className="h-4 w-4" />;
-    return <Monitor className="h-4 w-4" />;
-  }
+  const themeIcon = !mounted ? <Monitor className="h-4 w-4" />
+    : theme === "dark" ? <Moon className="h-4 w-4" />
+    : theme === "light" ? <Sun className="h-4 w-4" />
+    : <Monitor className="h-4 w-4" />;
 
   return (
-    <header className="flex h-16 items-center gap-3 px-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] shrink-0">
+    <header className="flex h-16 items-center gap-3 px-4 sm:px-5 border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--card))] dark:bg-[hsl(var(--card))]/80 dark:backdrop-blur-xl shrink-0 z-20">
       {/* Mobile menu */}
       <Button
         variant="ghost"
@@ -63,7 +60,15 @@ export function TopBar({ title }: TopBarProps) {
         </h1>
       )}
 
-      <div className="flex items-center gap-1 ml-auto">
+      <button
+        onClick={toggleCommandMenu}
+        className="hidden md:flex ml-auto w-64 items-center gap-2 rounded-xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--background-subtle))]/70 px-3 py-2 text-sm text-[hsl(var(--text-secondary))] transition-all hover:border-[hsl(var(--primary))]/30 hover:bg-[hsl(var(--card))]"
+        aria-label="Search and run commands"
+      >
+        <Search className="h-4 w-4" /><span className="flex-1 text-left">Search anything…</span><kbd className="rounded border px-1.5 text-[10px]">⌘ K</kbd>
+      </button>
+
+      <div className="flex items-center gap-1">
 
         {/* Search */}
         <Tooltip>
@@ -75,6 +80,10 @@ export function TopBar({ title }: TopBarProps) {
           <TooltipContent>Search (Ctrl+K)</TooltipContent>
         </Tooltip>
 
+        <Button variant="secondary" size="sm" className="hidden xl:flex" onClick={() => setAiCoachPanelOpen(true)} leftIcon={<Sparkles className="h-3.5 w-3.5" />}>
+          Ask AI
+        </Button>
+
         {/* Quick create */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -82,7 +91,7 @@ export function TopBar({ title }: TopBarProps) {
               <Plus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Quick Create</TooltipContent>
+          <TooltipContent>Quick Create <kbd className="ml-1 rounded border px-1 text-[10px]">C</kbd></TooltipContent>
         </Tooltip>
 
         {/* Notifications — plain Link button, no nested Slot */}
@@ -101,14 +110,14 @@ export function TopBar({ title }: TopBarProps) {
               )}
             </Link>
           </TooltipTrigger>
-          <TooltipContent>Notifications</TooltipContent>
+          <TooltipContent>Notifications <kbd className="ml-1 rounded border px-1 text-[10px]">G N</kbd></TooltipContent>
         </Tooltip>
 
         {/* Theme switcher */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-sm" aria-label="Toggle theme">
-              <ThemeIcon />
+              {themeIcon}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

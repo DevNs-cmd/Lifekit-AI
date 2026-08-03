@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ROUTES } from "@/constants/routes";
+import { PricingPlanner } from "@/components/marketing/page-experiences";
+import { Reveal } from "@/components/marketing/premium-interactions";
 
 const PLANS = [
   {
@@ -62,16 +64,17 @@ const PLANS = [
 
 export default function PricingPage() {
   return (
-    <div className="py-16 px-4">
+    <div className="marketing-page-shell">
       <div className="mx-auto max-w-6xl">
-        <div className="text-center mb-12">
+        <div className="marketing-story-hero text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-black text-[hsl(var(--text-primary))]">Simple, transparent pricing</h1>
           <p className="mt-4 text-lg text-[hsl(var(--text-secondary))] max-w-xl mx-auto">Start free. Upgrade when you need more power. Cancel any time.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <PricingPlanner />
+        <div className="marketing-content-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {PLANS.map((plan) => (
-            <Card key={plan.name} className={plan.primary ? "border-[hsl(var(--primary))] shadow-[var(--shadow-purple)] relative" : ""}>
+            <Reveal key={plan.name}><Card className={`marketing-premium-card h-full ${plan.primary ? "border-[hsl(var(--primary))] shadow-[var(--shadow-purple)] relative" : ""}`}>
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                   <Badge>{plan.badge}</Badge>
@@ -99,7 +102,7 @@ export default function PricingPage() {
                   <Link href={plan.href}>{plan.cta}<ArrowRight className="h-4 w-4 ml-1" /></Link>
                 </Button>
               </CardContent>
-            </Card>
+            </Card></Reveal>
           ))}
         </div>
 

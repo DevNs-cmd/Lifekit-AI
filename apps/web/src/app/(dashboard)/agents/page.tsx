@@ -1,117 +1,80 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Bot, Briefcase, TrendingUp, Heart, Globe, Building2 } from "lucide-react";
+import { Briefcase, TrendingUp, Heart, Globe, Building2, Sparkles, type LucideProps } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_AGENTS } from "@/lib/api/ai";
 import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
-import { LucideProps } from "lucide-react";
-import * as React from "react";
 
-const DOMAIN_CONFIG: Record<string, {
-  color: string;
-  bg: string;
-  icon: React.ComponentType<LucideProps>;
-  tagline: string;
-}> = {
-  career:   { color: "text-blue-700 dark:text-blue-300",   bg: "bg-blue-100 dark:bg-blue-900/30",   icon: Briefcase,  tagline: "Career growth · Job search · Interview prep" },
-  finance:  { color: "text-green-700 dark:text-green-300", bg: "bg-green-100 dark:bg-green-900/30", icon: TrendingUp, tagline: "Savings · Budgeting · Investments" },
-  health:   { color: "text-red-700 dark:text-red-300",     bg: "bg-red-100 dark:bg-red-900/30",     icon: Heart,      tagline: "Fitness · Nutrition · Wellness" },
-  travel:   { color: "text-cyan-700 dark:text-cyan-300",   bg: "bg-cyan-100 dark:bg-cyan-900/30",   icon: Globe,      tagline: "Trips · Itineraries · Travel budgets" },
-  business: { color: "text-orange-700 dark:text-orange-300",bg: "bg-orange-100 dark:bg-orange-900/30",icon: Building2, tagline: "Startup strategy · Market research · Funding" },
+const DOMAIN_CONFIG: Record<string, { color: string; hex: string; bg: string; icon: React.ComponentType<LucideProps>; tagline: string }> = {
+  career: { color: "dark:text-blue-300", hex: "#315a9b", bg: "bg-[#edf3ff] dark:bg-blue-900/30", icon: Briefcase, tagline: "Career growth · Job search · Interview prep" },
+  finance: { color: "dark:text-emerald-300", hex: "#267052", bg: "bg-[#eaf5ef] dark:bg-emerald-900/30", icon: TrendingUp, tagline: "Savings · Budgeting · Investments" },
+  health: { color: "dark:text-rose-300", hex: "#9a484d", bg: "bg-[#fff0f0] dark:bg-rose-900/30", icon: Heart, tagline: "Fitness · Nutrition · Wellness" },
+  travel: { color: "dark:text-cyan-300", hex: "#277083", bg: "bg-[#eaf7fa] dark:bg-cyan-900/30", icon: Globe, tagline: "Trips · Itineraries · Travel budgets" },
+  business: { color: "dark:text-orange-300", hex: "#925a2f", bg: "bg-[#fff3e9] dark:bg-orange-900/30", icon: Building2, tagline: "Startup strategy · Market research · Funding" },
 };
 
 export default function AgentsPage() {
   const router = useRouter();
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-[hsl(var(--text-primary))] flex items-center gap-2">
-          <Bot className="h-7 w-7 text-[hsl(var(--primary))]" /> AI Agents
-        </h1>
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[hsl(var(--primary))]"><Sparkles className="h-3.5 w-3.5" />Specialist intelligence</div>
+          <h1 className="text-3xl font-black tracking-[-0.035em] text-[hsl(var(--text-primary))]">Your AI team</h1>
+          <p className="mt-1 text-sm text-[hsl(var(--text-secondary))]">Choose a specialist that understands your goals, missions, and context.</p>
+        </div>
+        <Badge variant="secondary" className="w-fit px-3 py-1">{MOCK_AGENTS.filter(agent => agent.isAvailable).length} agents ready</Badge>
+      </header>
 
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {MOCK_AGENTS.map((agent) => {
-          const cfg = DOMAIN_CONFIG[agent.domain] ?? DOMAIN_CONFIG.career;
-          const DomainIcon = cfg.icon;
-
-          // Find missions related to this agent's categories
-          const relatedMissions = MOCK_MISSIONS.filter(m =>
-            agent.relatedCategories.includes(m.category) && m.status === "active"
-          );
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        {MOCK_AGENTS.map((agent, index) => {
+          const config = DOMAIN_CONFIG[agent.domain] ?? DOMAIN_CONFIG.career;
+          const DomainIcon = config.icon;
+          const relatedMissions = MOCK_MISSIONS.filter(mission => agent.relatedCategories.includes(mission.category) && mission.status === "active");
 
           return (
             <Card
               key={agent.id}
-              className="hover:border-[hsl(var(--primary))]/40 hover:shadow-md transition-all group cursor-pointer flex flex-col"
+              className={`group flex flex-col overflow-hidden hover:border-[hsl(var(--primary))]/30 lg:col-span-2 ${MOCK_AGENTS.length % 3 === 2 && index === MOCK_AGENTS.length - 2 ? "lg:col-start-2" : ""}`}
               onClick={() => router.push(`${ROUTES.AGENTS}/${agent.id}`)}
             >
-              <CardContent className="p-5 flex flex-col flex-1">
-                {/* Agent avatar + status */}
-                <div className="flex items-start justify-between gap-2 mb-4">
-                  <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${cfg.bg}`}>
-                    <DomainIcon className={`h-7 w-7 ${cfg.color}`} />
-                  </div>
-                  <Badge variant={agent.isAvailable ? "success" : "outline"} className="shrink-0 mt-1">
-                    {agent.isAvailable ? "Available" : "Unavailable"}
-                  </Badge>
+              <CardContent className="flex min-h-[400px] flex-1 flex-col p-5">
+                <div className="mb-4 flex items-start justify-between gap-2">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ring-black/[0.04] ${config.bg}`}><DomainIcon className={`h-6 w-6 ${config.color}`} style={{ color: config.hex }} /></div>
+                  <Badge variant={agent.isAvailable ? "success" : "outline"} className="mt-1 shrink-0">{agent.isAvailable ? "Ready" : "Offline"}</Badge>
                 </div>
 
-                {/* Name + tagline */}
-                <h3 className="font-bold text-base text-[hsl(var(--text-primary))] mb-0.5">{agent.name}</h3>
-                <p className={`text-xs font-medium mb-2 ${cfg.color}`}>{cfg.tagline}</p>
-                <p className="text-sm text-[hsl(var(--text-secondary))] mb-4 line-clamp-2 leading-relaxed">
-                  {agent.description}
-                </p>
+                <h2 className="text-base font-bold text-[hsl(var(--text-primary))]">{agent.name}</h2>
+                <p className={`mb-2 mt-0.5 text-xs font-semibold ${config.color}`} style={{ color: config.hex }}>{config.tagline}</p>
+                <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-[hsl(var(--text-secondary))]">{agent.description}</p>
 
-                {/* Capabilities */}
-                <div className="mb-4 flex-1">
-                  <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wide mb-2">
-                    What I can do
-                  </p>
+                <div className="flex-1">
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[hsl(var(--text-secondary))]">What I can do</p>
                   <ul className="space-y-1.5">
-                    {agent.capabilities.slice(0, 4).map((cap) => (
-                      <li key={cap} className="flex items-start gap-2 text-xs text-[hsl(var(--text-secondary))]">
-                        <span className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${cfg.bg} ${cfg.color}`} aria-hidden />
-                        {cap}
-                      </li>
+                    {agent.capabilities.slice(0, 3).map(capability => (
+                      <li key={capability} className="flex items-start gap-2 text-xs text-[hsl(var(--text-secondary))]"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--primary))]/50" />{capability}</li>
                     ))}
-                    {agent.capabilities.length > 4 && (
-                      <li className="text-xs text-[hsl(var(--text-secondary))] pl-3.5">
-                        +{agent.capabilities.length - 4} more
-                      </li>
-                    )}
+                    {agent.capabilities.length > 3 && <li className="pl-3.5 text-xs text-[hsl(var(--text-secondary))]">+{agent.capabilities.length - 3} more capabilities</li>}
                   </ul>
                 </div>
 
-                {/* Related missions */}
                 {relatedMissions.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wide mb-1.5">
-                      Active missions
-                    </p>
-                    <div className="flex flex-col gap-1">
-                      {relatedMissions.slice(0, 2).map(m => (
-                        <div key={m.id} className={`rounded-md px-2 py-1 text-xs font-medium truncate ${cfg.bg} ${cfg.color}`}>
-                          {m.title}
-                        </div>
-                      ))}
-                    </div>
+                  <div className="mt-4">
+                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[hsl(var(--text-secondary))]">Active mission</p>
+                    {relatedMissions.slice(0, 1).map(mission => <div key={mission.id} className={`truncate rounded-lg px-2.5 py-1.5 text-xs font-semibold ${config.bg} ${config.color}`} style={{ color: config.hex }}>{mission.title}</div>)}
                   </div>
                 )}
+
               </CardContent>
             </Card>
           );
         })}
       </div>
-
-
     </div>
   );
 }

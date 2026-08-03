@@ -36,6 +36,8 @@ export default function MissionDetailPage() {
   const [status, setStatus] = React.useState<MissionStatus>(
     baseMission?.status ?? "active"
   );
+  const [completedMilestones, setCompletedMilestones] = React.useState<Set<string>>(new Set());
+  const [celebratingMilestone, setCelebratingMilestone] = React.useState<string | null>(null);
   const [pauseDialogOpen, setPauseDialogOpen] = React.useState(false);
 
   // Edit mission state
@@ -91,12 +93,12 @@ export default function MissionDetailPage() {
 
   function handlePause() {
     setStatus("paused");
-    toast.success("Mission paused. Resume it any time to continue.");
+    toast.success("Mission paused. Resume it any time to continue.", { action: { label: "Undo", onClick: () => setStatus("active") } });
   }
 
   function handleResume() {
     setStatus("active");
-    toast.success("Mission resumed! Keep going.");
+    toast.success("Mission resumed! Keep going.", { action: { label: "Undo", onClick: () => setStatus("paused") } });
   }
 
   // Navigate to Tasks page pre-filtered to this mission, and open create dialog
@@ -421,23 +423,34 @@ export default function MissionDetailPage() {
                 aria-hidden
               />
               {mission.milestones.map((ms, i) => (
-                <div key={ms.id ?? i} className="relative flex gap-4 pl-0 pb-6">
-                  <div
+                <div key={ms.id ?? i} className="relative flex gap-4 pl-0 pb-6 animate-slide-up-fade" style={{ animationDelay: `${Math.min(i * 55, 275)}ms`, animationFillMode: "both" }}>
+                  <button
+                    type="button"
+                    aria-label={`Mark ${ms.title} complete`}
+                    onClick={() => {
+                      const milestoneId = String(ms.id ?? i);
+                      if (ms.status === "completed" || completedMilestones.has(milestoneId)) return;
+                      setCompletedMilestones(current => new Set([...current, milestoneId]));
+                      setCelebratingMilestone(milestoneId);
+                      window.setTimeout(() => setCelebratingMilestone(null), 330);
+                      toast.success(`Milestone completed: ${ms.title}`, { action: { label: "Undo", onClick: () => setCompletedMilestones(current => { const next = new Set(current); next.delete(milestoneId); return next; }) } });
+                    }}
                     className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 z-10",
-                      ms.status === "completed"
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 z-10 transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95",
+                      celebratingMilestone === String(ms.id ?? i) && "celebrate-pop",
+                      ms.status === "completed" || completedMilestones.has(String(ms.id ?? i))
                         ? "border-[hsl(var(--success))] bg-[hsl(var(--success))] text-white"
                         : ms.status === "in-progress"
                         ? "border-[hsl(var(--primary))] bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"
                         : "border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--text-secondary))]"
                     )}
                   >
-                    {ms.status === "completed" ? (
+                    {ms.status === "completed" || completedMilestones.has(String(ms.id ?? i)) ? (
                       <CheckCircle className="h-5 w-5" />
                     ) : (
                       <span className="text-sm font-bold">{i + 1}</span>
                     )}
-                  </div>
+                  </button>
                   <Card
                     className={cn(
                       "flex-1",
@@ -458,10 +471,10 @@ export default function MissionDetailPage() {
                         </div>
                         <StatusBadge
                           status={
-                            ms.status === "in-progress"
-                              ? "in-progress"
-                              : ms.status === "completed"
+                            ms.status === "completed" || completedMilestones.has(String(ms.id ?? i))
                               ? "completed"
+                              : ms.status === "in-progress"
+                              ? "in-progress"
                               : "not-started"
                           }
                         />

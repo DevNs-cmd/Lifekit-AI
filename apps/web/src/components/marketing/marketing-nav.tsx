@@ -28,12 +28,11 @@ export function MarketingNav() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  React.useEffect(() => { setMobileOpen(false); }, [pathname]);
-
   return (
     <header className={cn(
       "sticky top-0 z-50 w-full transition-all duration-200",
-      scrolled ? "bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-[hsl(var(--border))] shadow-sm" : "bg-transparent"
+      "border-b border-[hsl(var(--border))] bg-white/95 shadow-sm backdrop-blur-md dark:bg-[#111713]/95",
+      scrolled && "shadow-md"
     )}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
@@ -61,7 +60,7 @@ export function MarketingNav() {
 
           {/* CTA */}
           <div className="hidden md:flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="outline" size="sm" className="bg-white text-[#1f6f3c] dark:bg-white dark:text-[#1f6f3c]" asChild>
               <Link href={ROUTES.SIGN_IN}>Sign In</Link>
             </Button>
             <Button size="sm" asChild>
@@ -87,7 +86,7 @@ export function MarketingNav() {
           >
             <nav className="flex flex-col p-4 gap-1">
               {NAV_LINKS.map(({ label, href }) => (
-                <Link key={href} href={href} className="px-3 py-2.5 rounded-lg text-sm font-medium text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--secondary))] transition-colors">
+                <Link key={href} href={href} onClick={() => setMobileOpen(false)} className="px-3 py-2.5 rounded-lg text-sm font-medium text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--primary))] hover:bg-[hsl(var(--secondary))] transition-colors">
                   {label}
                 </Link>
               ))}

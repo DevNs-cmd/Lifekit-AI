@@ -115,7 +115,7 @@ export default function OnboardingPage() {
                     LifeKit turns your goals into structured Life Missions — complete with AI-powered roadmaps, matched resources, and real progress tracking.
                   </p>
                   <p className="mt-4 text-sm text-[hsl(var(--text-secondary))]">This setup takes about 2 minutes and personalises your entire experience.</p>
-                  <Button className="mt-8" size="lg" onClick={nextStep} rightIcon={<ChevronRight className="h-4 w-4" />}>Let's get started</Button>
+                  <Button className="mt-8" size="lg" onClick={nextStep} rightIcon={<ChevronRight className="h-4 w-4" />}>Let&apos;s get started</Button>
                 </div>
               )}
 
@@ -180,7 +180,7 @@ export default function OnboardingPage() {
               {/* Step 4: Primary goal */}
               {step === 4 && (
                 <div>
-                  <h2 className="text-2xl font-bold text-[hsl(var(--text-primary))] mb-2">What's your primary goal?</h2>
+                  <h2 className="text-2xl font-bold text-[hsl(var(--text-primary))] mb-2">What&apos;s your primary goal?</h2>
                   <p className="text-[hsl(var(--text-secondary))] mb-6">Be as specific as possible. Our AI will use this to build your first mission.</p>
                   <Textarea
                     value={state.primaryGoal}
