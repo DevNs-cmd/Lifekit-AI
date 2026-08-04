@@ -10,11 +10,11 @@ import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 
 const DOMAIN_CONFIG: Record<string, { color: string; hex: string; bg: string; icon: React.ComponentType<LucideProps>; tagline: string }> = {
-  career: { color: "dark:text-blue-300", hex: "#315a9b", bg: "bg-[#edf3ff] dark:bg-blue-900/30", icon: Briefcase, tagline: "Career growth · Job search · Interview prep" },
-  finance: { color: "dark:text-emerald-300", hex: "#267052", bg: "bg-[#eaf5ef] dark:bg-emerald-900/30", icon: TrendingUp, tagline: "Savings · Budgeting · Investments" },
-  health: { color: "dark:text-rose-300", hex: "#9a484d", bg: "bg-[#fff0f0] dark:bg-rose-900/30", icon: Heart, tagline: "Fitness · Nutrition · Wellness" },
-  travel: { color: "dark:text-cyan-300", hex: "#277083", bg: "bg-[#eaf7fa] dark:bg-cyan-900/30", icon: Globe, tagline: "Trips · Itineraries · Travel budgets" },
-  business: { color: "dark:text-orange-300", hex: "#925a2f", bg: "bg-[#fff3e9] dark:bg-orange-900/30", icon: Building2, tagline: "Startup strategy · Market research · Funding" },
+  career:   { color: "dark:text-blue-200",    hex: "#315a9b", bg: "bg-[#edf3ff] dark:bg-blue-900/30",    icon: Briefcase,  tagline: "Career growth · Job search · Interview prep" },
+  finance:  { color: "dark:text-emerald-200", hex: "#267052", bg: "bg-[#eaf5ef] dark:bg-emerald-900/30", icon: TrendingUp, tagline: "Savings · Budgeting · Investments" },
+  health:   { color: "dark:text-rose-200",    hex: "#9a484d", bg: "bg-[#fff0f0] dark:bg-rose-900/30",    icon: Heart,      tagline: "Fitness · Nutrition · Wellness" },
+  travel:   { color: "dark:text-cyan-200",    hex: "#277083", bg: "bg-[#eaf7fa] dark:bg-cyan-900/30",    icon: Globe,      tagline: "Trips · Itineraries · Travel budgets" },
+  business: { color: "dark:text-orange-200",  hex: "#925a2f", bg: "bg-[#fff3e9] dark:bg-orange-900/30", icon: Building2,  tagline: "Startup strategy · Market research · Funding" },
 };
 
 export default function AgentsPage() {
@@ -51,21 +51,21 @@ export default function AgentsPage() {
 
                 <h2 className="text-base font-bold text-[hsl(var(--text-primary))]">{agent.name}</h2>
                 <p className={`mb-2 mt-0.5 text-xs font-semibold ${config.color}`} style={{ color: config.hex }}>{config.tagline}</p>
-                <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-[hsl(var(--text-secondary))]">{agent.description}</p>
+                <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-[hsl(var(--text-secondary))] dark:text-gray-300">{agent.description}</p>
 
                 <div className="flex-1">
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[hsl(var(--text-secondary))]">What I can do</p>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[hsl(var(--text-secondary))] dark:text-gray-400">What I can do</p>
                   <ul className="space-y-1.5">
                     {agent.capabilities.slice(0, 3).map(capability => (
-                      <li key={capability} className="flex items-start gap-2 text-xs text-[hsl(var(--text-secondary))]"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--primary))]/50" />{capability}</li>
+                      <li key={capability} className="flex items-start gap-2 text-xs text-[hsl(var(--text-secondary))] dark:text-gray-300"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--primary))]/50" />{capability}</li>
                     ))}
-                    {agent.capabilities.length > 3 && <li className="pl-3.5 text-xs text-[hsl(var(--text-secondary))]">+{agent.capabilities.length - 3} more capabilities</li>}
+                    {agent.capabilities.length > 3 && <li className="pl-3.5 text-xs text-[hsl(var(--text-secondary))] dark:text-gray-400">+{agent.capabilities.length - 3} more capabilities</li>}
                   </ul>
                 </div>
 
                 {relatedMissions.length > 0 && (
                   <div className="mt-4">
-                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[hsl(var(--text-secondary))]">Active mission</p>
+                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[hsl(var(--text-secondary))] dark:text-gray-400">Active mission</p>
                     {relatedMissions.slice(0, 1).map(mission => <div key={mission.id} className={`truncate rounded-lg px-2.5 py-1.5 text-xs font-semibold ${config.bg} ${config.color}`} style={{ color: config.hex }}>{mission.title}</div>)}
                   </div>
                 )}

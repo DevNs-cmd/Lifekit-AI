@@ -64,7 +64,7 @@ export default function SignUpPage() {
     formState: { errors, isSubmitting },
   } = useForm<SignUpFormData>({ resolver: zodResolver(signUpSchema) });
 
-  async function onSubmit() {
+  async function onSubmit(_data: SignUpFormData) {
     await new Promise(r => setTimeout(r, 900));
     login({ ...MOCK_USER, onboardingCompleted: false });
     toast.success("Account created! Let's set up your profile.");

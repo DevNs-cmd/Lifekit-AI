@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { Task } from "@/types/task";
 
-type ViewMode = "list" | "kanban";
+type ViewMode = "list" | "Board";
 
 const PRIORITY_CONFIG: Record<string, { label: string; pill: string; border: string; icon: typeof Flame }> = {
   low:    { label: "Low",    pill: "priority-low",    border: "border-l-gray-300",  icon: ListTodo },
@@ -39,6 +39,90 @@ const PRIORITY_CONFIG: Record<string, { label: string; pill: string; border: str
   high:   { label: "High",   pill: "priority-high",   border: "border-l-amber-400", icon: Flame },
   urgent: { label: "Urgent", pill: "priority-urgent", border: "border-l-red-500",   icon: Flame },
 };
+
+type TaskRowProps = {
+  task: Task;
+  showMission?: boolean;
+  completed: Set<string>;
+  onToggle: (id: string) => void;
+  onEdit: (task: Task) => void;
+  onDelete: (task: Task) => void;
+};
+
+function TaskRow({ task, showMission = true, completed, onToggle, onEdit, onDelete }: TaskRowProps) {
+  const done  = completed.has(task.id);
+  const pcfg  = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.medium;
+  const PIcon = pcfg.icon;
+
+  return (
+    <div className={cn(
+      "relative flex items-start gap-3 px-4 py-4 border-l-[3px] transition-all duration-200 group animate-slide-up-fade",
+      "hover:bg-[hsl(var(--background-subtle))]",
+      done ? "border-l-[hsl(var(--border))] opacity-60" : pcfg.border,
+    )}>
+      <Checkbox
+        checked={done}
+        onCheckedChange={() => onToggle(task.id)}
+        className="mt-0.5 shrink-0"
+        aria-label={`Mark "${task.title}" ${done ? "incomplete" : "complete"}`}
+      />
+      <div className="flex-1 min-w-0">
+        <p className={cn("text-sm font-semibold text-[hsl(var(--text-primary))] leading-snug", done && "line-through")}>
+          {task.title}
+        </p>
+        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+          {showMission && task.missionTitle && (
+            <span className="text-xs text-[hsl(var(--text-secondary))] bg-[hsl(var(--muted))] px-2 py-0.5 rounded-full truncate max-w-[160px]">
+              {task.missionTitle}
+            </span>
+          )}
+          {task.dueDate && (
+            <span className="text-xs text-[hsl(var(--text-secondary))] flex items-center gap-1">
+              <Calendar className="h-3 w-3" />{formatDeadline(task.dueDate)}
+              {task.dueTime && <span>· {task.dueTime}</span>}
+            </span>
+          )}
+          {task.estimatedDurationMinutes && (
+            <span className="text-xs text-[hsl(var(--text-secondary))] items-center gap-1 hidden sm:flex">
+              <Clock className="h-3 w-3" />{formatDuration(task.estimatedDurationMinutes)}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0 pt-0.5">
+        <span className={cn("hidden sm:flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full", pcfg.pill)}>
+          <PIcon className="h-2.5 w-2.5" />{pcfg.label}
+        </span>
+        <StatusBadge status={done ? "completed" : task.status} />
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="icon-sm" onClick={() => onEdit(task)} aria-label="Edit task">
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="More actions">
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(task)}>
+                <Pencil className="h-4 w-4 mr-2" />Edit task
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onToggle(task.id)}>
+                <CheckSquare className="h-4 w-4 mr-2" />
+                {done ? "Mark incomplete" : "Mark complete"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem destructive onClick={() => onDelete(task)}>
+                <Trash2 className="h-4 w-4 mr-2" />Delete task
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type TaskDialogProps = { mode: "create" | "edit"; form: UseFormReturn<CreateTaskFormData>; open: boolean; editTarget?: Task | null; preselectedMissionId: string; onOpenChange: (open: boolean) => void; onSubmit: (data: CreateTaskFormData) => Promise<void> };
 
@@ -87,12 +171,14 @@ export default function TasksPage() {
   });
 
   function toggle(id: string) {
+    const isCompleted = completed.has(id);
     setCompleted(prev => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); toast("Task uncompleted"); }
-      else { next.add(id); toast.success("Task complete! ✓"); }
+      if (isCompleted) { next.delete(id); } else { next.add(id); }
       return next;
     });
+    if (isCompleted) { toast("Task uncompleted"); }
+    else { toast.success("Task complete! ✓"); }
   }
 
   function openEdit(task: Task) {
@@ -117,13 +203,10 @@ export default function TasksPage() {
           : t
       )
     );
-    // keep completed set in sync
     if (newStatus === "completed") {
       setCompleted(prev => new Set([...prev, taskId]));
-      toast.success("Task moved to Completed ✓");
     } else {
       setCompleted(prev => { const n = new Set(prev); n.delete(taskId); return n; });
-      toast(`Task moved to ${newStatus.replace("-", " ")}`);
     }
   }
 
@@ -190,154 +273,11 @@ export default function TasksPage() {
   const todayList      = filteredTasks.filter(t => !completed.has(t.id));
   const urgentCount    = filteredTasks.filter(t => (t.priority === "urgent" || t.priority === "high") && !completed.has(t.id)).length;
 
-  /* ── Task Row (list view) ───────────────────────────────── */
-  function TaskRow({ task, showMission = true }: { task: Task; showMission?: boolean }) {
-    const done  = completed.has(task.id);
-    const pcfg  = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.medium;
-    const PIcon = pcfg.icon;
 
-    return (
-      <div className={cn(
-        "relative flex items-start gap-3 px-4 py-4 border-l-[3px] transition-all duration-200 group animate-slide-up-fade",
-        "hover:bg-[hsl(var(--background-subtle))] hover:-translate-y-0.5 hover:shadow-md active:scale-95 motion-reduce:transform-none",
-        done ? "border-l-[hsl(var(--border))] opacity-60" : pcfg.border,
-      )}>
-        <Checkbox
-          checked={done}
-          onCheckedChange={() => toggle(task.id)}
-          className="mt-0.5 shrink-0"
-          aria-label={`Mark "${task.title}" ${done ? "incomplete" : "complete"}`}
-        />
-        <div className="flex-1 min-w-0">
-          <p className={cn("text-sm font-semibold text-[hsl(var(--text-primary))] leading-snug", done && "line-through")}>
-            {task.title}
-          </p>
-          <div className="flex flex-wrap items-center gap-2 mt-1.5">
-            {showMission && task.missionTitle && (
-              <span className="text-xs text-[hsl(var(--text-secondary))] bg-[hsl(var(--muted))] px-2 py-0.5 rounded-full truncate max-w-[160px]">
-                {task.missionTitle}
-              </span>
-            )}
-            {task.dueDate && (
-              <span className="text-xs text-[hsl(var(--text-secondary))] flex items-center gap-1">
-                <Calendar className="h-3 w-3" />{formatDeadline(task.dueDate)}
-                {task.dueTime && <span>· {task.dueTime}</span>}
-              </span>
-            )}
-            {task.estimatedDurationMinutes && (
-              <span className="text-xs text-[hsl(var(--text-secondary))] items-center gap-1 hidden sm:flex">
-                <Clock className="h-3 w-3" />{formatDuration(task.estimatedDurationMinutes)}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 pt-0.5">
-          <span className={cn("hidden sm:flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full", pcfg.pill)}>
-            <PIcon className="h-2.5 w-2.5" />{pcfg.label}
-          </span>
-          <StatusBadge status={done ? "completed" : task.status} />
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button variant="ghost" size="icon-sm" onClick={() => openEdit(task)} aria-label="Edit task">
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="More actions">
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openEdit(task)}>
-                  <Pencil className="h-4 w-4 mr-2" />Edit task
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toggle(task.id)}>
-                  <CheckSquare className="h-4 w-4 mr-2" />
-                  {done ? "Mark incomplete" : "Mark complete"}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem destructive onClick={() => setDeleteTarget(task)}>
-                  <Trash2 className="h-4 w-4 mr-2" />Delete task
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  /* ── Task Dialog ───────────────────────────────────────── */
-  function DeprecatedTaskDialog({ mode }: { mode: "create" | "edit" }) {
-    const isEdit   = mode === "edit";
-    const form     = isEdit ? editForm : createForm;
-    const onSubmit = isEdit ? onEditTask : onCreateTask;
-    const isOpen   = isEdit ? !!editTarget : createOpen;
-    const setOpen  = isEdit
-      ? (v: boolean) => { if (!v) setEditTarget(null); }
-      : (v: boolean) => { setCreateOpen(v); if (!v) createForm.reset({ missionId: preselectedMissionId, priority: "medium" }); };
 
-    return (
-      <Dialog open={isOpen} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{isEdit ? "Edit task" : "Add a task"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <FormField label="Task title" htmlFor={`${mode}-title`} required error={form.formState.errors.title?.message}>
-              <Input id={`${mode}-title`} placeholder="e.g. Complete React advanced patterns module"
-                autoFocus {...form.register("title")} error={!!form.formState.errors.title} />
-            </FormField>
-            <FormField label="Mission" htmlFor={`${mode}-mission`} required error={form.formState.errors.missionId?.message}>
-              <Select
-                defaultValue={isEdit ? editTarget?.missionId : (preselectedMissionId || undefined)}
-                onValueChange={v => form.setValue("missionId", v)}
-              >
-                <SelectTrigger id={`${mode}-mission`} error={!!form.formState.errors.missionId}>
-                  <SelectValue placeholder="Select a mission" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MOCK_MISSIONS.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Priority" htmlFor={`${mode}-priority`}>
-                <Select
-                  defaultValue={isEdit ? (editTarget?.priority ?? "medium") : "medium"}
-                  onValueChange={v => form.setValue("priority", v as CreateTaskFormData["priority"])}
-                >
-                  <SelectTrigger id={`${mode}-priority`}><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="Due date" htmlFor={`${mode}-due`}>
-                <Input id={`${mode}-due`} type="date" {...form.register("dueDate")} />
-              </FormField>
-            </div>
-            <FormField label="Est. duration (minutes)" htmlFor={`${mode}-duration`}>
-              <Input id={`${mode}-duration`} type="number" min={1} placeholder="e.g. 60"
-                {...form.register("estimatedDurationMinutes")} />
-            </FormField>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" loading={form.formState.isSubmitting}>
-                {isEdit ? "Save changes" : "Create task"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  /* ── Page ──────────────────────────────────────────────── */
   return (
-    <div className={cn("p-4 sm:p-6 lg:p-8 space-y-6 mx-auto", view === "kanban" ? "max-w-full" : "max-w-6xl")}>
+    <div className={cn("p-4 sm:p-6 lg:p-8 space-y-6 mx-auto", view === "Board" ? "max-w-full" : "max-w-6xl")}>
 
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -377,16 +317,16 @@ export default function TasksPage() {
               <LayoutList className="h-3.5 w-3.5" /> List
             </button>
             <button
-              onClick={() => setView("kanban")}
+              onClick={() => setView("Board")}
               aria-label="Kanban view"
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all",
-                view === "kanban"
+                view === "Board"
                   ? "bg-[hsl(var(--card))] text-[hsl(var(--primary))] shadow-sm"
                   : "text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))]"
               )}
             >
-              <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+              <LayoutGrid className="h-3.5 w-3.5" /> Board
             </button>
           </div>
 
@@ -415,7 +355,7 @@ export default function TasksPage() {
       </div>
 
       {/* ── Kanban view ── */}
-      {view === "kanban" && (
+      {view === "Board" && (
         <KanbanBoard
           tasks={filteredTasks}
           onStatusChange={handleKanbanStatusChange}
@@ -456,7 +396,7 @@ export default function TasksPage() {
             ) : (
               <Card>
                 <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
-                  {todayList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} />)}
+                  {todayList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} completed={completed} onToggle={toggle} onEdit={openEdit} onDelete={t => setDeleteTarget(t)} />)}
                 </CardContent>
               </Card>
             )}
@@ -472,7 +412,7 @@ export default function TasksPage() {
             ) : (
               <Card>
                 <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
-                  {inProgressList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} />)}
+                  {inProgressList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} completed={completed} onToggle={toggle} onEdit={openEdit} onDelete={t => setDeleteTarget(t)} />)}
                 </CardContent>
               </Card>
             )}
@@ -486,7 +426,7 @@ export default function TasksPage() {
             ) : (
               <Card>
                 <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
-                  {filteredTasks.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} />)}
+                  {filteredTasks.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} completed={completed} onToggle={toggle} onEdit={openEdit} onDelete={t => setDeleteTarget(t)} />)}
                 </CardContent>
               </Card>
             )}
@@ -500,7 +440,7 @@ export default function TasksPage() {
             ) : (
               <Card>
                 <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
-                  {completedList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} />)}
+                  {completedList.map(task => <TaskRow key={task.id} task={task} showMission={!missionContext} completed={completed} onToggle={toggle} onEdit={openEdit} onDelete={t => setDeleteTarget(t)} />)}
                 </CardContent>
               </Card>
             )}

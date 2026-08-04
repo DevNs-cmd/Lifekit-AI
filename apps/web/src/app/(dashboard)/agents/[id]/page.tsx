@@ -18,6 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/shared/empty-state";
+import { RecentChatsSidebar, type ChatSession } from "@/components/shared/recent-chats-sidebar";
 import { MOCK_AGENTS } from "@/lib/api/ai";
 import { sendCoachMessage } from "@/lib/api/ai";
 import { MOCK_MISSIONS } from "@/constants/mock-data";
@@ -49,6 +50,31 @@ export default function AgentDetailPage() {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Recent chats state
+  const [recentChats, setRecentChats] = useState<ChatSession[]>([
+    { id: "rc1", title: "Interview prep",    preview: "Help me prepare for my interview",   timestamp: "Today",      agentName: agent?.name },
+    { id: "rc2", title: "Resume review",     preview: "Review my resume for senior roles",  timestamp: "Yesterday",  agentName: agent?.name },
+    { id: "rc3", title: "Career roadmap",    preview: "Plan my next 12 months",             timestamp: "3 days ago", agentName: agent?.name },
+  ]);
+  const [activeChatId, setActiveChatId] = useState<string | undefined>("rc1");
+
+  function handleSelectChat(id: string) {
+    setActiveChatId(id);
+    setMessages([]);
+  }
+
+  function handleNewChat() {
+    const id = `rc-${Date.now()}`;
+    setRecentChats(prev => [{ id, title: "New chat", preview: "…", timestamp: "Just now", agentName: agent?.name }, ...prev]);
+    setActiveChatId(id);
+    setMessages([]);
+  }
+
+  function handleDeleteChat(id: string) {
+    setRecentChats(prev => prev.filter(c => c.id !== id));
+    if (activeChatId === id) setActiveChatId(recentChats.filter(c => c.id !== id)[0]?.id);
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -107,6 +133,15 @@ export default function AgentDetailPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+
+      {/* ══ RECENT CHATS SIDEBAR ══════════════════════════════ */}
+      <RecentChatsSidebar
+        chats={recentChats}
+        activeId={activeChatId}
+        onSelect={handleSelectChat}
+        onNew={handleNewChat}
+        onDelete={handleDeleteChat}
+      />
 
       {/* ══ LEFT PANEL ══════════════════════════════════════════ */}
       <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-y-auto">
@@ -316,7 +351,7 @@ export default function AgentDetailPage() {
         </ScrollArea>
 
         {/* Input */}
-        <div className="border-t border-[hsl(var(--border))] p-4 bg-[hsl(var(--card))]">
+        <div className="p-4">
           <div className="flex gap-2 max-w-3xl mx-auto">
             <Textarea
               value={input}
@@ -341,9 +376,6 @@ export default function AgentDetailPage() {
               <Send className="h-4 w-4" />
             </Button>
           </div>
-          <p className="text-[10px] text-[hsl(var(--text-secondary))] mt-1.5 text-center">
-            Enter to send · Shift+Enter for new line · {agent.name} uses your mission context & memory
-          </p>
         </div>
       </div>
     </div>

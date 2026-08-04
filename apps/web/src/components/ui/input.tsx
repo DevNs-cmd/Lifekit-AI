@@ -36,7 +36,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {rightIcon && (
-          <span className="absolute right-3 flex items-center pointer-events-none text-[hsl(var(--text-secondary))]">
+          <span className="absolute right-3 flex items-center text-[hsl(var(--text-secondary))]">
             {rightIcon}
           </span>
         )}

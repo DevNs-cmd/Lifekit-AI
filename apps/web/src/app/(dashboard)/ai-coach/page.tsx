@@ -1,17 +1,50 @@
 "use client";
 
+import * as React from "react";
 import { Bot, Brain, Target, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AICoachPanel } from "@/components/ai/ai-coach-panel";
+import { RecentChatsSidebar, type ChatSession } from "@/components/shared/recent-chats-sidebar";
+import { useAICoachStore } from "@/stores/ai-coach-store";
 import { ROUTES } from "@/constants/routes";
 import { useRouter } from "next/navigation";
 
+const INITIAL_CHATS: ChatSession[] = [
+  { id: "c1", title: "Career planning",        preview: "Help me plan my next 6 months",     timestamp: "Today" },
+  { id: "c2", title: "Mission review",         preview: "What should I focus on this week?", timestamp: "Yesterday" },
+  { id: "c3", title: "Resource finder",        preview: "Find React learning resources",      timestamp: "2 days ago" },
+];
+
 export default function AICoachPage() {
   const router = useRouter();
+  const { clearMessages } = useAICoachStore();
+  const [chats, setChats] = React.useState<ChatSession[]>(INITIAL_CHATS);
+  const [activeChatId, setActiveChatId] = React.useState<string | undefined>("c1");
+
+  function handleSelectChat(id: string) {
+    setActiveChatId(id);
+    clearMessages();
+  }
+
+  function handleNewChat() {
+    const id = `c-${Date.now()}`;
+    const newChat: ChatSession = { id, title: "New chat", preview: "…", timestamp: "Just now" };
+    setChats(prev => [newChat, ...prev]);
+    setActiveChatId(id);
+    clearMessages();
+  }
+
+  function handleDeleteChat(id: string) {
+    setChats(prev => prev.filter(c => c.id !== id));
+    if (activeChatId === id) {
+      const remaining = chats.filter(c => c.id !== id);
+      setActiveChatId(remaining[0]?.id);
+    }
+  }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-5 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-5 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-black tracking-[-0.035em] text-[hsl(var(--text-primary))] flex items-center gap-2">
           <Bot className="h-7 w-7 text-[hsl(var(--primary))]" /> AI Coach
@@ -22,14 +55,22 @@ export default function AICoachPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4 items-start">
-        {/* Chat panel */}
-        <div className="h-[500px] rounded-2xl border border-[hsl(var(--border))]/80 overflow-hidden shadow-[var(--shadow-md)] bg-[hsl(var(--card))]">
-          <AICoachPanel />
+        {/* Chat panel with recent chats sidebar */}
+        <div className="flex h-[520px] rounded-2xl border border-[hsl(var(--border))]/80 overflow-hidden shadow-[var(--shadow-md)] bg-[hsl(var(--card))]">
+          <RecentChatsSidebar
+            chats={chats}
+            activeId={activeChatId}
+            onSelect={handleSelectChat}
+            onNew={handleNewChat}
+            onDelete={handleDeleteChat}
+          />
+          <div className="flex-1 min-w-0">
+            <AICoachPanel />
+          </div>
         </div>
 
-        {/* Sidebar */}
+        {/* Right sidebar */}
         <div className="space-y-4">
-          {/* AI Planner link */}
           <Card className="border-[hsl(var(--primary))]/30 bg-[hsl(var(--background-subtle))]">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -43,7 +84,6 @@ export default function AICoachPage() {
             </CardContent>
           </Card>
 
-          {/* Context indicators */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
