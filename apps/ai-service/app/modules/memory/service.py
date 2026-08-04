@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Life Memory — long-term semantic memory per user, backed by Qdrant.
 Read once at the start of orchestration (relevant context), written once
 at the end (what happened + what was decided)."""
@@ -9,11 +10,13 @@ from qdrant_client.http.models import PointStruct, Filter, FieldCondition, Match
 from app.config import settings
 from app.core.vector_store import get_qdrant, MEMORY_COLLECTION
 
-_openai = AsyncOpenAI(api_key=settings.openai_api_key)
+def get_openai_client() -> AsyncOpenAI:
+    return AsyncOpenAI(api_key=settings.openai_api_key or "placeholder-key")
 
 
 async def _embed(text: str) -> list[float]:
-    resp = await _openai.embeddings.create(model="text-embedding-3-small", input=text)
+    client = get_openai_client()
+    resp = await client.embeddings.create(model="text-embedding-3-small", input=text)
     return resp.data[0].embedding
 
 

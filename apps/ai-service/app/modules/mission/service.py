@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Life Mission Engine — checks how the current goal fits the user's broader
 life mission (stored in context/memory) and flags misalignment early."""
 
