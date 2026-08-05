@@ -3,15 +3,15 @@ import { ApiProperty } from "@nestjs/swagger";
 export class UserPreference {
   @ApiProperty({
     description: "Unique identifier for the user preference",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  id!: string;
+  preference_id!: number;
 
   @ApiProperty({
     description: "Associated User ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  userId!: string;
+  user_id!: number;
 
   @ApiProperty({
     description: "UI Theme preference",
@@ -20,24 +20,23 @@ export class UserPreference {
   })
   theme?: string | null;
 
+  @ApiProperty({
+    description: "Language preference",
+    example: "en",
+    required: false,
+  })
+  language?: string | null;
+
   @ApiProperty({ description: "Flag to enable notifications", example: true })
-  notificationsEnabled!: boolean;
+  notification_enabled!: boolean;
 
-  @ApiProperty({ description: "List of user goals", example: ["Learn NestJS"] })
-  goals!: string[];
+  @ApiProperty({ description: "Time of daily reminders", required: false })
+  reminder_time?: Date | null;
 
-  @ApiProperty({ description: "List of user interests", example: ["AI"] })
-  interests!: string[];
+  @ApiProperty({ description: "Timezone", example: "UTC", required: false })
+  timezone?: string | null;
 
-  @ApiProperty({
-    description: "Creation date",
-    example: "2026-07-28T12:00:00Z",
-  })
-  createdAt!: Date;
-
-  @ApiProperty({
-    description: "Last update date",
-    example: "2026-07-28T12:00:00Z",
-  })
-  updatedAt!: Date;
+  // Virtual arrays to keep interface compatibility
+  goals?: string[];
+  interests?: string[];
 }

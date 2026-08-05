@@ -5,22 +5,15 @@ import { PriorityLevel } from "../../common/enums";
 export class Plan {
   @ApiProperty({
     description: "Unique identifier for the plan",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  id!: string;
+  goal_id!: number;
 
   @ApiProperty({
     description: "Associated User ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  userId!: string;
-
-  @ApiProperty({
-    description: "Associated Life Mission ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
-    required: false,
-  })
-  missionId?: string | null;
+  user_id!: number;
 
   @ApiProperty({
     description: "Title of the plan",
@@ -64,11 +57,16 @@ export class Plan {
     description: "Creation date",
     example: "2026-07-28T12:00:00Z",
   })
-  createdAt!: Date;
+  created_at!: Date;
 
-  @ApiProperty({
-    description: "Last update date",
-    example: "2026-07-28T12:00:00Z",
-  })
-  updatedAt!: Date;
+  // Compatibility fields
+  missionId?: number | null;
+
+  get id(): number {
+    return this.goal_id;
+  }
+
+  get userId(): number {
+    return this.user_id;
+  }
 }

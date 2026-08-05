@@ -1,4 +1,4 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { HealthService } from "./health.service";
 
@@ -21,7 +21,11 @@ export class HealthController {
     description: "One or more database or cache connections are unhealthy",
   })
   async check() {
-    return await this.healthService.checkHealth();
+    const health = await this.healthService.checkHealth();
+    if (health.status !== "healthy") {
+      throw new ServiceUnavailableException(health);
+    }
+    return health;
   }
 
   @Get("ready")
@@ -34,7 +38,11 @@ export class HealthController {
     description: "API is ready to process requests",
   })
   async ready() {
-    return await this.healthService.checkHealth();
+    const health = await this.healthService.checkHealth();
+    if (health.status !== "healthy") {
+      throw new ServiceUnavailableException(health);
+    }
+    return health;
   }
 
   @Get("live")

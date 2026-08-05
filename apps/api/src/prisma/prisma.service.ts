@@ -14,6 +14,7 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(PrismaService.name);
+  private readonly pool: Pool;
 
   constructor() {
     const connectionString = process.env.DATABASE_URL;
@@ -35,6 +36,8 @@ export class PrismaService
         { emit: "stdout", level: "error" },
       ],
     });
+
+    this.pool = pool;
   }
 
   async onModuleInit() {
@@ -55,6 +58,7 @@ export class PrismaService
     this.logger.log("Disconnecting from PostgreSQL database...");
     try {
       await this.$disconnect();
+      await this.pool.end();
       this.logger.log("Successfully disconnected from PostgreSQL database.");
     } catch (error: any) {
       this.logger.error(

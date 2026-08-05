@@ -16,7 +16,7 @@ export class RecommendationRepository implements IRecommendationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async createRecommendation(
-    userId: string,
+    userId: number,
     data: {
       category: string;
       title: string;
@@ -26,28 +26,35 @@ export class RecommendationRepository implements IRecommendationRepository {
     },
   ): Promise<Recommendation> {
     try {
-      return (await this.prisma.recommendation.create({
+      const serializedDescription = JSON.stringify({
+        text: data.description,
+        metadata: data.metadata ?? {},
+      });
+
+      const opportunity = await this.prisma.opportunities.create({
         data: {
-          userId,
+          user_id: userId,
           category: data.category,
           title: data.title,
-          description: data.description,
-          relevanceScore: data.relevanceScore ?? null,
-          metadata: data.metadata ?? undefined,
+          description: serializedDescription,
+          match_score: data.relevanceScore ?? null,
+          status: RecommendationStatus.PENDING,
         },
-      })) as unknown as Recommendation;
+      });
+
+      return mapPrismaOpportunityToRecommendation(opportunity);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
   async findUserRecommendations(
-    userId: string,
+    userId: number,
     filters?: { category?: string; status?: RecommendationStatus },
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Recommendation>> {
     try {
-      const where: any = { userId };
+      const where: any = { user_id: userId };
 
       if (filters?.category) {
         where.category = filters.category;
@@ -57,21 +64,21 @@ export class RecommendationRepository implements IRecommendationRepository {
       }
 
       const page = pagination?.page ?? 1;
-      const limit = pagination?.limit ?? 10;
+      const limit = Math.min(pagination?.limit ?? 10, 100);
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.prisma.$transaction([
-        this.prisma.recommendation.findMany({
+        this.prisma.opportunities.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: "desc" },
+          orderBy: { created_at: "desc" },
         }),
-        this.prisma.recommendation.count({ where }),
+        this.prisma.opportunities.count({ where }),
       ]);
 
       return {
-        data: data as unknown as Recommendation[],
+        data: data.map((o) => mapPrismaOpportunityToRecommendation(o)),
         total,
         page,
         limit,
@@ -83,26 +90,73 @@ export class RecommendationRepository implements IRecommendationRepository {
   }
 
   async updateRecommendationStatus(
-    id: string,
+    id: number,
     status: RecommendationStatus,
   ): Promise<Recommendation> {
     try {
-      return (await this.prisma.recommendation.update({
-        where: { id },
+      const opportunity = await this.prisma.opportunities.update({
+        where: { opportunity_id: id },
         data: { status },
-      })) as unknown as Recommendation;
+      });
+      return mapPrismaOpportunityToRecommendation(opportunity);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async deleteRecommendation(id: string): Promise<Recommendation> {
+  async findRecommendationById(id: number): Promise<Recommendation | null> {
     try {
-      return (await this.prisma.recommendation.delete({
-        where: { id },
-      })) as unknown as Recommendation;
+      const opportunity = await this.prisma.opportunities.findUnique({
+        where: { opportunity_id: id },
+      });
+      if (!opportunity) return null;
+      return mapPrismaOpportunityToRecommendation(opportunity);
     } catch (error) {
       handlePrismaError(error);
     }
   }
+
+  async deleteRecommendation(id: number): Promise<Recommendation> {
+    try {
+      const opportunity = await this.prisma.opportunities.findUnique({
+        where: { opportunity_id: id },
+      });
+      if (opportunity) {
+        await this.prisma.opportunities.delete({
+          where: { opportunity_id: id },
+        });
+      }
+      return mapPrismaOpportunityToRecommendation(opportunity!)!;
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
+}
+
+function mapPrismaOpportunityToRecommendation(o: any): Recommendation {
+  if (!o) return null as any;
+
+  let text = o.description;
+  let metadata = {};
+
+  try {
+    const parsed = JSON.parse(o.description || "{}");
+    text = parsed.text ?? o.description;
+    metadata = parsed.metadata ?? {};
+  } catch {
+    // legacy text
+  }
+
+  return {
+    opportunity_id: o.opportunity_id,
+    user_id: o.user_id,
+    category: o.category,
+    title: o.title,
+    description: text,
+    relevanceScore: o.match_score ? parseFloat(o.match_score.toString()) : null,
+    status: o.status as RecommendationStatus,
+    created_at: o.created_at,
+    updated_at: o.updated_at,
+    metadata,
+  } as unknown as Recommendation;
 }

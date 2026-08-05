@@ -56,7 +56,12 @@ export function formatPrismaException(
   switch (error.code) {
     case "P2002": {
       statusCode = HttpStatus.CONFLICT;
-      const targets = (error.meta?.target as string[]) || [];
+      const targetMeta = error.meta?.target;
+      const targets = Array.isArray(targetMeta)
+        ? targetMeta
+        : typeof targetMeta === "string"
+          ? [targetMeta]
+          : [];
       message = `Unique constraint violation on field(s): ${targets.join(", ")}`;
       errorName = "Conflict";
       errorCode = "UNIQUE_CONSTRAINT_VIOLATION";

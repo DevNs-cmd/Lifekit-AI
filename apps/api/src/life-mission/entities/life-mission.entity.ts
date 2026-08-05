@@ -1,17 +1,18 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { PriorityLevel, MissionStatus } from "../../common/enums";
 
 export class LifeMission {
   @ApiProperty({
     description: "Unique identifier for the life mission",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  id!: string;
+  mission_id!: number;
 
   @ApiProperty({
     description: "Associated User ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  userId!: string;
+  user_id!: number;
 
   @ApiProperty({
     description: "Title of the life mission",
@@ -23,54 +24,94 @@ export class LifeMission {
     description: "Detailed description of the life mission",
     example:
       "Build savings and passive income streams to retire early by age 40.",
+    required: false,
   })
-  description!: string;
+  description?: string | null;
 
   @ApiProperty({
-    description: "Specific goals this mission addresses",
-    example: ["Save 1M USD"],
+    description: "Category of the life mission",
+    example: "Financial",
+    required: false,
   })
-  goals!: string[];
+  category?: string | null;
 
   @ApiProperty({
-    description: "Underlying core values associated with this mission",
-    example: ["Freedom"],
+    description: "Priority level of the mission",
+    enum: PriorityLevel,
+    example: PriorityLevel.MEDIUM,
+    required: false,
   })
-  values!: string[];
+  priority?: PriorityLevel | null;
 
   @ApiProperty({
-    description: "Long term goals and milestones",
-    example: ["Max out 401k annually"],
+    description: "Status of the mission",
+    enum: MissionStatus,
+    example: MissionStatus.ACTIVE,
+    required: false,
   })
-  longTermObjectives!: string[];
+  status?: MissionStatus | null;
 
   @ApiProperty({
-    description: "Constraints or limitations",
-    example: ["Capital limit"],
+    description: "Completion progress percentage",
+    example: 45,
+    required: false,
   })
-  constraints!: string[];
+  progress?: number | null;
 
   @ApiProperty({
-    description: "Start date of the mission lifecycle",
+    description: "Flag indicating if the mission is archived",
+    example: false,
+  })
+  isArchived!: boolean;
+
+  @ApiProperty({
+    description: "Timestamp when the mission was archived",
+    required: false,
+  })
+  archivedAt?: Date | null;
+
+  @ApiProperty({
+    description: "Start date of the mission",
     example: "2026-08-01T00:00:00.000Z",
+    required: false,
   })
-  startDate!: Date;
+  start_date?: Date | null;
 
   @ApiProperty({
     description: "Target date to accomplish the mission",
     example: "2035-12-31T00:00:00.000Z",
+    required: false,
   })
-  targetDate!: Date;
+  target_date?: Date | null;
 
   @ApiProperty({
     description: "Creation date",
     example: "2026-07-28T12:00:00Z",
+    required: false,
   })
-  createdAt!: Date;
+  created_at?: Date | null;
 
   @ApiProperty({
     description: "Last update date",
     example: "2026-07-28T12:00:00Z",
+    required: false,
   })
-  updatedAt!: Date;
+  updated_at?: Date | null;
+
+  // Compatibility getter aliases
+  get id(): number {
+    return this.mission_id;
+  }
+
+  get userId(): number {
+    return this.user_id;
+  }
+
+  get startDate(): Date | null {
+    return this.start_date ?? null;
+  }
+
+  get targetDate(): Date | null {
+    return this.target_date ?? null;
+  }
 }

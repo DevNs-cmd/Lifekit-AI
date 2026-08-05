@@ -6,7 +6,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
+  IsInt,
+  Min,
 } from "class-validator";
 import { PriorityLevel } from "../../common/enums";
 
@@ -21,11 +22,12 @@ export enum PlanningHorizon {
 export class CreatePlanDto {
   @ApiPropertyOptional({
     description: "The associated Life Mission ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  @IsUUID("4", { message: "missionId must be a valid UUID" })
+  @IsInt({ message: "missionId must be a valid integer" })
+  @Min(1)
   @IsOptional()
-  missionId?: string;
+  missionId?: number;
 
   @ApiProperty({
     description: "The title of the plan",

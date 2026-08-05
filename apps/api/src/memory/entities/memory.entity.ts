@@ -1,18 +1,16 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { MemoryType } from "../dto/create-memory.dto";
-
 export class Memory {
   @ApiProperty({
     description: "Unique identifier for the memory entry",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  id!: string;
+  memory_id!: number;
 
   @ApiProperty({
     description: "Associated User ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  userId!: string;
+  user_id!: number;
 
   @ApiProperty({
     description: "The main textual content of the memory entry",
@@ -23,35 +21,56 @@ export class Memory {
 
   @ApiProperty({
     description: "The classification category of this memory",
-    enum: MemoryType,
-    example: MemoryType.JOURNAL,
+    example: "JOURNAL",
   })
-  type!: MemoryType;
+  memory_type!: string;
 
   @ApiProperty({
-    description:
-      "Additional structured metadata fields associated with this memory",
+    description: "Optional title or brief summary of the memory",
     required: false,
+    example: "Career reflection",
   })
-  metadata?: Record<string, any> | null;
+  title?: string | null;
 
   @ApiProperty({
-    description:
-      "Optional background context information or tags describing the entry environment",
+    description: "Importance rating score (0.0 to 1.0)",
     required: false,
-    example: "Written after reading a paper on transformer models.",
+    example: 0.85,
   })
-  contextInfo?: string | null;
+  importance_score?: number | null;
+
+  @ApiProperty({
+    description: "Associated AI embedding ID",
+    required: false,
+    example: "embedding-xyz",
+  })
+  embedding_id?: string | null;
 
   @ApiProperty({
     description: "Creation date",
     example: "2026-07-28T12:00:00Z",
   })
-  createdAt!: Date;
+  created_at!: Date;
 
   @ApiProperty({
     description: "Last update date",
     example: "2026-07-28T12:00:00Z",
   })
-  updatedAt!: Date;
+  updated_at!: Date;
+
+  // Compatibility virtual fields
+  metadata?: Record<string, any> | null;
+  contextInfo?: string | null;
+
+  get id(): number {
+    return this.memory_id;
+  }
+
+  get userId(): number {
+    return this.user_id;
+  }
+
+  get type(): string {
+    return this.memory_type;
+  }
 }

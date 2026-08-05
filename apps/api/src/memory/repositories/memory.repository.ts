@@ -15,57 +15,65 @@ import { handlePrismaError } from "../../common/utils/prisma-error.util";
 export class MemoryRepository implements IMemoryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createMemory(userId: string, data: CreateMemoryDto): Promise<Memory> {
+  async createMemory(userId: number, data: CreateMemoryDto): Promise<Memory> {
     try {
-      const memory = await this.prisma.memory.create({
+      const serializedContent = JSON.stringify({
+        text: data.content,
+        metadata: data.metadata ?? {},
+        contextInfo: data.contextInfo ?? null,
+      });
+
+      const memory = await this.prisma.ai_memory.create({
         data: {
-          userId,
-          content: data.content,
-          type: data.type,
-          metadata: data.metadata ?? undefined,
-          contextInfo: data.contextInfo ?? null,
+          user_id: userId,
+          content: serializedContent,
+          memory_type: data.type,
+          title: data.contextInfo ? data.contextInfo.substring(0, 255) : null,
+          importance_score: null,
+          embedding_id: null,
         },
       });
-      return memory as unknown as Memory;
+      return mapPrismaMemoryToEntity(memory);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async findMemoryById(id: string): Promise<Memory | null> {
+  async findMemoryById(id: number): Promise<Memory | null> {
     try {
-      const memory = await this.prisma.memory.findUnique({
-        where: { id },
+      const memory = await this.prisma.ai_memory.findUnique({
+        where: { memory_id: id },
       });
-      return memory as unknown as Memory | null;
+      if (!memory) return null;
+      return mapPrismaMemoryToEntity(memory);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
   async findUserMemories(
-    userId: string,
+    userId: number,
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Memory>> {
     try {
       const page = pagination?.page ?? 1;
-      const limit = pagination?.limit ?? 10;
+      const limit = Math.min(pagination?.limit ?? 10, 100);
       const skip = (page - 1) * limit;
 
-      const where = { userId };
+      const where = { user_id: userId };
 
       const [data, total] = await this.prisma.$transaction([
-        this.prisma.memory.findMany({
+        this.prisma.ai_memory.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: "desc" },
+          orderBy: { created_at: "desc" },
         }),
-        this.prisma.memory.count({ where }),
+        this.prisma.ai_memory.count({ where }),
       ]);
 
       return {
-        data: data as unknown as Memory[],
+        data: data.map((m) => mapPrismaMemoryToEntity(m)),
         total,
         page,
         limit,
@@ -77,48 +85,44 @@ export class MemoryRepository implements IMemoryRepository {
   }
 
   async searchMemoryMetadata(
-    userId: string,
+    userId: number,
     search: SearchMemoryDto,
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Memory>> {
     try {
-      const where: any = { userId };
+      const where: any = { user_id: userId };
 
       if (search.type) {
-        where.type = search.type;
+        where.memory_type = search.type;
       }
 
       if (search.query) {
-        where.OR = [
-          { content: { contains: search.query, mode: "insensitive" } },
-          { contextInfo: { contains: search.query, mode: "insensitive" } },
-        ];
+        where.content = { contains: search.query, mode: "insensitive" };
       }
 
       if (search.tags && search.tags.length > 0) {
-        // Query tags stored in JSONB column under the 'tags' key
-        where.metadata = {
-          path: ["tags"],
-          array_contains: search.tags,
-        };
+        // Query tags which are serialized in content JSON
+        where.AND = search.tags.map((tag) => ({
+          content: { contains: tag, mode: "insensitive" },
+        }));
       }
 
       const page = pagination?.page ?? 1;
-      const limit = pagination?.limit ?? 10;
+      const limit = Math.min(pagination?.limit ?? 10, 100);
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.prisma.$transaction([
-        this.prisma.memory.findMany({
+        this.prisma.ai_memory.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: "desc" },
+          orderBy: { created_at: "desc" },
         }),
-        this.prisma.memory.count({ where }),
+        this.prisma.ai_memory.count({ where }),
       ]);
 
       return {
-        data: data as unknown as Memory[],
+        data: data.map((m) => mapPrismaMemoryToEntity(m)),
         total,
         page,
         limit,
@@ -129,33 +133,104 @@ export class MemoryRepository implements IMemoryRepository {
     }
   }
 
-  async updateMemory(id: string, data: UpdateMemoryDto): Promise<Memory> {
+  async updateMemory(id: number, data: UpdateMemoryDto): Promise<Memory> {
     try {
-      const updateData: any = {};
-      if (data.content !== undefined) updateData.content = data.content;
-      if (data.type !== undefined) updateData.type = data.type;
-      if (data.metadata !== undefined) updateData.metadata = data.metadata;
-      if (data.contextInfo !== undefined)
-        updateData.contextInfo = data.contextInfo;
-
-      const memory = await this.prisma.memory.update({
-        where: { id },
-        data: updateData,
+      const existing = await this.prisma.ai_memory.findUnique({
+        where: { memory_id: id },
       });
-      return memory as unknown as Memory;
+
+      if (!existing) {
+        throw new Error("Memory not found");
+      }
+
+      let text = data.content;
+      let metadata = data.metadata;
+      let contextInfo = data.contextInfo;
+
+      try {
+        const parsed = JSON.parse(existing.content || "{}");
+        if (text === undefined) text = parsed.text;
+        if (metadata === undefined) metadata = parsed.metadata;
+        if (contextInfo === undefined) contextInfo = parsed.contextInfo;
+      } catch {
+        // legacy
+      }
+
+      const serializedContent = JSON.stringify({
+        text: text ?? existing.content,
+        metadata: metadata ?? {},
+        contextInfo: contextInfo ?? null,
+      });
+
+      const updatePayload: any = {
+        content: serializedContent,
+      };
+
+      if (data.type !== undefined) updatePayload.memory_type = data.type;
+      if (contextInfo !== undefined)
+        updatePayload.title = contextInfo
+          ? contextInfo.substring(0, 255)
+          : null;
+
+      const memory = await this.prisma.ai_memory.update({
+        where: { memory_id: id },
+        data: updatePayload,
+      });
+      return mapPrismaMemoryToEntity(memory);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async deleteMemory(id: string): Promise<Memory> {
+  async deleteMemory(id: number): Promise<Memory> {
     try {
-      const memory = await this.prisma.memory.delete({
-        where: { id },
+      const memory = await this.prisma.ai_memory.findUnique({
+        where: { memory_id: id },
       });
-      return memory as unknown as Memory;
+      if (memory) {
+        await this.prisma.ai_memory.delete({
+          where: { memory_id: id },
+        });
+      }
+      return mapPrismaMemoryToEntity(memory!)!;
     } catch (error) {
       handlePrismaError(error);
     }
   }
+}
+
+function mapPrismaMemoryToEntity(m: any): Memory {
+  if (!m) return null as any;
+
+  let text = m.content;
+  let metadata = {};
+  let contextInfo = null;
+
+  try {
+    const parsed = JSON.parse(m.content || "{}");
+    text = parsed.text ?? m.content;
+    metadata = parsed.metadata ?? {};
+    contextInfo = parsed.contextInfo ?? null;
+  } catch {
+    // raw string
+  }
+
+  return {
+    memory_id: m.memory_id,
+    user_id: m.user_id,
+    content: text,
+    memory_type: m.memory_type,
+    title: m.title,
+    importance_score: m.importance_score
+      ? parseFloat(m.importance_score.toString())
+      : null,
+    embedding_id: m.embedding_id,
+    created_at: m.created_at,
+    updated_at: m.updated_at,
+    metadata,
+    contextInfo,
+    id: m.memory_id,
+    userId: m.user_id,
+    type: m.memory_type,
+  } as unknown as Memory;
 }

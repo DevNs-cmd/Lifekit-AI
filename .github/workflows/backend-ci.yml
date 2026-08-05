@@ -32,6 +32,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    env:
+      DATABASE_URL: postgresql://lifekit:lifekit@localhost:5432/lifekit_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-jwt-secret-key-that-is-at-least-32-characters-long
+      JWT_REFRESH_SECRET: test-jwt-secret-key-that-is-at-least-32-characters-long
+      AI_SERVICE_URL: http://localhost:8000
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lifekit
+          POSTGRES_PASSWORD: lifekit
+          POSTGRES_DB: lifekit_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -145,6 +177,7 @@ jobs:
         if: steps.check-init.outputs.is_implemented == 'true'
         run: |
           cd apps/api
+          npx prisma db push
           if node -e "const pkg = require('./package.json'); process.exit(pkg.scripts?.['test:e2e'] ? 0 : 1)" 2>/dev/null; then
             echo "E2E test script found. Running 'npm run test:e2e'..."
             npm run test:e2e

@@ -4,6 +4,7 @@ import { ILifeMissionRepository } from "./life-mission.repository.interface";
 import { CreateLifeMissionDto } from "../dto/create-life-mission.dto";
 import { UpdateLifeMissionDto } from "../dto/update-life-mission.dto";
 import { LifeMission } from "../entities/life-mission.entity";
+import { PriorityLevel, MissionStatus } from "../../common/enums";
 import {
   PaginationParams,
   PaginatedResult,
@@ -15,89 +16,103 @@ export class LifeMissionRepository implements ILifeMissionRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async createMission(
-    userId: string,
+    userId: number,
     data: CreateLifeMissionDto,
   ): Promise<LifeMission> {
     try {
-      return await this.prisma.lifeMission.create({
+      // Serialize array fields into description to prevent data loss
+      const serializedDescription = JSON.stringify({
+        text: data.description,
+        goals: data.goals,
+        values: data.values,
+        longTermObjectives: data.longTermObjectives,
+        constraints: data.constraints ?? [],
+      });
+
+      const mission = await this.prisma.missions.create({
         data: {
-          userId,
+          user_id: userId,
           title: data.title,
-          description: data.description,
-          goals: data.goals,
-          values: data.values,
-          longTermObjectives: data.longTermObjectives,
-          constraints: data.constraints ?? [],
-          startDate: new Date(data.startDate),
-          targetDate: new Date(data.targetDate),
+          description: serializedDescription,
+          category: null,
+          priority: PriorityLevel.MEDIUM,
+          status: MissionStatus.ACTIVE,
+          start_date: data.startDate ? new Date(data.startDate) : new Date(),
+          target_date: data.targetDate ? new Date(data.targetDate) : null,
+          progress: 0,
         },
       });
+
+      return mapPrismaMissionToEntity(mission);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async findMissionById(id: string): Promise<LifeMission | null> {
+  async findMissionById(id: number): Promise<LifeMission | null> {
     try {
-      return await this.prisma.lifeMission.findUnique({
-        where: { id },
+      const mission = await this.prisma.missions.findUnique({
+        where: { mission_id: id },
       });
+      if (!mission) return null;
+      return mapPrismaMissionToEntity(mission);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
   async findUserMissions(
-    userId: string,
-    filters?: { status?: string; startDate?: Date; targetDate?: Date },
+    userId: number,
+    filters?: {
+      status?: string;
+      startDate?: Date;
+      targetDate?: Date;
+      category?: string;
+      priority?: string;
+    },
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<LifeMission>> {
     try {
-      const where: any = { userId };
-      const now = new Date();
+      const where: any = { user_id: userId };
 
       if (filters?.status) {
-        const statusUpper = filters.status.toUpperCase();
-        if (statusUpper === "PENDING") {
-          where.startDate = { gt: now };
-        } else if (statusUpper === "ACTIVE") {
-          where.startDate = { lte: now };
-          where.targetDate = { gte: now };
-        } else if (statusUpper === "COMPLETED" || statusUpper === "EXPIRED") {
-          where.targetDate = { lt: now };
-        }
+        where.status = filters.status.toUpperCase() as MissionStatus;
+      }
+      if (filters?.category) {
+        where.category = filters.category;
+      }
+      if (filters?.priority) {
+        where.priority = filters.priority.toUpperCase() as PriorityLevel;
       }
 
       if (filters?.startDate) {
-        where.startDate = {
-          ...where.startDate,
+        where.start_date = {
           gte: filters.startDate,
         };
       }
 
       if (filters?.targetDate) {
-        where.targetDate = {
-          ...where.targetDate,
+        where.target_date = {
           lte: filters.targetDate,
         };
       }
 
       const page = pagination?.page ?? 1;
-      const limit = pagination?.limit ?? 10;
+      const limit = Math.min(pagination?.limit ?? 10, 100);
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.prisma.$transaction([
-        this.prisma.lifeMission.findMany({
+        this.prisma.missions.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: "desc" },
+          orderBy: { created_at: "desc" },
         }),
-        this.prisma.lifeMission.count({ where }),
+        this.prisma.missions.count({ where }),
       ]);
 
       return {
-        data,
+        data: data.map((m) => mapPrismaMissionToEntity(m)),
         total,
         page,
         limit,
@@ -109,41 +124,122 @@ export class LifeMissionRepository implements ILifeMissionRepository {
   }
 
   async updateMission(
-    id: string,
+    id: number,
     data: UpdateLifeMissionDto,
   ): Promise<LifeMission> {
     try {
-      const updateData: any = {};
-      if (data.title !== undefined) updateData.title = data.title;
-      if (data.description !== undefined)
-        updateData.description = data.description;
-      if (data.goals !== undefined) updateData.goals = data.goals;
-      if (data.values !== undefined) updateData.values = data.values;
-      if (data.longTermObjectives !== undefined)
-        updateData.longTermObjectives = data.longTermObjectives;
-      if (data.constraints !== undefined)
-        updateData.constraints = data.constraints;
-      if (data.startDate !== undefined)
-        updateData.startDate = new Date(data.startDate);
-      if (data.targetDate !== undefined)
-        updateData.targetDate = new Date(data.targetDate);
-
-      return await this.prisma.lifeMission.update({
-        where: { id },
-        data: updateData,
+      const existing = await this.prisma.missions.findUnique({
+        where: { mission_id: id },
       });
+
+      if (!existing) {
+        throw new Error("Mission not found");
+      }
+
+      // If we have arrays or description to update, merge with existing serialized JSON
+      let text = data.description;
+      let goals = data.goals;
+      let values = data.values;
+      let longTermObjectives = data.longTermObjectives;
+      let constraints = data.constraints;
+
+      try {
+        const parsed = JSON.parse(existing.description || "{}");
+        if (text === undefined) text = parsed.text;
+        if (goals === undefined) goals = parsed.goals;
+        if (values === undefined) values = parsed.values;
+        if (longTermObjectives === undefined)
+          longTermObjectives = parsed.longTermObjectives;
+        if (constraints === undefined) constraints = parsed.constraints;
+      } catch {
+        // existing description was not JSON
+      }
+
+      const serializedDescription = JSON.stringify({
+        text: text ?? existing.description,
+        goals: goals ?? [],
+        values: values ?? [],
+        longTermObjectives: longTermObjectives ?? [],
+        constraints: constraints ?? [],
+      });
+
+      const updatePayload: any = {
+        title: data.title,
+        description: serializedDescription,
+        start_date: data.startDate ? new Date(data.startDate) : undefined,
+        target_date: data.targetDate ? new Date(data.targetDate) : undefined,
+      };
+
+      const updated = await this.prisma.missions.update({
+        where: { mission_id: id },
+        data: updatePayload,
+      });
+
+      return mapPrismaMissionToEntity(updated);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async deleteMission(id: string): Promise<LifeMission> {
+  async deleteMission(id: number): Promise<LifeMission> {
     try {
-      return await this.prisma.lifeMission.delete({
-        where: { id },
+      const mission = await this.prisma.missions.findUnique({
+        where: { mission_id: id },
       });
+      if (mission) {
+        await this.prisma.missions.delete({
+          where: { mission_id: id },
+        });
+      }
+      return mapPrismaMissionToEntity(mission!)!;
     } catch (error) {
       handlePrismaError(error);
     }
   }
+}
+
+function mapPrismaMissionToEntity(m: any): LifeMission {
+  if (!m) return null as any;
+
+  let text = m.description;
+  let goals: string[] = [];
+  let values: string[] = [];
+  let longTermObjectives: string[] = [];
+  let constraints: string[] = [];
+
+  try {
+    const parsed = JSON.parse(m.description || "{}");
+    text = parsed.text ?? m.description;
+    goals = parsed.goals ?? [];
+    values = parsed.values ?? [];
+    longTermObjectives = parsed.longTermObjectives ?? [];
+    constraints = parsed.constraints ?? [];
+  } catch {
+    // raw string
+  }
+
+  return {
+    mission_id: m.mission_id,
+    user_id: m.user_id,
+    title: m.title,
+    description: text,
+    category: m.category,
+    priority: m.priority as PriorityLevel,
+    status: m.status as MissionStatus,
+    progress: m.progress,
+    isArchived: m.isArchived,
+    archivedAt: m.archivedAt,
+    start_date: m.start_date,
+    target_date: m.target_date,
+    created_at: m.created_at,
+    updated_at: m.updated_at,
+    goals,
+    values,
+    longTermObjectives,
+    constraints,
+    id: m.mission_id,
+    userId: m.user_id,
+    startDate: m.start_date,
+    targetDate: m.target_date,
+  } as unknown as LifeMission;
 }

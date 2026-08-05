@@ -45,22 +45,32 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
    * @throws UnauthorizedException if user is not found or deactivated
    */
   async validate(payload: JwtPayload): Promise<any> {
-    if (!payload.sub) {
+    if (payload.sub === undefined || payload.sub === null) {
       this.logger.warn("JWT payload missing sub claim");
       throw new UnauthorizedException("Invalid token payload");
     }
 
-    const user = await this.userRepository.findById(payload.sub);
+    const userId =
+      typeof payload.sub === "string" ? parseInt(payload.sub, 10) : payload.sub;
+    if (isNaN(userId)) {
+      this.logger.warn(
+        `JWT payload sub claim is not a valid number: ${payload.sub}`,
+      );
+      throw new UnauthorizedException("Invalid token payload");
+    }
+
+    const user = await this.userRepository.findById(userId);
 
     if (!user) {
-      this.logger.warn(`User not found for token sub: ${payload.sub}`);
+      this.logger.warn(`User not found for token sub: ${userId}`);
       throw new UnauthorizedException(
         "User associated with this token no longer exists",
       );
     }
 
     // Remove sensitive fields before attaching to request
-    const { passwordHash, ...sanitizedUser } = user;
+    const sanitizedUser = { ...user };
+    delete (sanitizedUser as any).password_hash;
     return sanitizedUser;
   }
 }

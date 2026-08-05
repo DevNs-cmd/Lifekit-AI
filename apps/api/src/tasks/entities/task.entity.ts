@@ -1,26 +1,16 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { TaskStatus } from "../dto/create-task.dto";
-import { PriorityLevel } from "../../common/enums";
-
 export class Task {
   @ApiProperty({
     description: "Unique identifier for the task",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  id!: string;
+  task_id!: number;
 
   @ApiProperty({
-    description: "Associated User ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    description: "Associated Mission ID",
+    example: 1,
   })
-  userId!: string;
-
-  @ApiProperty({
-    description: "Associated Plan ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
-    required: false,
-  })
-  planId?: string | null;
+  mission_id!: number;
 
   @ApiProperty({
     description: "The title of the task",
@@ -37,40 +27,53 @@ export class Task {
 
   @ApiProperty({
     description: "Current completion status of the task",
-    enum: TaskStatus,
-    example: TaskStatus.PENDING,
+    example: "Pending",
   })
-  status!: TaskStatus;
+  status!: string;
 
   @ApiProperty({
     description: "Task priority level",
-    enum: PriorityLevel,
-    example: PriorityLevel.MEDIUM,
+    example: "Medium",
   })
-  priority!: PriorityLevel;
+  priority!: string;
 
   @ApiProperty({
     description: "Task due date and time",
     example: "2026-08-05T18:00:00.000Z",
+    required: false,
   })
-  dueDate!: Date;
+  due_date?: Date | null;
 
   @ApiProperty({
-    description: "The individual or agent assigned to complete this task",
+    description: "Estimated time in minutes",
+    example: 60,
     required: false,
-    example: "User",
   })
-  assignment?: string | null;
+  estimated_time?: number | null;
+
+  @ApiProperty({
+    description: "Completion timestamp",
+    required: false,
+  })
+  completed_at?: Date | null;
 
   @ApiProperty({
     description: "Creation date",
     example: "2026-07-28T12:00:00Z",
+    required: false,
   })
-  createdAt!: Date;
+  created_at?: Date | null;
 
-  @ApiProperty({
-    description: "Last update date",
-    example: "2026-07-28T12:00:00Z",
-  })
-  updatedAt!: Date;
+  // Compatibility getters
+  get id(): number {
+    return this.task_id;
+  }
+
+  get missionId(): number {
+    return this.mission_id;
+  }
+
+  get dueDate(): Date | null {
+    return this.due_date ?? null;
+  }
 }

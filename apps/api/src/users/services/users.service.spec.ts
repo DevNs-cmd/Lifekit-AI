@@ -4,7 +4,6 @@ import { UserRepository } from "../repositories/user.repository";
 import { SessionRepository } from "../../auth/repositories/session.repository";
 import { UsersService } from "./users.service";
 import { User } from "../entities/user.entity";
-import { UserPreference } from "../entities/user-preference.entity";
 import { hashPassword } from "../../auth/utils";
 
 // ---------------------------------------------------------------------------
@@ -19,32 +18,39 @@ const mockUserRepository = {
 const mockSessionRepository = {
   findSessionsByUser: jest.fn(),
   deleteSessionByTokenHash: jest.fn(),
+  deleteSessionsByUser: jest.fn(),
 };
 
 function createMockUser(overrides: Partial<User> = {}): User {
-  return {
-    id: "user-id-123",
+  const user = {
+    user_id: 123,
     email: "john@example.com",
-    fullName: "John Doe",
-    passwordHash: "$2b$10$abcdefghijklmnopqrstuvwx", // hashed password stub
+    full_name: "John Doe",
+    password_hash: "$2b$10$abcdefghijklmnopqrstuvwx", // hashed password stub
     phone: "+1234567890",
-    dateOfBirth: "1990-01-01",
+    date_of_birth: "1990-01-01",
     profession: "Software Engineer",
-    profilePhoto: "https://example.com/photo.jpg",
+    profile_photo: "https://example.com/photo.jpg",
     preference: {
-      id: "pref-id-123",
-      userId: "user-id-123",
+      preference_id: 456,
+      user_id: 123,
       theme: "dark",
-      notificationsEnabled: true,
+      notification_enabled: true,
       goals: ["Code NestJS"],
       interests: ["AI"],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as UserPreference,
-    createdAt: new Date("2026-07-28T12:00:00Z"),
-    updatedAt: new Date("2026-07-28T12:00:00Z"),
+    } as any,
+    created_at: new Date("2026-07-28T12:00:00Z"),
+    updated_at: new Date("2026-07-28T12:00:00Z"),
     ...overrides,
-  } as User;
+  } as any;
+
+  // Add compatibility getters
+  Object.defineProperty(user, "id", { get: () => user.user_id });
+  Object.defineProperty(user, "fullName", { get: () => user.full_name });
+  Object.defineProperty(user, "createdAt", { get: () => user.created_at });
+  Object.defineProperty(user, "updatedAt", { get: () => user.updated_at });
+
+  return user;
 }
 
 describe("UsersService", () => {
@@ -71,30 +77,30 @@ describe("UsersService", () => {
       const user = createMockUser();
       mockUserRepository.findById.mockResolvedValue(user);
 
-      const result = await service.getCurrentUser(user.id);
+      const result = await service.getCurrentUser(user.user_id);
 
-      expect(mockUserRepository.findById).toHaveBeenCalledWith(user.id);
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(user.user_id);
       expect(result).toEqual({
-        id: user.id,
-        fullName: user.fullName,
+        id: user.user_id,
+        fullName: user.full_name,
         email: user.email,
         phone: user.phone,
         profession: user.profession,
-        profilePhoto: user.profilePhoto,
+        profilePhoto: user.profile_photo,
         preferences: {
           theme: "dark",
           notificationsEnabled: true,
           goals: ["Code NestJS"],
           interests: ["AI"],
         },
-        createdAt: user.createdAt,
+        createdAt: user.created_at,
       });
     });
 
     it("should throw NotFoundException if user is not found", async () => {
       mockUserRepository.findById.mockResolvedValue(null);
 
-      await expect(service.getCurrentUser("nonexistent")).rejects.toThrow(
+      await expect(service.getCurrentUser(999)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -104,7 +110,7 @@ describe("UsersService", () => {
     it("should update user profile and return mapped updated profile", async () => {
       const user = createMockUser();
       const updatedUser = createMockUser({
-        fullName: "Jane Doe",
+        full_name: "Jane Doe",
         phone: "+1987654321",
       });
       const updateDto = { fullName: "Jane Doe", phone: "+1987654321" };
@@ -112,11 +118,11 @@ describe("UsersService", () => {
       mockUserRepository.findById.mockResolvedValue(user);
       mockUserRepository.updateUser.mockResolvedValue(updatedUser);
 
-      const result = await service.updateProfile(user.id, updateDto);
+      const result = await service.updateProfile(user.user_id, updateDto);
 
-      expect(mockUserRepository.findById).toHaveBeenCalledWith(user.id);
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(user.user_id);
       expect(mockUserRepository.updateUser).toHaveBeenCalledWith(
-        user.id,
+        user.user_id,
         updateDto,
       );
       expect(result.fullName).toBe("Jane Doe");
@@ -127,7 +133,7 @@ describe("UsersService", () => {
       mockUserRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.updateProfile("nonexistent", { fullName: "Jane Doe" }),
+        service.updateProfile(999, { fullName: "Jane Doe" }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -136,14 +142,12 @@ describe("UsersService", () => {
     it("should replace user preferences object successfully", async () => {
       const user = createMockUser();
       const updatedPreference = {
-        id: "pref-id-123",
-        userId: "user-id-123",
+        preference_id: 456,
+        user_id: 123,
         theme: "light",
-        notificationsEnabled: false,
+        notification_enabled: false,
         goals: ["Exercise"],
         interests: ["Sports"],
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
       const prefDto = {
         theme: "light",
@@ -155,11 +159,11 @@ describe("UsersService", () => {
       mockUserRepository.findById.mockResolvedValue(user);
       mockUserRepository.updatePreferences.mockResolvedValue(updatedPreference);
 
-      const result = await service.updatePreferences(user.id, prefDto);
+      const result = await service.updatePreferences(user.user_id, prefDto);
 
-      expect(mockUserRepository.findById).toHaveBeenCalledWith(user.id);
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(user.user_id);
       expect(mockUserRepository.updatePreferences).toHaveBeenCalledWith(
-        user.id,
+        user.user_id,
         prefDto,
       );
       expect(result).toEqual({
@@ -174,7 +178,7 @@ describe("UsersService", () => {
       mockUserRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.updatePreferences("nonexistent", { theme: "light" }),
+        service.updatePreferences(999, { theme: "light" }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -188,32 +192,24 @@ describe("UsersService", () => {
     });
 
     it("should successfully change password and invalidate all sessions", async () => {
-      const user = createMockUser({ passwordHash: hashedCurrent });
+      const user = createMockUser({ password_hash: hashedCurrent });
       mockUserRepository.findById.mockResolvedValue(user);
       mockUserRepository.updateUser.mockResolvedValue(user);
 
-      const mockSessions = [
-        { token: "token-hash-1" },
-        { token: "token-hash-2" },
-      ];
-      mockSessionRepository.findSessionsByUser.mockResolvedValue(mockSessions);
-      mockSessionRepository.deleteSessionByTokenHash.mockResolvedValue({});
+      mockSessionRepository.deleteSessionsByUser.mockResolvedValue(undefined);
 
-      const result = await service.changePassword(user.id, {
+      const result = await service.changePassword(user.user_id, {
         currentPassword: rawPassword,
         newPassword: "NewPassword123!",
       });
 
-      expect(mockUserRepository.findById).toHaveBeenCalledWith(user.id);
-      expect(mockUserRepository.updateUser).toHaveBeenCalledWith(user.id, {
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(user.user_id);
+      expect(mockUserRepository.updateUser).toHaveBeenCalledWith(user.user_id, {
         passwordHash: expect.any(String),
       });
-      expect(mockSessionRepository.findSessionsByUser).toHaveBeenCalledWith(
-        user.id,
+      expect(mockSessionRepository.deleteSessionsByUser).toHaveBeenCalledWith(
+        user.user_id,
       );
-      expect(
-        mockSessionRepository.deleteSessionByTokenHash,
-      ).toHaveBeenCalledTimes(2);
       expect(result).toEqual({
         success: true,
         message: "Password changed successfully",
@@ -221,11 +217,11 @@ describe("UsersService", () => {
     });
 
     it("should throw UnauthorizedException if current password does not match", async () => {
-      const user = createMockUser({ passwordHash: hashedCurrent });
+      const user = createMockUser({ password_hash: hashedCurrent });
       mockUserRepository.findById.mockResolvedValue(user);
 
       await expect(
-        service.changePassword(user.id, {
+        service.changePassword(user.user_id, {
           currentPassword: "WrongPassword",
           newPassword: "NewPassword123!",
         }),
@@ -236,7 +232,7 @@ describe("UsersService", () => {
       mockUserRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.changePassword("nonexistent", {
+        service.changePassword(999, {
           currentPassword: "password123",
           newPassword: "NewPassword123!",
         }),
@@ -249,7 +245,7 @@ describe("UsersService", () => {
       const error = new Error("Database connection failed");
       mockUserRepository.findById.mockRejectedValue(error);
 
-      await expect(service.getCurrentUser("user-id-1")).rejects.toThrow(
+      await expect(service.getCurrentUser(1)).rejects.toThrow(
         "Database connection failed",
       );
     });

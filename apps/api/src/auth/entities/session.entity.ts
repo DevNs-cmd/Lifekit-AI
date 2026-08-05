@@ -3,15 +3,15 @@ import { ApiProperty } from "@nestjs/swagger";
 export class Session {
   @ApiProperty({
     description: "Unique identifier for the session",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: "session-123",
   })
   id!: string;
 
   @ApiProperty({
     description: "Associated User ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  userId!: string;
+  userId!: number;
 
   @ApiProperty({ description: "Refresh token associated with the session" })
   token!: string;
