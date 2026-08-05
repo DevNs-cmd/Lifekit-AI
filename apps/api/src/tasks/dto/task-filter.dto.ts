@@ -1,6 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsDateString, IsEnum, IsOptional, IsUUID } from "class-validator";
-import { PriorityLevel } from "../../common/enums";
+import { IsDateString, IsEnum, IsOptional, IsInt, Min } from "class-validator";
 import { TaskStatus } from "./create-task.dto";
 
 export class TaskFilterDto {
@@ -15,12 +14,10 @@ export class TaskFilterDto {
 
   @ApiPropertyOptional({
     description: "Filter tasks by priority level",
-    enum: PriorityLevel,
-    example: PriorityLevel.HIGH,
+    example: "Medium",
   })
-  @IsEnum(PriorityLevel)
   @IsOptional()
-  priority?: PriorityLevel;
+  priority?: string;
 
   @ApiPropertyOptional({
     description: "Start date filter range",
@@ -39,10 +36,11 @@ export class TaskFilterDto {
   dueDateTo?: string;
 
   @ApiPropertyOptional({
-    description: "Filter tasks by associated plan ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    description: "Filter tasks by associated mission ID",
+    example: 1,
   })
-  @IsUUID("4")
+  @IsInt()
+  @Min(1)
   @IsOptional()
-  planId?: string;
+  missionId?: number;
 }

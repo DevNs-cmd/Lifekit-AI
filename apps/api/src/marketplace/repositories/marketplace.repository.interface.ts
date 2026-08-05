@@ -9,17 +9,17 @@ import {
 
 export interface IMarketplaceRepository {
   createListing(
-    userId: string,
+    userId: number,
     data: CreateListingDto,
   ): Promise<MarketplaceListing>;
-  findListingById(id: string): Promise<MarketplaceListing | null>;
+  findListingById(id: number): Promise<MarketplaceListing | null>;
   searchListings(
     filters: SearchListingDto & { isAvailable?: boolean },
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<MarketplaceListing>>;
   updateListing(
-    id: string,
+    id: number,
     data: UpdateListingDto,
   ): Promise<MarketplaceListing>;
-  deleteListing(id: string): Promise<MarketplaceListing>;
+  deleteListing(id: number): Promise<MarketplaceListing>;
 }

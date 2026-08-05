@@ -10,7 +10,12 @@ export function handlePrismaError(error: any): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     switch (error.code) {
       case "P2002": {
-        const targets = (error.meta?.target as string[]) || [];
+        const targetMeta = error.meta?.target;
+        const targets = Array.isArray(targetMeta)
+          ? targetMeta
+          : typeof targetMeta === "string"
+            ? [targetMeta]
+            : [];
         throw new ConflictException(
           `Unique constraint failed on field(s): ${targets.join(", ")}`,
         );

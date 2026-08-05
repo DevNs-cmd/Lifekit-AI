@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  BadRequestException,
+} from "@nestjs/common";
 import { IStorageService, StorageFile } from "../interfaces/storage.interface";
 import { AppConfigService } from "../../../config/app-config.service";
 import * as fs from "fs";
@@ -27,7 +32,11 @@ export class LocalStorageService implements IStorageService, OnModuleInit {
   async save(file: StorageFile, folder = ""): Promise<string> {
     const ext = path.extname(file.originalname);
     const uniqueName = `${randomUUID()}${ext}`;
-    const targetFolder = path.join(this.uploadRoot, folder);
+    const targetFolder = path.resolve(this.uploadRoot, folder);
+
+    if (!targetFolder.startsWith(this.uploadRoot)) {
+      throw new BadRequestException("Invalid path traversal attempt");
+    }
 
     // Ensure nested folder structure exists
     await fs.promises.mkdir(targetFolder, { recursive: true });
@@ -40,7 +49,12 @@ export class LocalStorageService implements IStorageService, OnModuleInit {
   }
 
   async delete(fileKey: string): Promise<void> {
-    const targetPath = path.join(this.uploadRoot, fileKey);
+    const targetPath = path.resolve(this.uploadRoot, fileKey);
+
+    if (!targetPath.startsWith(this.uploadRoot)) {
+      throw new BadRequestException("Invalid path traversal attempt");
+    }
+
     try {
       await fs.promises.unlink(targetPath);
       this.logger.log(`Deleted local file: ${targetPath}`);

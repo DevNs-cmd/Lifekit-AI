@@ -8,15 +8,21 @@ import {
 
 export interface ILifeMissionRepository {
   createMission(
-    userId: string,
+    userId: number,
     data: CreateLifeMissionDto,
   ): Promise<LifeMission>;
-  findMissionById(id: string): Promise<LifeMission | null>;
+  findMissionById(id: number): Promise<LifeMission | null>;
   findUserMissions(
-    userId: string,
-    filters?: { status?: string; startDate?: Date; targetDate?: Date },
+    userId: number,
+    filters?: {
+      status?: string;
+      startDate?: Date;
+      targetDate?: Date;
+      category?: string;
+      priority?: string;
+    },
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<LifeMission>>;
-  updateMission(id: string, data: UpdateLifeMissionDto): Promise<LifeMission>;
-  deleteMission(id: string): Promise<LifeMission>;
+  updateMission(id: number, data: UpdateLifeMissionDto): Promise<LifeMission>;
+  deleteMission(id: number): Promise<LifeMission>;
 }

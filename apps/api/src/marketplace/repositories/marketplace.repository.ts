@@ -16,33 +16,44 @@ export class MarketplaceRepository implements IMarketplaceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async createListing(
-    userId: string,
+    userId: number,
     data: CreateListingDto,
   ): Promise<MarketplaceListing> {
     try {
-      return await this.prisma.marketplaceListing.create({
+      const serializedDescription = JSON.stringify({
+        text: data.description,
+        tags: data.tags ?? [],
+        isFree: data.isFree ?? false,
+        stock: data.availability?.stock ?? null,
+        isAvailable: data.availability?.isAvailable ?? true,
+        userId: userId,
+      });
+
+      const listing = await this.prisma.marketplace.create({
         data: {
-          userId,
-          title: data.title,
-          description: data.description,
-          category: data.category,
-          tags: data.tags,
+          service_name: data.title,
+          provider_name: "LifeKit Provider",
+          category: data.category ?? null,
+          description: serializedDescription,
           price: data.price,
-          isFree: data.isFree,
-          stock: data.availability?.stock ?? null,
-          isAvailable: data.availability?.isAvailable ?? true,
+          rating: null,
+          image_url: null,
         },
       });
+
+      return mapPrismaMarketplaceToEntity(listing);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async findListingById(id: string): Promise<MarketplaceListing | null> {
+  async findListingById(id: number): Promise<MarketplaceListing | null> {
     try {
-      return await this.prisma.marketplaceListing.findUnique({
-        where: { id },
+      const listing = await this.prisma.marketplace.findUnique({
+        where: { service_id: id },
       });
+      if (!listing) return null;
+      return mapPrismaMarketplaceToEntity(listing);
     } catch (error) {
       handlePrismaError(error);
     }
@@ -59,21 +70,17 @@ export class MarketplaceRepository implements IMarketplaceRepository {
         where.category = filters.category;
       }
 
-      if (filters.isAvailable !== undefined) {
-        where.isAvailable = filters.isAvailable;
-      }
-
       if (filters.query) {
         where.OR = [
-          { title: { contains: filters.query, mode: "insensitive" } },
+          { service_name: { contains: filters.query, mode: "insensitive" } },
           { description: { contains: filters.query, mode: "insensitive" } },
         ];
       }
 
       if (filters.tags && filters.tags.length > 0) {
-        where.tags = {
-          hasSome: filters.tags,
-        };
+        where.AND = filters.tags.map((tag) => ({
+          description: { contains: tag, mode: "insensitive" },
+        }));
       }
 
       if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
@@ -87,21 +94,31 @@ export class MarketplaceRepository implements IMarketplaceRepository {
       }
 
       const page = pagination?.page ?? 1;
-      const limit = pagination?.limit ?? 10;
+      const limit = Math.min(pagination?.limit ?? 10, 100);
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.prisma.$transaction([
-        this.prisma.marketplaceListing.findMany({
+        this.prisma.marketplace.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: "desc" },
+          orderBy: { created_at: "desc" },
         }),
-        this.prisma.marketplaceListing.count({ where }),
+        this.prisma.marketplace.count({ where }),
       ]);
 
+      const mappedListings = data.map((m) => mapPrismaMarketplaceToEntity(m));
+
+      // Filter in-memory for availability if requested
+      let filtered = mappedListings;
+      if (filters.isAvailable !== undefined) {
+        filtered = mappedListings.filter(
+          (l) => l.isAvailable === filters.isAvailable,
+        );
+      }
+
       return {
-        data,
+        data: filtered,
         total,
         page,
         limit,
@@ -113,41 +130,118 @@ export class MarketplaceRepository implements IMarketplaceRepository {
   }
 
   async updateListing(
-    id: string,
+    id: number,
     data: UpdateListingDto,
   ): Promise<MarketplaceListing> {
     try {
-      const updateData: any = {};
-      if (data.title !== undefined) updateData.title = data.title;
-      if (data.description !== undefined)
-        updateData.description = data.description;
-      if (data.category !== undefined) updateData.category = data.category;
-      if (data.tags !== undefined) updateData.tags = data.tags;
-      if (data.price !== undefined) updateData.price = data.price;
-      if (data.isFree !== undefined) updateData.isFree = data.isFree;
-      if (data.availability !== undefined) {
-        if (data.availability.stock !== undefined)
-          updateData.stock = data.availability.stock;
-        if (data.availability.isAvailable !== undefined)
-          updateData.isAvailable = data.availability.isAvailable;
+      const existing = await this.prisma.marketplace.findUnique({
+        where: { service_id: id },
+      });
+
+      if (!existing) {
+        throw new Error("Listing not found");
       }
 
-      return await this.prisma.marketplaceListing.update({
-        where: { id },
-        data: updateData,
+      let text = data.description;
+      let tags = data.tags;
+      let isFree = data.isFree;
+      let stock = data.availability?.stock;
+      let isAvailable = data.availability?.isAvailable;
+      let originalUserId = null;
+
+      try {
+        const parsed = JSON.parse(existing.description || "{}");
+        if (text === undefined) text = parsed.text;
+        if (tags === undefined) tags = parsed.tags;
+        if (isFree === undefined) isFree = parsed.isFree;
+        if (stock === undefined) stock = parsed.stock;
+        if (isAvailable === undefined) isAvailable = parsed.isAvailable;
+        originalUserId = parsed.userId;
+      } catch {
+        // legacy
+      }
+
+      const serializedDescription = JSON.stringify({
+        text: text ?? existing.description,
+        tags: tags ?? [],
+        isFree: isFree ?? false,
+        stock: stock ?? null,
+        isAvailable: isAvailable ?? true,
+        userId: originalUserId,
       });
+
+      const updatePayload: any = {
+        description: serializedDescription,
+      };
+
+      if (data.title !== undefined) updatePayload.service_name = data.title;
+      if (data.category !== undefined) updatePayload.category = data.category;
+      if (data.price !== undefined) updatePayload.price = data.price;
+
+      const listing = await this.prisma.marketplace.update({
+        where: { service_id: id },
+        data: updatePayload,
+      });
+
+      return mapPrismaMarketplaceToEntity(listing);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async deleteListing(id: string): Promise<MarketplaceListing> {
+  async deleteListing(id: number): Promise<MarketplaceListing> {
     try {
-      return await this.prisma.marketplaceListing.delete({
-        where: { id },
+      const listing = await this.prisma.marketplace.findUnique({
+        where: { service_id: id },
       });
+      if (listing) {
+        await this.prisma.marketplace.delete({
+          where: { service_id: id },
+        });
+      }
+      return mapPrismaMarketplaceToEntity(listing!)!;
     } catch (error) {
       handlePrismaError(error);
     }
   }
+}
+
+function mapPrismaMarketplaceToEntity(m: any): MarketplaceListing {
+  if (!m) return null as any;
+
+  let text = m.description;
+  let tags: string[] = [];
+  let isFree = false;
+  let stock = null;
+  let isAvailable = true;
+  let userId = null;
+
+  try {
+    const parsed = JSON.parse(m.description || "{}");
+    text = parsed.text ?? m.description;
+    tags = parsed.tags ?? [];
+    isFree = parsed.isFree ?? false;
+    stock = parsed.stock ?? null;
+    isAvailable = parsed.isAvailable ?? true;
+    userId = parsed.userId ?? null;
+  } catch {
+    // legacy text
+  }
+
+  return {
+    service_id: m.service_id,
+    service_name: m.service_name,
+    provider_name: m.provider_name,
+    category: m.category,
+    description: text,
+    price: m.price ? parseFloat(m.price.toString()) : null,
+    rating: m.rating ? parseFloat(m.rating.toString()) : null,
+    image_url: m.image_url,
+    created_at: m.created_at,
+    userId,
+    tags,
+    isFree,
+    stock,
+    isAvailable,
+  } as unknown as MarketplaceListing;
 }

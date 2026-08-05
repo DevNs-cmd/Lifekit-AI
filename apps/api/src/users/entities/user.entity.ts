@@ -4,9 +4,9 @@ import { UserPreference } from "./user-preference.entity";
 export class User {
   @ApiProperty({
     description: "Unique identifier for the user",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  id!: string;
+  user_id!: number;
 
   @ApiProperty({
     description: "Email address of the user",
@@ -15,17 +15,10 @@ export class User {
   email!: string;
 
   @ApiProperty({ description: "Full name of the user", example: "John Doe" })
-  fullName!: string;
+  full_name!: string;
 
   @ApiProperty({ description: "Hashed password of the user" })
-  passwordHash!: string;
-
-  @ApiProperty({
-    description: "User preferences profile",
-    type: () => UserPreference,
-    required: false,
-  })
-  preference?: UserPreference | null;
+  password_hash!: string;
 
   @ApiProperty({
     description: "Phone number of the user",
@@ -39,7 +32,7 @@ export class User {
     example: "1990-01-01",
     required: false,
   })
-  dateOfBirth?: Date | string | null;
+  date_of_birth?: Date | string | null;
 
   @ApiProperty({
     description: "Profession of the user",
@@ -53,17 +46,25 @@ export class User {
     example: "https://example.com/photo.jpg",
     required: false,
   })
-  profilePhoto?: string | null;
+  profile_photo?: string | null;
 
   @ApiProperty({
     description: "Creation date",
     example: "2026-07-28T12:00:00Z",
   })
-  createdAt!: Date;
+  created_at!: Date;
 
   @ApiProperty({
     description: "Last update date",
     example: "2026-07-28T12:00:00Z",
   })
-  updatedAt!: Date;
+  updated_at!: Date;
+
+  // Virtual property to maintain compatibility
+  preference?: UserPreference | null;
+
+  // Relations matching production
+  user_preferences?: UserPreference[];
+  goals?: any[];
+  interests?: any[];
 }

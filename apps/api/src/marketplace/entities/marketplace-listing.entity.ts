@@ -3,73 +3,76 @@ import { ApiProperty } from "@nestjs/swagger";
 export class MarketplaceListing {
   @ApiProperty({
     description: "Unique identifier for the listing",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  id!: string;
-
-  @ApiProperty({
-    description: "Associated User ID (creator)",
-    example: "123e4567-e89b-12d3-a456-426614174000",
-  })
-  userId!: string;
+  service_id!: number;
 
   @ApiProperty({
     description: "Title of the listing",
     example: "Productivity Blueprint Course",
   })
-  title!: string;
+  service_name!: string;
 
   @ApiProperty({
-    description: "Description of the listing",
-    example:
-      "A complete guide to mastering time management and daily schedules.",
+    description: "The name of the service provider",
+    required: false,
+    example: "LifeKit Experts",
   })
-  description!: string;
+  provider_name?: string | null;
 
   @ApiProperty({
     description: "The category classification of the item",
+    required: false,
     example: "Templates",
   })
-  category!: string;
+  category?: string | null;
 
   @ApiProperty({
-    description: "Taxonomy tags describing the content",
-    example: ["productivity", "notion", "habits"],
-  })
-  tags!: string[];
-
-  @ApiProperty({ description: "Cost price of the listing", example: 19.99 })
-  price!: number;
-
-  @ApiProperty({
-    description: "Indicates if the item is free of charge",
-    example: false,
-  })
-  isFree!: boolean;
-
-  @ApiProperty({
-    description:
-      "The number of units available for purchase (null implies unlimited)",
+    description: "Description of the listing",
     required: false,
-    example: 10,
+    example:
+      "A complete guide to mastering time management and daily schedules.",
   })
-  stock?: number | null;
+  description?: string | null;
 
   @ApiProperty({
-    description: "Flag indicating if the listing is active and available",
-    example: true,
+    description: "Cost price of the listing",
+    required: false,
+    example: 19.99,
   })
-  isAvailable!: boolean;
+  price?: number | null;
+
+  @ApiProperty({
+    description: "Rating score (0.0 to 5.0)",
+    required: false,
+    example: 4.8,
+  })
+  rating?: number | null;
+
+  @ApiProperty({
+    description: "Image URL for the service item",
+    required: false,
+  })
+  image_url?: string | null;
 
   @ApiProperty({
     description: "Creation date",
     example: "2026-07-28T12:00:00Z",
   })
-  createdAt!: Date;
+  created_at!: Date;
 
-  @ApiProperty({
-    description: "Last update date",
-    example: "2026-07-28T12:00:00Z",
-  })
-  updatedAt!: Date;
+  // Compatibility virtual properties and getters
+  userId?: string | null;
+  tags?: string[];
+  isFree?: boolean;
+  stock?: number | null;
+  isAvailable?: boolean;
+
+  get id(): number {
+    return this.service_id;
+  }
+
+  get title(): string {
+    return this.service_name;
+  }
 }

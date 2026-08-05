@@ -8,17 +8,17 @@ import {
 } from "../../common/interfaces/pagination.interface";
 
 export interface IMemoryRepository {
-  createMemory(userId: string, data: CreateMemoryDto): Promise<Memory>;
-  findMemoryById(id: string): Promise<Memory | null>;
+  createMemory(userId: number, data: CreateMemoryDto): Promise<Memory>;
+  findMemoryById(id: number): Promise<Memory | null>;
   findUserMemories(
-    userId: string,
+    userId: number,
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Memory>>;
   searchMemoryMetadata(
-    userId: string,
+    userId: number,
     search: SearchMemoryDto,
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Memory>>;
-  updateMemory(id: string, data: UpdateMemoryDto): Promise<Memory>;
-  deleteMemory(id: string): Promise<Memory>;
+  updateMemory(id: number, data: UpdateMemoryDto): Promise<Memory>;
+  deleteMemory(id: number): Promise<Memory>;
 }

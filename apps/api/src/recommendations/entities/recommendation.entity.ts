@@ -9,15 +9,15 @@ export enum RecommendationStatus {
 export class Recommendation {
   @ApiProperty({
     description: "Unique identifier for the recommendation",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  id!: string;
+  opportunity_id!: number;
 
   @ApiProperty({
     description: "Associated User ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    example: 1,
   })
-  userId!: string;
+  user_id!: number;
 
   @ApiProperty({
     description:
@@ -63,11 +63,20 @@ export class Recommendation {
     description: "Creation date",
     example: "2026-07-28T12:00:00Z",
   })
-  createdAt!: Date;
+  created_at!: Date;
 
   @ApiProperty({
     description: "Last update date",
     example: "2026-07-28T12:00:00Z",
   })
-  updatedAt!: Date;
+  updated_at!: Date;
+
+  // Compatibility virtual fields and getters
+  get id(): number {
+    return this.opportunity_id;
+  }
+
+  get userId(): number {
+    return this.user_id;
+  }
 }

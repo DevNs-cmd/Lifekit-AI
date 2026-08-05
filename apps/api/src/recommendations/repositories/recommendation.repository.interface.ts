@@ -9,7 +9,7 @@ import {
 
 export interface IRecommendationRepository {
   createRecommendation(
-    userId: string,
+    userId: number,
     data: {
       category: string;
       title: string;
@@ -19,13 +19,14 @@ export interface IRecommendationRepository {
     },
   ): Promise<Recommendation>;
   findUserRecommendations(
-    userId: string,
+    userId: number,
     filters?: { category?: string; status?: RecommendationStatus },
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Recommendation>>;
   updateRecommendationStatus(
-    id: string,
+    id: number,
     status: RecommendationStatus,
   ): Promise<Recommendation>;
-  deleteRecommendation(id: string): Promise<Recommendation>;
+  findRecommendationById(id: number): Promise<Recommendation | null>;
+  deleteRecommendation(id: number): Promise<Recommendation>;
 }

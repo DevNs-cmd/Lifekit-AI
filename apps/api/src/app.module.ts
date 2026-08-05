@@ -18,6 +18,7 @@ import { RecommendationsModule } from "./recommendations/recommendations.module"
 import { MarketplaceModule } from "./marketplace/marketplace.module";
 
 import { ThrottlerModule } from "@nestjs/throttler";
+import { ScheduleModule } from "@nestjs/schedule";
 
 // Infrastructure Modules
 import { CacheModule } from "./common/cache";
@@ -36,6 +37,8 @@ import { RequestLoggingMiddleware } from "./common/middleware/request-logging.mi
       validate,
       envFilePath: [".env", "../../.env"],
     }),
+
+    ScheduleModule.forRoot(),
 
     AppConfigModule,
     ThrottlerModule.forRootAsync({

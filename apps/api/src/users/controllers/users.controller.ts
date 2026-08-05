@@ -22,6 +22,8 @@ import { UpdateProfileDto } from "../dto/update-profile.dto";
 import { UpdatePreferencesDto } from "../dto/update-preferences.dto";
 import { ChangePasswordDto } from "../dto/change-password.dto";
 import { UserProfile } from "../interfaces/user-profile.interface";
+import { User } from "../entities/user.entity";
+import { UserPreference } from "../entities/user-preference.entity";
 
 @ApiTags("Users")
 @ApiBearerAuth("JWT-auth")
@@ -39,6 +41,7 @@ export class UsersController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "User profile retrieved successfully",
+    type: User,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -48,7 +51,7 @@ export class UsersController {
     status: HttpStatus.NOT_FOUND,
     description: "User not found",
   })
-  async getMe(@CurrentUser("id") userId: string): Promise<UserProfile> {
+  async getMe(@CurrentUser("user_id") userId: number): Promise<UserProfile> {
     return this.usersService.getCurrentUser(userId);
   }
 
@@ -62,6 +65,7 @@ export class UsersController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "User profile updated successfully",
+    type: User,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -76,7 +80,7 @@ export class UsersController {
     description: "User not found",
   })
   async updateMe(
-    @CurrentUser("id") userId: string,
+    @CurrentUser("user_id") userId: number,
     @Body() updateProfileDto: UpdateProfileDto,
   ): Promise<UserProfile> {
     return this.usersService.updateProfile(userId, updateProfileDto);
@@ -92,6 +96,7 @@ export class UsersController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Preferences updated successfully",
+    type: UserPreference,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -106,7 +111,7 @@ export class UsersController {
     description: "User not found",
   })
   async updatePreferences(
-    @CurrentUser("id") userId: string,
+    @CurrentUser("user_id") userId: number,
     @Body() preferencesDto: UpdatePreferencesDto,
   ): Promise<any> {
     if (
@@ -143,7 +148,7 @@ export class UsersController {
     description: "User not found",
   })
   async changePassword(
-    @CurrentUser("id") userId: string,
+    @CurrentUser("user_id") userId: number,
     @Body() changePasswordDto: ChangePasswordDto,
   ): Promise<{ success: boolean; message: string }> {
     return this.usersService.changePassword(userId, changePasswordDto);

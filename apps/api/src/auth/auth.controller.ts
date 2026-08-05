@@ -54,6 +54,7 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: "User successfully registered",
+    type: User,
   })
   @ApiResponse({
     status: HttpStatus.CONFLICT,
@@ -81,6 +82,7 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "User successfully authenticated",
+    type: User,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -104,6 +106,7 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Tokens successfully refreshed",
+    type: User,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -148,6 +151,7 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "User profile retrieved successfully",
+    type: User,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,

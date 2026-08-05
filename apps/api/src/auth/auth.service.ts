@@ -34,11 +34,6 @@ export class AuthService {
   /**
    * Registers a new user. Hashes the password, saves user in the repository,
    * generates access/refresh tokens, and starts an active user session.
-   * @param registerDto Contains email, fullName, and password
-   * @param ipAddress IP address of the client device (optional)
-   * @param userAgent User-agent header string from the client browser (optional)
-   * @returns The registered user along with active JWT tokens
-   * @throws ConflictException if the email is already in use
    */
   async register(
     registerDto: RegisterDto,
@@ -68,17 +63,16 @@ export class AuthService {
     const refreshToken = this.generateRefreshToken(user);
     const tokenHash = hashRefreshToken(refreshToken);
 
-    // Save hashed refresh token session to database (never store plaintext tokens)
     const expiresAt = new Date(Date.now() + this.getRefreshExpiryMs());
     await this.sessionRepository.createSession({
-      userId: user.id,
+      userId: user.user_id,
       tokenHash,
       expiresAt,
       ipAddress,
       userAgent,
     });
 
-    this.logger.log(`User registered successfully: ${user.id}`);
+    this.logger.log(`User registered successfully: ${user.user_id}`);
 
     return {
       user: this.sanitizeUser(user),
@@ -90,11 +84,6 @@ export class AuthService {
   /**
    * Logs in a user by verifying credentials, creating a new session,
    * and returning signed tokens.
-   * @param loginDto Contains email and password
-   * @param ipAddress IP address of the client device (optional)
-   * @param userAgent User-agent header string from the client browser (optional)
-   * @returns Authenticated user and a fresh pair of tokens
-   * @throws UnauthorizedException on invalid credentials
    */
   async login(
     loginDto: LoginDto,
@@ -107,20 +96,19 @@ export class AuthService {
     const refreshToken = this.generateRefreshToken(user);
     const tokenHash = hashRefreshToken(refreshToken);
 
-    // Store the hashed refresh token session
     const expiresAt = new Date(Date.now() + this.getRefreshExpiryMs());
     await this.sessionRepository.createSession({
-      userId: user.id,
+      userId: user.user_id,
       tokenHash,
       expiresAt,
       ipAddress,
       userAgent,
     });
 
-    this.logger.log(`User logged in successfully: ${user.id}`);
+    this.logger.log(`User logged in successfully: ${user.user_id}`);
 
     return {
-      user,
+      user: this.sanitizeUser(user as User),
       accessToken,
       refreshToken,
     };
@@ -128,22 +116,18 @@ export class AuthService {
 
   /**
    * Validates user credentials. Checks email against registered users and verifies password hashes.
-   * @param email Email address of the user
-   * @param pass Plaintext password to compare
-   * @returns Sanitized User entity (with passwordHash removed)
-   * @throws UnauthorizedException on failure
    */
   async validateUser(
     email: string,
     pass: string,
-  ): Promise<Omit<User, "passwordHash">> {
+  ): Promise<Omit<User, "password_hash">> {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       this.logger.warn(`Login failed — user not found for email: ${email}`);
       throw new UnauthorizedException("Invalid email address or password");
     }
 
-    const isPasswordValid = await comparePassword(pass, user.passwordHash);
+    const isPasswordValid = await comparePassword(pass, user.password_hash);
     if (!isPasswordValid) {
       this.logger.warn(`Login failed — invalid password for email: ${email}`);
       throw new UnauthorizedException("Invalid email address or password");
@@ -154,18 +138,6 @@ export class AuthService {
 
   /**
    * Refreshes an access token using a valid refresh token.
-   * Uses Refresh Token Rotation (RTR) to invalidate the old session and issue new tokens.
-   *
-   * Security hardening:
-   * - Refresh tokens are hashed (SHA-256) before database lookup
-   * - Old sessions are deleted before new ones are created to prevent race conditions
-   * - Failed attempts are logged without exposing sensitive data
-   *
-   * @param refreshTokenDto Holds the raw refresh token
-   * @param ipAddress IP address of the client device (optional)
-   * @param userAgent User-agent header string from the client browser (optional)
-   * @returns New access token, new refresh token, and user details
-   * @throws UnauthorizedException on token mismatch or session expiry
    */
   async refreshAccessToken(
     refreshTokenDto: RefreshTokenDto,
@@ -175,39 +147,43 @@ export class AuthService {
     const rawToken = refreshTokenDto.refreshToken;
     let payload: JwtPayload;
 
-    // Step 1: Verify the refresh token signature and expiration
     try {
       payload = jwt.verify(
         rawToken,
         this.getSecret("refreshSecret"),
-      ) as JwtPayload;
-    } catch (error) {
+      ) as any as JwtPayload;
+    } catch {
       this.logger.warn(
         "Refresh token verification failed — invalid or expired token",
       );
       throw new UnauthorizedException("Invalid or expired refresh token");
     }
 
-    // Step 2: Hash the token and look up the session (prevent token exfiltration attacks)
     const tokenHash = hashRefreshToken(rawToken);
     const session =
       await this.sessionRepository.findSessionByTokenHash(tokenHash);
 
     if (!session) {
       this.logger.warn(
-        `Refresh token replay suspected — session not found for user: ${payload.sub}`,
+        `Refresh token replay suspected — session not found for user: ${payload.sub}. Invalidating all active sessions.`,
       );
+      try {
+        await this.sessionRepository.deleteSessionsByUser(payload.sub);
+      } catch (err: any) {
+        this.logger.error(
+          `Failed to invalidate sessions after suspected replay attack for user: ${payload.sub}`,
+          err.stack,
+        );
+      }
       throw new UnauthorizedException("Active session not found");
     }
 
-    // Step 3: Check session expiration
     if (new Date(session.expiresAt) < new Date()) {
       await this.sessionRepository.deleteSessionByTokenHash(tokenHash);
       this.logger.warn(`Expired refresh token used for user: ${payload.sub}`);
       throw new UnauthorizedException("Refresh token session has expired");
     }
 
-    // Step 4: Verify the user still exists
     const user = await this.userRepository.findById(payload.sub);
     if (!user) {
       await this.sessionRepository.deleteSessionByTokenHash(tokenHash);
@@ -217,34 +193,31 @@ export class AuthService {
       throw new UnauthorizedException("User not found");
     }
 
-    // Step 5: Refresh Token Rotation (RTR) — delete old session BEFORE creating new one
-    // This minimizes the race condition window where old+new tokens both exist
     try {
       await this.sessionRepository.deleteSessionByTokenHash(tokenHash);
     } catch (error) {
       this.logger.error(
-        `Failed to delete old session during RTR for user: ${user.id}`,
+        `Failed to delete old session during RTR for user: ${user.user_id}`,
         (error as Error).stack,
       );
-      // Continue — if delete failed (e.g. already deleted), rotation still proceeds
     }
 
-    // Step 6: Generate new token pair
     const newAccessToken = this.generateAccessToken(user);
     const newRefreshToken = this.generateRefreshToken(user);
     const newTokenHash = hashRefreshToken(newRefreshToken);
 
-    // Step 7: Save new hashed token session
     const expiresAt = new Date(Date.now() + this.getRefreshExpiryMs());
     await this.sessionRepository.createSession({
-      userId: user.id,
+      userId: user.user_id,
       tokenHash: newTokenHash,
       expiresAt,
       ipAddress: ipAddress ?? session.ipAddress ?? undefined,
       userAgent: userAgent ?? session.userAgent ?? undefined,
     });
 
-    this.logger.log(`Access token refreshed successfully for user: ${user.id}`);
+    this.logger.log(
+      `Access token refreshed successfully for user: ${user.user_id}`,
+    );
 
     return {
       user: this.sanitizeUser(user),
@@ -255,7 +228,6 @@ export class AuthService {
 
   /**
    * Logs out the user by deleting their refresh token session from database.
-   * @param refreshToken The raw refresh token corresponding to the session to invalidate
    */
   async logout(refreshToken: string): Promise<void> {
     try {
@@ -263,7 +235,6 @@ export class AuthService {
       await this.sessionRepository.deleteSessionByTokenHash(tokenHash);
       this.logger.log("User logged out — session deleted successfully");
     } catch (error) {
-      // Log the error but do not throw — logout should be idempotent
       this.logger.error(
         "Logout session deletion encountered an issue (session may already be deleted)",
         (error as Error).stack,
@@ -271,26 +242,13 @@ export class AuthService {
     }
   }
 
-  /**
-   * Generates a signed JWT token (access or refresh).
-   * Uses a single unified method to avoid duplicate signing logic.
-   *
-   * Security:
-   * - Payload contains only `sub` (user ID) — no PII in tokens
-   * - A unique `jti` claim is included for replay detection
-   *
-   * @param user The user object
-   * @param secret The signing secret key
-   * @param expiresIn Token expiration duration string (e.g., '15m', '7d')
-   * @returns Signed JWT string
-   */
   private signToken(
-    user: Omit<User, "passwordHash"> | User,
+    user: Omit<User, "password_hash"> | User,
     secret: string,
     expiresIn: string,
   ): string {
     const payload: JwtPayload = {
-      sub: user.id,
+      sub: user.user_id,
     };
 
     return jwt.sign(payload, secret, {
@@ -299,11 +257,9 @@ export class AuthService {
     });
   }
 
-  /**
-   * Generates a signed Access JWT.
-   * @param user The user object (sanitized or full)
-   */
-  private generateAccessToken(user: Omit<User, "passwordHash"> | User): string {
+  private generateAccessToken(
+    user: Omit<User, "password_hash"> | User,
+  ): string {
     return this.signToken(
       user,
       this.getSecret("secret"),
@@ -311,12 +267,8 @@ export class AuthService {
     );
   }
 
-  /**
-   * Generates a signed Refresh JWT.
-   * @param user The user object (sanitized or full)
-   */
   private generateRefreshToken(
-    user: Omit<User, "passwordHash"> | User,
+    user: Omit<User, "password_hash"> | User,
   ): string {
     return this.signToken(
       user,
@@ -325,27 +277,22 @@ export class AuthService {
     );
   }
 
-  /**
-   * Removes the passwordHash field from User payload to protect user credentials.
-   * Uses an allowlist approach for forward-compatibility with new sensitive fields.
-   * @param user Full user entity
-   */
-  private sanitizeUser(user: User): Omit<User, "passwordHash"> {
+  private sanitizeUser(user: User): Omit<User, "password_hash"> {
     return {
-      id: user.id,
+      user_id: user.user_id,
       email: user.email,
-      fullName: user.fullName,
+      full_name: user.full_name,
       preference: user.preference,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      // Compatibility fields
+      id: user.user_id,
+      fullName: user.full_name,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+    } as any;
   }
 
-  /**
-   * Retrieves a JWT configuration value by key with a fallback default.
-   * @param key Config key path (e.g., 'secret', 'expiresIn')
-   * @param fallback Default value if config is not set
-   */
   private getSecret(key: "secret" | "refreshSecret"): string {
     const configKey = `jwt.${key}` as const;
     const secret = this.configService.get<string>(configKey);
@@ -355,11 +302,6 @@ export class AuthService {
     return secret;
   }
 
-  /**
-   * Retrieves a JWT expiration setting by key with a fallback default.
-   * @param key Config key path (e.g., 'expiresIn', 'refreshExpiresIn')
-   * @param fallback Default value if config is not set
-   */
   private getExpiry(
     key: "expiresIn" | "refreshExpiresIn",
     fallback: string,
@@ -367,9 +309,6 @@ export class AuthService {
     return this.configService.get<string>(`jwt.${key}`) || fallback;
   }
 
-  /**
-   * Calculates the refresh token expiration offset in milliseconds.
-   */
   private getRefreshExpiryMs(): number {
     const expiry = this.getExpiry("refreshExpiresIn", "7d");
     return parseDuration(expiry);

@@ -15,44 +15,45 @@ import { handlePrismaError } from "../../common/utils/prisma-error.util";
 export class TaskRepository implements ITaskRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createTask(userId: string, data: CreateTaskDto): Promise<Task> {
+  async createTask(missionId: number, data: CreateTaskDto): Promise<Task> {
     try {
-      const task = await this.prisma.task.create({
+      const isCompleted = data.status === TaskStatus.COMPLETED;
+      const task = await this.prisma.tasks.create({
         data: {
-          userId,
-          planId: data.planId ?? null,
+          mission_id: missionId,
           title: data.title,
           description: data.description ?? null,
           status: data.status,
           priority: data.priority,
-          dueDate: new Date(data.dueDate),
-          assignment: data.assignment ?? null,
+          due_date: data.dueDate ? new Date(data.dueDate) : null,
+          completed_at: isCompleted ? new Date() : null,
         },
       });
-      return task as unknown as Task;
+      return mapPrismaTaskToEntity(task);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async findTaskById(id: string): Promise<Task | null> {
+  async findTaskById(id: number): Promise<Task | null> {
     try {
-      const task = await this.prisma.task.findUnique({
-        where: { id },
+      const task = await this.prisma.tasks.findUnique({
+        where: { task_id: id },
       });
-      return task as unknown as Task | null;
+      if (!task) return null;
+      return mapPrismaTaskToEntity(task);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async findTasksByPlan(
-    planId: string,
+  async findTasksByMission(
+    missionId: number,
     filters?: TaskFilterDto,
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Task>> {
     try {
-      const where: any = { planId };
+      const where: any = { mission_id: missionId };
 
       if (filters?.status) {
         where.status = filters.status;
@@ -61,31 +62,31 @@ export class TaskRepository implements ITaskRepository {
         where.priority = filters.priority;
       }
       if (filters?.dueDateFrom || filters?.dueDateTo) {
-        where.dueDate = {};
+        where.due_date = {};
         if (filters.dueDateFrom) {
-          where.dueDate.gte = new Date(filters.dueDateFrom);
+          where.due_date.gte = new Date(filters.dueDateFrom);
         }
         if (filters.dueDateTo) {
-          where.dueDate.lte = new Date(filters.dueDateTo);
+          where.due_date.lte = new Date(filters.dueDateTo);
         }
       }
 
       const page = pagination?.page ?? 1;
-      const limit = pagination?.limit ?? 10;
+      const limit = Math.min(pagination?.limit ?? 10, 100);
       const skip = (page - 1) * limit;
 
       const [data, total] = await this.prisma.$transaction([
-        this.prisma.task.findMany({
+        this.prisma.tasks.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { dueDate: "asc" },
+          orderBy: { due_date: "asc" },
         }),
-        this.prisma.task.count({ where }),
+        this.prisma.tasks.count({ where }),
       ]);
 
       return {
-        data: data as unknown as Task[],
+        data: data.map((t) => mapPrismaTaskToEntity(t)),
         total,
         page,
         limit,
@@ -96,50 +97,79 @@ export class TaskRepository implements ITaskRepository {
     }
   }
 
-  async updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
+  async updateTaskStatus(id: number, status: string): Promise<Task> {
     try {
-      const task = await this.prisma.task.update({
-        where: { id },
-        data: { status },
+      const isCompleted = status.toUpperCase() === "COMPLETED";
+      const task = await this.prisma.tasks.update({
+        where: { task_id: id },
+        data: {
+          status,
+          completed_at: isCompleted ? new Date() : null,
+        },
       });
-      return task as unknown as Task;
+      return mapPrismaTaskToEntity(task);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async updateTask(id: string, data: UpdateTaskDto): Promise<Task> {
+  async updateTask(id: number, data: UpdateTaskDto): Promise<Task> {
     try {
       const updateData: any = {};
       if (data.title !== undefined) updateData.title = data.title;
       if (data.description !== undefined)
         updateData.description = data.description;
-      if (data.status !== undefined) updateData.status = data.status;
+      if (data.status !== undefined) {
+        updateData.status = data.status;
+        if (data.status === TaskStatus.COMPLETED) {
+          updateData.completed_at = new Date();
+        } else {
+          updateData.completed_at = null;
+        }
+      }
       if (data.priority !== undefined) updateData.priority = data.priority;
       if (data.dueDate !== undefined)
-        updateData.dueDate = new Date(data.dueDate);
-      if (data.assignment !== undefined)
-        updateData.assignment = data.assignment;
-      if (data.planId !== undefined) updateData.planId = data.planId;
+        updateData.due_date = data.dueDate ? new Date(data.dueDate) : null;
 
-      const task = await this.prisma.task.update({
-        where: { id },
+      const task = await this.prisma.tasks.update({
+        where: { task_id: id },
         data: updateData,
       });
-      return task as unknown as Task;
+      return mapPrismaTaskToEntity(task);
     } catch (error) {
       handlePrismaError(error);
     }
   }
 
-  async deleteTask(id: string): Promise<Task> {
+  async deleteTask(id: number): Promise<Task> {
     try {
-      const task = await this.prisma.task.delete({
-        where: { id },
+      const task = await this.prisma.tasks.findUnique({
+        where: { task_id: id },
       });
-      return task as unknown as Task;
+      if (task) {
+        await this.prisma.tasks.delete({
+          where: { task_id: id },
+        });
+      }
+      return mapPrismaTaskToEntity(task!)!;
     } catch (error) {
       handlePrismaError(error);
     }
   }
+}
+
+function mapPrismaTaskToEntity(t: any): Task {
+  if (!t) return null as any;
+  return {
+    task_id: t.task_id,
+    mission_id: t.mission_id,
+    title: t.title,
+    description: t.description,
+    status: t.status,
+    priority: t.priority,
+    due_date: t.due_date,
+    estimated_time: t.estimated_time,
+    completed_at: t.completed_at,
+    created_at: t.created_at,
+  } as unknown as Task;
 }

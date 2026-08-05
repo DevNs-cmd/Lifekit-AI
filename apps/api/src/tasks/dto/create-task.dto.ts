@@ -5,10 +5,9 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
+  IsInt,
+  Min,
 } from "class-validator";
-import { PriorityLevel } from "../../common/enums";
-
 export enum TaskStatus {
   PENDING = "PENDING",
   IN_PROGRESS = "IN_PROGRESS",
@@ -19,12 +18,13 @@ export enum TaskStatus {
 
 export class CreateTaskDto {
   @ApiPropertyOptional({
-    description: "The associated Plan ID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+    description: "The associated Mission ID",
+    example: 1,
   })
-  @IsUUID("4", { message: "planId must be a valid UUID" })
+  @IsInt({ message: "missionId must be a valid integer" })
+  @Min(1)
   @IsOptional()
-  planId?: string;
+  missionId?: number;
 
   @ApiProperty({
     description: "The title of the task",
@@ -53,13 +53,11 @@ export class CreateTaskDto {
 
   @ApiProperty({
     description: "Task priority level",
-    enum: PriorityLevel,
-    example: PriorityLevel.MEDIUM,
+    example: "Medium",
   })
-  @IsEnum(PriorityLevel, {
-    message: "priority must be a valid PriorityLevel value",
-  })
-  priority!: PriorityLevel;
+  @IsString()
+  @IsNotEmpty({ message: "priority is required" })
+  priority!: string;
 
   @ApiProperty({
     description: "Task due date and time",

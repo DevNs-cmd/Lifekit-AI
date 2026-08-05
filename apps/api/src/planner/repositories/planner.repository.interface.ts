@@ -7,12 +7,12 @@ import {
 } from "../../common/interfaces/pagination.interface";
 
 export interface IPlannerRepository {
-  createPlan(userId: string, data: CreatePlanDto): Promise<Plan>;
-  findPlanById(id: string): Promise<Plan | null>;
+  createPlan(userId: number, data: CreatePlanDto): Promise<Plan>;
+  findPlanById(id: number): Promise<Plan | null>;
   findPlansByMission(
-    missionId: string,
+    missionId: number,
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Plan>>;
-  updatePlan(id: string, data: UpdatePlanDto): Promise<Plan>;
-  deletePlan(id: string): Promise<Plan>;
+  updatePlan(id: number, data: UpdatePlanDto): Promise<Plan>;
+  deletePlan(id: number): Promise<Plan>;
 }
