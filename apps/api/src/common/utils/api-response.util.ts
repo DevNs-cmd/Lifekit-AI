@@ -2,6 +2,7 @@ export interface MetaPagination {
   total: number;
   page: number;
   limit: number;
+  pageSize: number;
   totalPages: number;
 }
 
@@ -27,6 +28,7 @@ export class PaginatedResponse<T> {
 export class ErrorResponse {
   readonly success = false;
   readonly timestamp: string;
+  readonly code: string;
   constructor(
     readonly statusCode: number,
     readonly message: string | string[],
@@ -35,5 +37,6 @@ export class ErrorResponse {
     readonly errorCode?: string,
   ) {
     this.timestamp = new Date().toISOString();
+    this.code = errorCode ?? error;
   }
 }
