@@ -13,6 +13,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { updateProfileSchema, type UpdateProfileFormData } from "@/lib/validation/schemas";
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
+import { usersApi } from "@/lib/api";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -29,10 +30,24 @@ export default function EditProfilePage() {
   });
 
   async function onSave(data: UpdateProfileFormData) {
-    await new Promise(r => setTimeout(r, 500));
-    updateUser(data);
-    toast.success("Profile updated.");
-    router.push(ROUTES.SETTINGS);
+    try {
+      const result = await usersApi.updateMe({
+        fullName: data.fullName,
+        phone: data.phone,
+      });
+      // Save updated data to Zustand store, merging local-only location and bio fields
+      updateUser({
+        fullName: result.fullName,
+        phone: result.phone || "",
+        location: data.location,
+        bio: data.bio,
+      });
+      toast.success("Profile updated.");
+      router.push(ROUTES.SETTINGS);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update profile.";
+      toast.error(message);
+    }
   }
 
   return (

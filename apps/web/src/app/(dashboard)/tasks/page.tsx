@@ -23,12 +23,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard, type KanbanStatus } from "@/components/tasks/kanban-board";
-import { MOCK_TASKS, MOCK_MISSIONS } from "@/constants/mock-data";
+import { MOCK_TASKS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, formatDuration, cn } from "@/lib/utils";
 import { createTaskSchema, type CreateTaskFormData } from "@/lib/validation/schemas";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useMissionStore } from "@/stores";
+import { missionsApi } from "@/lib/api";
 import type { Task } from "@/types/task";
 
 type ViewMode = "list" | "Board";
@@ -124,14 +126,14 @@ function TaskRow({ task, showMission = true, completed, onToggle, onEdit, onDele
   );
 }
 
-type TaskDialogProps = { mode: "create" | "edit"; form: UseFormReturn<CreateTaskFormData>; open: boolean; editTarget?: Task | null; preselectedMissionId: string; onOpenChange: (open: boolean) => void; onSubmit: (data: CreateTaskFormData) => Promise<void> };
+type TaskDialogProps = { mode: "create" | "edit"; form: UseFormReturn<CreateTaskFormData>; open: boolean; editTarget?: Task | null; preselectedMissionId: string; onOpenChange: (open: boolean) => void; onSubmit: (data: CreateTaskFormData) => Promise<void>; missions: any[] };
 
-function TaskDialog({ mode, form, open, editTarget, preselectedMissionId, onOpenChange, onSubmit }: TaskDialogProps) {
+function TaskDialog({ mode, form, open, editTarget, preselectedMissionId, onOpenChange, onSubmit, missions }: TaskDialogProps) {
   const isEdit = mode === "edit";
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{isEdit ? "Edit task" : "Add a task"}</DialogTitle></DialogHeader>
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <FormField label="Task title" htmlFor={`${mode}-title`} required error={form.formState.errors.title?.message}><Input id={`${mode}-title`} placeholder="e.g. Complete React advanced patterns module" autoFocus {...form.register("title")} error={!!form.formState.errors.title} /></FormField>
-      <FormField label="Mission" htmlFor={`${mode}-mission`} required error={form.formState.errors.missionId?.message}><Select defaultValue={isEdit ? editTarget?.missionId : (preselectedMissionId || undefined)} onValueChange={v => form.setValue("missionId", v)}><SelectTrigger id={`${mode}-mission`} error={!!form.formState.errors.missionId}><SelectValue placeholder="Select a mission" /></SelectTrigger><SelectContent>{MOCK_MISSIONS.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}</SelectContent></Select></FormField>
+      <FormField label="Mission" htmlFor={`${mode}-mission`} required error={form.formState.errors.missionId?.message}><Select defaultValue={isEdit ? editTarget?.missionId : (preselectedMissionId || undefined)} onValueChange={v => form.setValue("missionId", v)}><SelectTrigger id={`${mode}-mission`} error={!!form.formState.errors.missionId}><SelectValue placeholder="Select a mission" /></SelectTrigger><SelectContent>{missions.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}</SelectContent></Select></FormField>
       <div className="grid grid-cols-2 gap-3"><FormField label="Priority" htmlFor={`${mode}-priority`}><Select defaultValue={isEdit ? (editTarget?.priority ?? "medium") : "medium"} onValueChange={v => form.setValue("priority", v as CreateTaskFormData["priority"])}><SelectTrigger id={`${mode}-priority`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="urgent">Urgent</SelectItem></SelectContent></Select></FormField><FormField label="Due date" htmlFor={`${mode}-due`}><Input id={`${mode}-due`} type="date" {...form.register("dueDate")} /></FormField></div>
       <FormField label="Est. duration (minutes)" htmlFor={`${mode}-duration`}><Input id={`${mode}-duration`} type="number" min={1} placeholder="e.g. 60" {...form.register("estimatedDurationMinutes")} /></FormField>
       <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" loading={form.formState.isSubmitting}>{isEdit ? "Save changes" : "Create task"}</Button></DialogFooter>
@@ -145,6 +147,20 @@ export default function TasksPage() {
 
   const preselectedMissionId = params.get("missionId") ?? "";
   const shouldOpenCreate = params.get("create") === "true";
+
+  const { cachedMissions, setCachedMissions } = useMissionStore();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await missionsApi.getMissions();
+        setCachedMissions(data);
+      } catch {
+        // ignore
+      }
+    }
+    load();
+  }, [setCachedMissions]);
 
   const [tasks, setTasks]           = useState<Task[]>(MOCK_TASKS);
   const [completed, setCompleted]   = useState<Set<string>>(new Set());
@@ -212,7 +228,7 @@ export default function TasksPage() {
 
   async function onCreateTask(data: CreateTaskFormData) {
     await new Promise(r => setTimeout(r, 300));
-    const mission = MOCK_MISSIONS.find(m => m.id === data.missionId);
+    const mission = cachedMissions.find(m => m.id === data.missionId);
     const newTask: Task = {
       id: `task-${crypto.randomUUID()}`,
       userId: "user-1",
@@ -239,7 +255,7 @@ export default function TasksPage() {
   async function onEditTask(data: CreateTaskFormData) {
     if (!editTarget) return;
     await new Promise(r => setTimeout(r, 300));
-    const mission = MOCK_MISSIONS.find(m => m.id === data.missionId);
+    const mission = cachedMissions.find(m => m.id === data.missionId);
     setTasks(prev => prev.map(t => t.id === editTarget.id
       ? { ...t, ...data, missionTitle: mission?.title ?? t.missionTitle, updatedAt: new Date().toISOString() }
       : t
@@ -265,7 +281,7 @@ export default function TasksPage() {
     : tasks;
 
   const missionContext = preselectedMissionId
-    ? MOCK_MISSIONS.find(m => m.id === preselectedMissionId)
+    ? cachedMissions.find(m => m.id === preselectedMissionId)
     : null;
 
   const completedList  = filteredTasks.filter(t => completed.has(t.id));
@@ -448,8 +464,8 @@ export default function TasksPage() {
         </Tabs>
       )}
 
-      <TaskDialog mode="create" form={createForm} open={createOpen} preselectedMissionId={preselectedMissionId} onSubmit={onCreateTask} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset({ missionId: preselectedMissionId, priority: "medium" }); }} />
-      <TaskDialog mode="edit" form={editForm} open={!!editTarget} editTarget={editTarget} preselectedMissionId={preselectedMissionId} onSubmit={onEditTask} onOpenChange={(open) => { if (!open) setEditTarget(null); }} />
+      <TaskDialog mode="create" form={createForm} open={createOpen} preselectedMissionId={preselectedMissionId} onOpenChange={setCreateOpen} onSubmit={onCreateTask} missions={cachedMissions} />
+      <TaskDialog mode="edit" form={editForm} open={!!editTarget} editTarget={editTarget} preselectedMissionId={preselectedMissionId} onOpenChange={open => !open && setEditTarget(null)} onSubmit={onEditTask} missions={cachedMissions} />
 
       <ConfirmationDialog
         open={!!deleteTarget}

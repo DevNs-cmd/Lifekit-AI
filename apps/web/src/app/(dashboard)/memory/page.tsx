@@ -14,10 +14,13 @@ import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
 import { FormField } from "@/components/shared/form-field";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MOCK_MEMORIES, MOCK_MISSIONS } from "@/constants/mock-data";
+import { MOCK_MEMORIES } from "@/constants/mock-data";
 import { formatRelativeTime, cn, generateId } from "@/lib/utils";
 import { createMemorySchema, type CreateMemoryFormData } from "@/lib/validation/schemas";
 import { toast } from "sonner";
+import { useMissionStore } from "@/stores";
+import { missionsApi } from "@/lib/api";
+import { useEffect } from "react";
 import type { Memory, MemoryCategory } from "@/types/memory";
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -42,9 +45,30 @@ export default function MemoryPage() {
     defaultValues: { importance: "medium", tags: [] },
   });
 
+  const { cachedMissions, setCachedMissions } = useMissionStore();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await missionsApi.getMissions();
+        setCachedMissions(data);
+      } catch {
+        // ignore
+      }
+    }
+    load();
+  }, [setCachedMissions]);
+
   const filtered = memories
-    .filter(m => !search || m.content.toLowerCase().includes(search.toLowerCase()))
-    .filter(m => categoryFilter === "all" || m.category === categoryFilter);
+    .filter(m => {
+      const matchSearch = !search || m.content.toLowerCase().includes(search.toLowerCase()) || m.tags.some(t => t.toLowerCase().includes(search.toLowerCase()));
+      const matchCategory = categoryFilter === "all" || m.category === categoryFilter;
+      return matchSearch && matchCategory;
+    })
+    .map(data => ({
+      ...data,
+      relatedMissionTitle: cachedMissions.find(m => m.id === data.relatedMissionId)?.title,
+    }));
 
   function togglePin(id: string) {
     setMemories(prev => prev.map(m => m.id === id ? { ...m, isPinned: !m.isPinned } : m));
@@ -65,7 +89,7 @@ export default function MemoryPage() {
       content: data.content,
       category: data.category,
       relatedMissionId: data.relatedMissionId,
-      relatedMissionTitle: MOCK_MISSIONS.find(m => m.id === data.relatedMissionId)?.title,
+      relatedMissionTitle: cachedMissions.find((m: any) => m.id === data.relatedMissionId)?.title,
       source: "user",
       importance: data.importance ?? "medium",
       isPinned: false,
@@ -218,7 +242,7 @@ export default function MemoryPage() {
               <Select onValueChange={v => setValue("relatedMissionId", v)}>
                 <SelectTrigger id="mem-mission"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
-                  {MOCK_MISSIONS.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
+                  {cachedMissions.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
                 </SelectContent>
               </Select>
             </FormField>

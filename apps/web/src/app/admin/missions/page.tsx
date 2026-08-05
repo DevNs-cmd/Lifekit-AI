@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Target, MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Progress } from "@/components/ui/progress";
-import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { missionsApi } from "@/lib/api";
 
 const STATUS_VARIANTS: Record<string, "success" | "warning" | "outline" | "destructive" | "info"> = {
   active: "success", paused: "warning", draft: "outline", completed: "info", "at-risk": "destructive",
@@ -18,7 +18,21 @@ const STATUS_VARIANTS: Record<string, "success" | "warning" | "outline" | "destr
 
 export default function AdminMissionsPage() {
   const [search, setSearch] = useState("");
-  const missions = MOCK_MISSIONS.filter(m =>
+  const [missionsList, setMissionsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await missionsApi.getMissions();
+        setMissionsList(data);
+      } catch {
+        toast.error("Failed to load monitored missions.");
+      }
+    }
+    load();
+  }, []);
+
+  const missions = missionsList.filter(m =>
     !search || m.title.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -27,7 +41,7 @@ export default function AdminMissionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-[hsl(var(--text-primary))]">Mission Monitoring</h1>
-          <p className="text-sm text-[hsl(var(--text-secondary))]">{MOCK_MISSIONS.length} total missions</p>
+          <p className="text-sm text-[hsl(var(--text-secondary))]">{missionsList.length} total missions</p>
         </div>
         <Button size="sm" onClick={() => toast("Export coming soon!")}>Export</Button>
       </div>

@@ -16,6 +16,8 @@ import { TasksModule } from "./tasks/tasks.module";
 import { MemoryModule } from "./memory/memory.module";
 import { RecommendationsModule } from "./recommendations/recommendations.module";
 import { MarketplaceModule } from "./marketplace/marketplace.module";
+import { AgentsModule } from "./agents/agents.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 
 import { ThrottlerModule } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
@@ -60,6 +62,8 @@ import { RequestLoggingMiddleware } from "./common/middleware/request-logging.mi
     MemoryModule,
     RecommendationsModule,
     MarketplaceModule,
+    AgentsModule,
+    NotificationsModule,
     CacheModule,
     QueueModule,
     UploadModule,

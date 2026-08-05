@@ -17,25 +17,37 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { GoalInput } from "@/components/navigation/goal-input";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
-import { MOCK_MISSIONS, MOCK_TASKS, MOCK_RECOMMENDATIONS } from "@/constants/mock-data";
+import { MOCK_TASKS, MOCK_RECOMMENDATIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { cn, formatDeadline, formatDuration } from "@/lib/utils";
+import { useMissionStore } from "@/stores";
+import { missionsApi } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
   const user = useAuthStore(s => s.user);
   const setAiCoachPanelOpen = useUIStore(s => s.setAiCoachPanelOpen);
   const [completed, setCompleted] = React.useState<Set<string>>(new Set());
+  const { cachedMissions, setCachedMissions } = useMissionStore();
   const [dataReady, setDataReady] = React.useState(false);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => setDataReady(true), 180);
-    return () => window.clearTimeout(timer);
-  }, []);
+    async function load() {
+      try {
+        const data = await missionsApi.getMissions();
+        setCachedMissions(data);
+      } catch {
+        // fail silently on dashboard background fetch
+      } finally {
+        setDataReady(true);
+      }
+    }
+    load();
+  }, [setCachedMissions]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const activeMissions = MOCK_MISSIONS.filter(m => m.status === "active");
+  const activeMissions = cachedMissions.filter(m => m.status === "active");
   const activeMission = activeMissions[0];
   const todayTasks = MOCK_TASKS.slice(0, 4);
   const nextTask = todayTasks.find(task => !completed.has(task.id)) ?? todayTasks[0];

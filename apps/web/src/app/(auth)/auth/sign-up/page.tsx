@@ -17,6 +17,7 @@ import { signUpSchema, type SignUpFormData } from "@/lib/validation/schemas";
 import { useAuthStore } from "@/stores/auth-store";
 import { MOCK_USER } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
+import { authApi } from "@/lib/api";
 
 const SOCIAL_PROVIDERS = [
   {
@@ -64,11 +65,16 @@ export default function SignUpPage() {
     formState: { errors, isSubmitting },
   } = useForm<SignUpFormData>({ resolver: zodResolver(signUpSchema) });
 
-  async function onSubmit(_data: SignUpFormData) {
-    await new Promise(r => setTimeout(r, 900));
-    login({ ...MOCK_USER, onboardingCompleted: false });
-    toast.success("Account created! Let's set up your profile.");
-    router.push(ROUTES.ONBOARDING);
+  async function onSubmit(data: SignUpFormData) {
+    try {
+      const result = await authApi.register(data);
+      login(result.user, result.accessToken, result.refreshToken);
+      toast.success("Account created! Let's set up your profile.");
+      router.push(ROUTES.ONBOARDING);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      toast.error(message);
+    }
   }
 
   async function handleSocialSignUp(providerId: string) {

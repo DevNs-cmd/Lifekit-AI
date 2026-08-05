@@ -13,6 +13,7 @@ import { FormField } from "@/components/shared/form-field";
 import { changePasswordSchema, type ChangePasswordFormData } from "@/lib/validation/schemas";
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
+import { usersApi } from "@/lib/api";
 
 const MOCK_SESSIONS = [
   { id: "s1", device: "Chrome on Windows", location: "Bengaluru, India", lastActive: "Now", isCurrent: true },
@@ -27,10 +28,18 @@ export default function SecurityPage() {
     resolver: zodResolver(changePasswordSchema),
   });
 
-  async function onSubmit(_data: ChangePasswordFormData) {
-    await new Promise(r => setTimeout(r, 800));
-    toast.success("Password updated successfully.");
-    reset();
+  async function onSubmit(data: ChangePasswordFormData) {
+    try {
+      await usersApi.changePassword({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+      toast.success("Password updated successfully.");
+      reset();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update password.";
+      toast.error(message);
+    }
   }
 
   return (
