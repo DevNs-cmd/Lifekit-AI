@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """The Orchestrator — a LangGraph StateGraph wiring every AI module
 into a single pipeline, matching the architecture diagram:
 

@@ -257,6 +257,13 @@ async def run_all_tests():
     return failed == 0
 
 
-if __name__ == "__main__":
+def test_full_system():
+    results.clear()
     ok = asyncio.run(run_all_tests())
+    assert ok, f"Full system tests failed: {[r for r in results if r[1] == 'FAIL']}"
+    return ok
+
+
+if __name__ == "__main__":
+    ok = test_full_system()
     exit(0 if ok else 1)
