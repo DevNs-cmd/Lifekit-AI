@@ -35,7 +35,7 @@ export default function ContactPage() {
       <div className="mx-auto max-w-5xl">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-black text-[hsl(var(--text-primary))]">Get in touch</h1>
-          <p className="mt-3 text-lg text-[hsl(var(--text-secondary))]">We'd love to hear from you. Our team responds within 24 hours.</p>
+          <p className="mt-3 text-lg text-[hsl(var(--text-secondary))]">We&apos;d love to hear from you. Our team responds within 24 hours.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -57,7 +57,7 @@ export default function ContactPage() {
                 <div className="text-center py-8">
                   <div className="h-14 w-14 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 text-2xl mb-4">✓</div>
                   <h3 className="font-semibold text-[hsl(var(--text-primary))]">Message sent!</h3>
-                  <p className="text-sm text-[hsl(var(--text-secondary))] mt-2">We'll respond to your email within 24 hours.</p>
+                  <p className="text-sm text-[hsl(var(--text-secondary))] mt-2">We&apos;ll respond to your email within 24 hours.</p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>

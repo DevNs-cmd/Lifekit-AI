@@ -31,7 +31,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center text-center",
+        "flex flex-col items-center justify-center text-center animate-slide-up-fade",
         compact ? "py-8 px-4" : "py-16 px-6",
         className
       )}
@@ -40,7 +40,7 @@ export function EmptyState({
     >
       {icon && (
         <div className={cn(
-          "flex items-center justify-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))] mb-4",
+          "relative flex items-center justify-center rounded-2xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))] mb-4 ring-8 ring-[hsl(var(--secondary))]/40",
           compact ? "h-12 w-12" : "h-16 w-16"
         )}>
           {icon}

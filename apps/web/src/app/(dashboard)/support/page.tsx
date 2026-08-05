@@ -248,7 +248,7 @@ export default function SupportPage() {
             <HelpCircle className="h-7 w-7 text-[hsl(var(--primary))]" /> Support
           </h1>
           <p className="text-sm text-[hsl(var(--text-secondary))] mt-1">
-            We're here to help. Find answers or get in touch.
+            We&apos;re here to help. Find answers or get in touch.
           </p>
         </div>
         {/* Live chat status pill */}
@@ -282,7 +282,7 @@ export default function SupportPage() {
               <div className="text-center py-8">
                 <div className="h-14 w-14 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 text-2xl mb-4">✓</div>
                 <h3 className="font-semibold text-[hsl(var(--text-primary))]">Ticket submitted!</h3>
-                <p className="text-sm text-[hsl(var(--text-secondary))] mt-2">We'll respond to your email within 24 hours.</p>
+                <p className="text-sm text-[hsl(var(--text-secondary))] mt-2">We&apos;ll respond to your email within 24 hours.</p>
                 <Button variant="outline" className="mt-4" onClick={() => setSubmitted(false)}>Submit another</Button>
               </div>
             ) : (

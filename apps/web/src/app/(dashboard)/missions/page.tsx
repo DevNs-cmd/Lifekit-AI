@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { Plus, Search, Grid3X3, List, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,9 @@ import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { CategoryBadge } from "@/components/shared/category-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { MissionCardSkeleton } from "@/components/shared/loading-skeleton";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
+import { SideSheet } from "@/components/ui/side-sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
@@ -27,8 +30,12 @@ export default function MissionsPage() {
   const [statusFilter, setStatusFilter] = React.useState<MissionStatus | "all">("all");
   const [sortBy, setSortBy] = React.useState("updated");
   const [deleteTarget, setDeleteTarget] = React.useState<Mission | null>(null);
+  const [previewMission, setPreviewMission] = React.useState<Mission | null>(null);
+  const [deletedIds, setDeletedIds] = React.useState<Set<string>>(new Set());
+  const [dataReady, setDataReady] = React.useState(false);
+  React.useEffect(() => { const timer = window.setTimeout(() => setDataReady(true), 180); return () => window.clearTimeout(timer); }, []);
 
-  const filtered = MOCK_MISSIONS.filter(m => {
+  const filtered = MOCK_MISSIONS.filter(m => !deletedIds.has(m.id)).filter(m => {
     const matchSearch = !search || m.title.toLowerCase().includes(search.toLowerCase()) || m.goal.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || m.status === statusFilter;
     return matchSearch && matchStatus;
@@ -40,7 +47,10 @@ export default function MissionsPage() {
   });
 
   function handleDelete() {
-    toast.success(`Mission "${deleteTarget?.title}" deleted.`);
+    if (!deleteTarget) return;
+    const deleted = deleteTarget;
+    setDeletedIds(prev => new Set([...prev, deleted.id]));
+    toast.success(`Mission "${deleted.title}" deleted.`, { action: { label: "Undo", onClick: () => setDeletedIds(prev => { const n = new Set(prev); n.delete(deleted.id); return n; }) } });
     setDeleteTarget(null);
   }
 
@@ -87,12 +97,18 @@ export default function MissionsPage() {
       </div>
 
       {/* Grid view */}
-      {filtered.length === 0 ? (
+      {!dataReady ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-label="Loading missions" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => <MissionCardSkeleton key={i} />)}
+        </div>
+      ) : filtered.length === 0 ? (
         <EmptyState icon={<Target className="h-8 w-8" />} title="No missions found" description="Try adjusting filters or create a new mission." action={{ label: "New Mission", onClick: () => router.push(ROUTES.MISSION_NEW) }} />
       ) : view === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <motion.div layout className="dense-work-surface grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <AnimatePresence mode="popLayout">
           {filtered.map(mission => (
-            <Card key={mission.id} className="hover:border-[hsl(var(--primary))]/30 hover:shadow-md transition-all group cursor-pointer" onClick={() => router.push(ROUTES.MISSION_DETAIL(mission.id))}>
+            <motion.div key={mission.id} layout layoutId={`mission-${mission.id}`} initial={{ opacity: 0, scale: .97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .96 }} transition={{ duration: .22 }}>
+            <Card className="hover:border-[hsl(var(--primary))]/30 hover:shadow-md transition-all group cursor-pointer overflow-hidden" onClick={() => setPreviewMission(mission)}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <CategoryBadge category={mission.category} size="sm" />
@@ -124,15 +140,18 @@ export default function MissionsPage() {
                   <StatusBadge status={mission.status} />
                   {mission.targetDate && <span className="text-xs text-[hsl(var(--text-secondary))]">{formatDeadline(mission.targetDate)}</span>}
                 </div>
+                <p className="mt-3 translate-y-1 text-[10px] font-semibold text-[hsl(var(--primary))] opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">Quick preview · press Enter to open</p>
               </CardContent>
             </Card>
+            </motion.div>
           ))}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       ) : (
-        <Card>
+        <Card className="dense-work-surface">
           <CardContent className="p-0 divide-y divide-[hsl(var(--border))]">
             {filtered.map(mission => (
-              <div key={mission.id} className="flex items-center gap-4 px-4 py-3 hover:bg-[hsl(var(--background-subtle))] cursor-pointer" onClick={() => router.push(ROUTES.MISSION_DETAIL(mission.id))}>
+              <div key={mission.id} className="interactive-row animate-slide-up-fade flex items-center gap-4 px-4 py-3 hover:bg-[hsl(var(--background-subtle))] cursor-pointer" onClick={() => router.push(ROUTES.MISSION_DETAIL(mission.id))}>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-[hsl(var(--text-primary))] truncate">{mission.title}</p>
                   <p className="text-xs text-[hsl(var(--text-secondary))] truncate">{mission.goal}</p>
@@ -148,6 +167,20 @@ export default function MissionsPage() {
       )}
 
       <ConfirmationDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)} title="Delete mission?" description={`This will permanently delete "${deleteTarget?.title}" and all its tasks, milestones and progress. This cannot be undone.`} confirmLabel="Delete mission" onConfirm={handleDelete} />
+      <SideSheet
+        open={!!previewMission}
+        onOpenChange={open => !open && setPreviewMission(null)}
+        title={previewMission?.title ?? "Mission"}
+        description={previewMission?.goal}
+        footer={previewMission && <><Button variant="outline" onClick={() => setPreviewMission(null)}>Close</Button><Button onClick={() => router.push(ROUTES.MISSION_DETAIL(previewMission.id))}>Open full mission</Button></>}
+      >
+        {previewMission && <div className="space-y-6">
+          <div className="flex items-center justify-between"><CategoryBadge category={previewMission.category} /><StatusBadge status={previewMission.status} /></div>
+          <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background-subtle))] p-4"><div className="mb-2 flex justify-between text-sm"><span>Mission progress</span><strong>{previewMission.progress}%</strong></div><Progress value={previewMission.progress} /></div>
+          <div><p className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--text-secondary))]">Next best action</p><p className="mt-2 rounded-xl bg-[hsl(var(--secondary))] p-4 text-sm font-medium text-[hsl(var(--primary))]">Continue the next incomplete milestone to keep this mission on track.</p></div>
+          {previewMission.targetDate && <p className="text-sm text-[hsl(var(--text-secondary))]">Target: {formatDeadline(previewMission.targetDate)}</p>}
+        </div>}
+      </SideSheet>
     </div>
   );
 }

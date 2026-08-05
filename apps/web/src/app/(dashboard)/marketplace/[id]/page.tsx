@@ -68,7 +68,7 @@ export default function MarketplaceListingPage() {
           {listing.features.length > 0 && (
             <Card>
               <CardContent className="p-5">
-                <h2 className="text-sm font-semibold text-[hsl(var(--text-primary))] mb-3">What's included</h2>
+                <h2 className="text-sm font-semibold text-[hsl(var(--text-primary))] mb-3">What&apos;s included</h2>
                 <ul className="space-y-2">
                   {listing.features.map((f, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">

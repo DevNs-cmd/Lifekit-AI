@@ -14,7 +14,7 @@ const badgeVariants = cva(
         warning: "border-transparent bg-[hsl(var(--warning))]/15 text-[hsl(var(--warning))]",
         destructive: "border-transparent bg-[hsl(var(--destructive))]/15 text-[hsl(var(--destructive))]",
         info: "border-transparent bg-[hsl(var(--info))]/15 text-[hsl(var(--info))]",
-        purple: "border-transparent bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+        purple: "border-[hsl(var(--primary))]/12 bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]",
       },
     },
     defaultVariants: { variant: "default" },

@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/constants/routes";
+import { ProductExperience } from "@/components/marketing/page-experiences";
+import { Reveal } from "@/components/marketing/premium-interactions";
 
 const FEATURES = [
   { icon: Target,      title: "Life Mission Engine",       desc: "Every goal becomes a fully structured Life Mission — with milestones, success metrics, risk assessment and an execution roadmap." },
@@ -17,17 +19,17 @@ const FEATURES = [
 
 export default function ProductPage() {
   return (
-    <div className="py-16 px-4">
+    <div className="marketing-page-shell">
       <div className="mx-auto max-w-6xl">
-        <div className="text-center mb-16">
+        <div className="marketing-story-hero text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-black text-[hsl(var(--text-primary))]">The complete execution platform</h1>
           <p className="mt-4 text-lg text-[hsl(var(--text-secondary))] max-w-2xl mx-auto">
-            LifeKit is not a productivity app. It's a full execution system — from goal to measurable outcome.
+            LifeKit is not a productivity app. It&apos;s a full execution system — from goal to measurable outcome.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-16">
+        <div className="marketing-content-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
           {FEATURES.map(({ icon: Icon, title, desc }) => (
-            <Card key={title} className="hover:border-[hsl(var(--primary))]/40 transition-colors group">
+            <Reveal key={title}><Card className="marketing-premium-card group h-full">
               <CardContent className="p-5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))] mb-4 group-hover:bg-[hsl(var(--primary))] group-hover:text-white transition-colors">
                   <Icon className="h-5 w-5" />
@@ -35,13 +37,14 @@ export default function ProductPage() {
                 <h3 className="font-semibold text-[hsl(var(--text-primary))] mb-2">{title}</h3>
                 <p className="text-sm text-[hsl(var(--text-secondary))] leading-relaxed">{desc}</p>
               </CardContent>
-            </Card>
+            </Card></Reveal>
           ))}
         </div>
         <div className="text-center">
           <Button size="lg" asChild><Link href={ROUTES.SIGN_UP}>Start building your missions</Link></Button>
         </div>
       </div>
+      <ProductExperience />
     </div>
   );
 }

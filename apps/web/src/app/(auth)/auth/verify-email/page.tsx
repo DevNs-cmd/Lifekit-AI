@@ -12,10 +12,10 @@ export default function VerifyEmailPage() {
   const params = useSearchParams();
   const router = useRouter();
   const token = params.get("token");
-  const [state, setState] = useState<"loading" | "success" | "expired">("loading");
+  const [state, setState] = useState<"loading" | "success" | "expired">(token ? "loading" : "expired");
 
   useEffect(() => {
-    if (!token) { setState("expired"); return; }
+    if (!token) return;
     // Simulate token verification
     const t = setTimeout(() => setState("success"), 1200);
     return () => clearTimeout(t);
@@ -41,7 +41,7 @@ export default function VerifyEmailPage() {
             </div>
             <div>
               <h3 className="font-semibold text-[hsl(var(--text-primary))]">Email verified!</h3>
-              <p className="text-sm text-[hsl(var(--text-secondary))] mt-1">Your account is ready. Let's get started.</p>
+              <p className="text-sm text-[hsl(var(--text-secondary))] mt-1">Your account is ready. Let&apos;s get started.</p>
             </div>
             <Button className="mt-2" onClick={() => router.push(ROUTES.ONBOARDING)}>Start your journey</Button>
           </div>

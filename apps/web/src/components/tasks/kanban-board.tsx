@@ -1,299 +1,104 @@
 "use client";
 
 import * as React from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  useDraggable,
-  useDroppable,
-  type DragStartEvent,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Calendar, Clock, Flame, Zap, ListTodo, Pencil, Trash2 } from "lucide-react";
+import { Calendar, CheckCircle2, Circle, Clock, Flame, ListTodo, Pencil, PlayCircle, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SideSheet } from "@/components/ui/side-sheet";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { cn, formatDeadline, formatDuration } from "@/lib/utils";
 import type { Task } from "@/types/task";
+import { toast } from "sonner";
 
-/* ── Column config ──────────────────────────────────────── */
 export type KanbanStatus = "not-started" | "in-progress" | "completed";
 
-export const KANBAN_COLUMNS: {
-  id: KanbanStatus;
-  label: string;
-  color: string;
-  bg: string;
-  dot: string;
-  overBg: string;
-  overBorder: string;
-}[] = [
-  { id: "not-started", label: "Not Started", color: "text-gray-700 dark:text-gray-200",   bg: "bg-gray-100 dark:bg-gray-800/50",   dot: "bg-gray-400",  overBg: "bg-gray-100 dark:bg-gray-800/60",   overBorder: "border-gray-400" },
-  { id: "in-progress", label: "In Progress", color: "text-blue-700 dark:text-blue-200",   bg: "bg-blue-100 dark:bg-blue-900/40",   dot: "bg-blue-500",  overBg: "bg-blue-100 dark:bg-blue-900/40",   overBorder: "border-blue-500" },
-  { id: "completed",   label: "Completed",   color: "text-green-700 dark:text-green-200", bg: "bg-green-100 dark:bg-green-900/40", dot: "bg-green-500", overBg: "bg-green-100 dark:bg-green-900/40", overBorder: "border-green-500" },
+export const KANBAN_COLUMNS = [
+  { id: "not-started" as const, label: "Not Started", Icon: Circle, hex: "#545b57", color: "text-[#545b57] dark:text-gray-200", bg: "bg-[#f1f2ef] dark:bg-gray-800/50", dot: "bg-[#7b837e]", overBg: "bg-[#f1f2ef] dark:bg-gray-800/60", overBorder: "border-[#7b837e]" },
+  { id: "in-progress" as const, label: "In Progress", Icon: PlayCircle, hex: "#315a9b", color: "text-[#315a9b] dark:text-blue-200", bg: "bg-[#edf3ff] dark:bg-blue-900/40", dot: "bg-[#4f76b5]", overBg: "bg-[#edf3ff] dark:bg-blue-900/40", overBorder: "border-[#4f76b5]" },
+  { id: "completed" as const, label: "Completed", Icon: CheckCircle2, hex: "#267052", color: "text-[#267052] dark:text-green-200", bg: "bg-[#eaf5ef] dark:bg-green-900/40", dot: "bg-[#34825f]", overBg: "bg-[#eaf5ef] dark:bg-green-900/40", overBorder: "border-[#34825f]" },
 ];
 
 const PRIORITY: Record<string, { pill: string; topBorder: string; Icon: typeof Flame }> = {
-  low:    { pill: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",        topBorder: "border-t-gray-300",  Icon: ListTodo },
-  medium: { pill: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",     topBorder: "border-t-blue-400",  Icon: Zap },
-  high:   { pill: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", topBorder: "border-t-amber-400", Icon: Flame },
-  urgent: { pill: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",         topBorder: "border-t-red-500",   Icon: Flame },
+  low: { pill: "bg-[#f1f2ef] !text-[#545b57] dark:bg-gray-800 dark:!text-gray-300", topBorder: "border-t-gray-300", Icon: ListTodo },
+  medium: { pill: "bg-[#edf3ff] !text-[#315a9b] dark:bg-blue-900/30 dark:!text-blue-300", topBorder: "border-t-[#4f76b5]", Icon: Zap },
+  high: { pill: "bg-[#fff3e9] !text-[#925a2f] dark:bg-amber-900/30 dark:!text-amber-300", topBorder: "border-t-[#b37843]", Icon: Flame },
+  urgent: { pill: "bg-[#fff0f0] !text-[#9a484d] dark:bg-red-900/30 dark:!text-red-300", topBorder: "border-t-[#b95d62]", Icon: Flame },
 };
 
-/* ── Draggable card ─────────────────────────────────────── */
-function Card({
-  task,
-  showMission,
-  onEdit,
-  onDelete,
-  isOverlay = false,
-}: {
-  task: Task;
-  showMission: boolean;
-  onEdit: (t: Task) => void;
-  onDelete: (t: Task) => void;
-  isOverlay?: boolean;
-}) {
+function TaskCard({ task, onDetails, overlay = false }: { task: Task; onDetails: (task: Task) => void; overlay?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
-  const p = PRIORITY[task.priority] ?? PRIORITY.medium;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform) }}
-      className={cn(
-        "rounded-xl border border-[hsl(var(--border))] border-t-[3px] bg-[hsl(var(--card))]",
-        "shadow-sm select-none group",
-        p.topBorder,
-        isDragging && !isOverlay && "opacity-25",
-        isOverlay && "shadow-2xl ring-2 ring-[hsl(var(--primary))]/40 rotate-[1.5deg] cursor-grabbing",
-      )}
-    >
-      {/* Entire top area is the drag handle */}
-      <div
-        {...listeners}
-        {...attributes}
-        className={cn(
-          "px-3 pt-3 pb-2 cursor-grab active:cursor-grabbing",
-          isOverlay && "cursor-grabbing",
-        )}
-      >
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <p className="text-sm font-semibold text-[hsl(var(--text-primary))] leading-snug flex-1">
-            {task.title}
-          </p>
-          <span className={cn("shrink-0 flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full", p.pill)}>
-            <p.Icon className="h-2.5 w-2.5" />
-            <span className="capitalize">{task.priority}</span>
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          {showMission && task.missionTitle && (
-            <span className="text-xs text-[hsl(var(--text-secondary))] bg-[hsl(var(--muted))] px-2 py-0.5 rounded-full truncate w-fit max-w-full">
-              {task.missionTitle}
-            </span>
-          )}
-          <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {task.dueDate && (
-              <span className="text-xs text-[hsl(var(--text-secondary))] flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {formatDeadline(task.dueDate)}
-                {task.dueTime && <span>· {task.dueTime}</span>}
-              </span>
-            )}
-            {task.estimatedDurationMinutes && (
-              <span className="text-xs text-[hsl(var(--text-secondary))] flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {formatDuration(task.estimatedDurationMinutes)}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Action row — mouseDown stops drag from triggering */}
-      <div
-        className="px-3 pb-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-        onMouseDown={e => e.stopPropagation()}
-        onPointerDown={e => e.stopPropagation()}
-      >
-        <Button variant="outline" size="xs" onClick={() => onEdit(task)}>
-          <Pencil className="h-3 w-3 mr-1" />Edit
-        </Button>
-        <Button
-          variant="outline"
-          size="xs"
-          onClick={() => onDelete(task)}
-          className="text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive))]/10 border-[hsl(var(--destructive))]/30"
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
-      </div>
+  const priority = PRIORITY[task.priority] ?? PRIORITY.medium;
+  return <div ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform) }} className={cn(
+    "rounded-xl border border-[hsl(var(--border))]/80 border-t-[3px] bg-[hsl(var(--card))] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+    priority.topBorder, isDragging && !overlay && "opacity-25", overlay && "rotate-[1.5deg] cursor-grabbing shadow-2xl ring-2 ring-[hsl(var(--primary))]/30"
+  )}>
+    <div {...listeners} {...attributes} className="flex cursor-grab items-center gap-2 px-3 py-3 active:cursor-grabbing">
+      {overlay ? <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-[hsl(var(--text-primary))]">{task.title}</p> : <button type="button" onPointerDown={event => event.stopPropagation()} onClick={() => onDetails(task)} className="min-w-0 flex-1 rounded-md text-left text-sm font-semibold leading-snug text-[hsl(var(--text-primary))] hover:text-[hsl(var(--primary))]" aria-label={`View details for ${task.title}`}>{task.title}</button>}
     </div>
-  );
+  </div>;
 }
 
-/* ── Droppable column ───────────────────────────────────── */
-function Column({
-  col,
-  tasks,
-  showMission,
-  onEdit,
-  onDelete,
-}: {
-  col: typeof KANBAN_COLUMNS[number];
-  tasks: Task[];
-  showMission: boolean;
-  onEdit: (t: Task) => void;
-  onDelete: (t: Task) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: col.id });
-
-  return (
-    <div className="flex flex-col min-w-[280px] flex-1">
-      {/* Header */}
-      <div className={cn("flex items-center gap-2 px-3 py-2.5 rounded-xl mb-3", col.bg)}>
-        <span className={cn("h-2 w-2 rounded-full shrink-0", col.dot)} />
-        <span className={cn("text-sm font-bold", col.color)}>{col.label}</span>
-        <span className={cn("ml-auto text-xs font-bold px-2 py-0.5 rounded-full", col.bg, col.color)}>
-          {tasks.length}
-        </span>
-      </div>
-
-      {/* Drop zone */}
-      <div
-        ref={setNodeRef}
-        className={cn(
-          "flex-1 rounded-xl min-h-[260px] p-2 flex flex-col gap-2 border-2 border-dashed transition-all duration-150",
-          isOver
-            ? cn(col.overBg, col.overBorder)
-            : "border-transparent bg-[hsl(var(--background-subtle))]",
-        )}
-      >
-        {tasks.map(task => (
-          <Card
-            key={task.id}
-            task={task}
-            showMission={showMission}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
-
-        {tasks.length === 0 && (
-          <div className={cn(
-            "flex items-center justify-center flex-1 rounded-lg text-xs font-medium transition-colors",
-            isOver ? cn(col.color, "opacity-80") : "text-[hsl(var(--text-secondary))] opacity-40",
-          )}>
-            {isOver ? "Release to drop" : "No tasks"}
-          </div>
-        )}
-      </div>
+function Column({ column, tasks, pulse, onDetails }: { column: typeof KANBAN_COLUMNS[number]; tasks: Task[]; pulse: boolean; onDetails: (task: Task) => void }) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  return <div className="flex min-w-[270px] flex-1 flex-col">
+    <div className="mb-3 flex items-center gap-2 rounded-xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--card))] px-3 py-2.5 shadow-[var(--shadow-xs)]">
+      <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg", column.bg)}><column.Icon className="h-4 w-4" style={{ color: column.hex }} /></span>
+      <span className="text-sm font-bold text-[hsl(var(--text-primary))]">{column.label}</span>
+      <span className={cn("ml-auto rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-xs font-bold text-[hsl(var(--text-secondary))]", pulse && "animate-badge-pop")}>{tasks.length}</span>
     </div>
-  );
+    <div ref={setNodeRef} className={cn("flex min-h-[260px] flex-1 flex-col gap-2 rounded-xl border-2 border-dashed p-2 transition-all duration-200", isOver ? cn(column.overBg, column.overBorder, "scale-[1.012] shadow-inner ring-4 ring-[hsl(var(--primary))]/10") : "border-transparent bg-[hsl(var(--background-subtle))]/75")}>
+      {tasks.map(task => <TaskCard key={task.id} task={task} onDetails={onDetails} />)}
+      {tasks.length === 0 && <div className={cn("flex flex-1 items-center justify-center rounded-lg text-xs font-medium", isOver ? column.color : "text-[hsl(var(--text-secondary))]/50")}>{isOver ? "Release to drop" : "No tasks"}</div>}
+    </div>
+  </div>;
 }
 
-/* ── Board ─────────────────────────────────────────────── */
-export interface KanbanBoardProps {
-  tasks: Task[];
-  onStatusChange: (taskId: string, newStatus: KanbanStatus) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (task: Task) => void;
-  showMission?: boolean;
-}
+export interface KanbanBoardProps { tasks: Task[]; onStatusChange: (taskId: string, newStatus: KanbanStatus) => void; onEdit: (task: Task) => void; onDelete: (task: Task) => void; showMission?: boolean }
 
 export function KanbanBoard({ tasks, onStatusChange, onEdit, onDelete, showMission = true }: KanbanBoardProps) {
   const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => { setMounted(true); }, []);
-
-  const [localTasks, setLocalTasks] = React.useState<Task[]>(tasks);
-  React.useEffect(() => { setLocalTasks(tasks); }, [tasks]);
-
+  React.useEffect(() => { const frame = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(frame); }, []);
+  const [localTasks, setLocalTasks] = React.useState(tasks);
+  React.useEffect(() => { const frame = requestAnimationFrame(() => setLocalTasks(tasks)); return () => cancelAnimationFrame(frame); }, [tasks]);
   const [activeTask, setActiveTask] = React.useState<Task | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
+  const [detailsTask, setDetailsTask] = React.useState<Task | null>(null);
+  const [pulseColumn, setPulseColumn] = React.useState<KanbanStatus | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const byColumn = React.useMemo(() => {
-    const map: Record<KanbanStatus, Task[]> = { "not-started": [], "in-progress": [], "completed": [] };
-    for (const t of localTasks) {
-      const key = t.status as KanbanStatus;
-      if (key in map) map[key].push(t);
-      else map["not-started"].push(t);
-    }
-    return map;
+    const grouped: Record<KanbanStatus, Task[]> = { "not-started": [], "in-progress": [], "completed": [] };
+    for (const task of localTasks) (grouped[task.status as KanbanStatus] ?? grouped["not-started"]).push(task);
+    return grouped;
   }, [localTasks]);
 
-  function handleDragStart({ active }: DragStartEvent) {
-    setActiveTask(localTasks.find(t => t.id === active.id) ?? null);
-  }
-
-  function handleDragEnd({ active, over }: DragEndEvent) {
+  function dragEnd({ active, over }: DragEndEvent) {
     setActiveTask(null);
     if (!over) return;
-
-    const toCol = String(over.id) as KanbanStatus;
-    if (!KANBAN_COLUMNS.some(c => c.id === toCol)) return;
-
-    const task = localTasks.find(t => t.id === active.id);
-    if (!task || task.status === toCol) return;
-
-    setLocalTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: toCol } : t));
-    onStatusChange(task.id, toCol);
+    const status = String(over.id) as KanbanStatus;
+    const task = localTasks.find(item => item.id === active.id);
+    if (!task || !KANBAN_COLUMNS.some(column => column.id === status) || task.status === status) return;
+    setLocalTasks(current => current.map(item => item.id === task.id ? { ...item, status } : item));
+    setPulseColumn(status);
+    window.setTimeout(() => setPulseColumn(null), 320);
+    onStatusChange(task.id, status);
+    toast.success(`Moved to ${KANBAN_COLUMNS.find(column => column.id === status)?.label}.`, { action: { label: "Undo", onClick: () => { const previous = task.status as KanbanStatus; setLocalTasks(current => current.map(item => item.id === task.id ? { ...item, status: previous } : item)); onStatusChange(task.id, previous); } } });
   }
 
-  // Show skeleton until mounted (avoids React 18 strict-mode hydration mismatch with @dnd-kit)
-  if (!mounted) {
-    return (
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {KANBAN_COLUMNS.map(col => (
-          <div key={col.id} className="flex flex-col min-w-[280px] flex-1">
-            <div className={cn("flex items-center gap-2 px-3 py-2.5 rounded-xl mb-3", col.bg)}>
-              <span className={cn("h-2 w-2 rounded-full", col.dot)} />
-              <span className={cn("text-sm font-bold", col.color)}>{col.label}</span>
-            </div>
-            <div className="rounded-xl min-h-[260px] bg-[hsl(var(--background-subtle))] border-2 border-dashed border-transparent" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (!mounted) return <div className="flex gap-4 overflow-x-auto pb-4">{KANBAN_COLUMNS.map(column => <div key={column.id} className="min-w-[270px] flex-1"><div className={cn("mb-3 h-10 rounded-xl animate-shimmer", column.bg)} /><div className="min-h-[260px] rounded-xl bg-[hsl(var(--background-subtle))]" /></div>)}</div>;
 
-  return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveTask(null)}
-    >
-      <div className="flex gap-4 overflow-x-auto pb-4 items-start">
-        {KANBAN_COLUMNS.map(col => (
-          <Column
-            key={col.id}
-            col={col}
-            tasks={byColumn[col.id]}
-            showMission={showMission}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
-      </div>
-
-      <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.2,0,0,1)" }}>
-        {activeTask && (
-          <Card
-            task={activeTask}
-            showMission={showMission}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            isOverlay
-          />
-        )}
-      </DragOverlay>
+  return <>
+    <DndContext sensors={sensors} onDragStart={({ active }: DragStartEvent) => setActiveTask(localTasks.find(task => task.id === active.id) ?? null)} onDragEnd={dragEnd} onDragCancel={() => setActiveTask(null)}>
+      <div className="dense-work-surface flex items-start gap-4 overflow-x-auto pb-4">{KANBAN_COLUMNS.map(column => <Column key={column.id} column={column} tasks={byColumn[column.id]} pulse={pulseColumn === column.id} onDetails={setDetailsTask} />)}</div>
+      <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.2,0,0,1)" }}>{activeTask && <TaskCard task={activeTask} onDetails={setDetailsTask} overlay />}</DragOverlay>
     </DndContext>
-  );
+
+    <SideSheet open={!!detailsTask} onOpenChange={open => !open && setDetailsTask(null)} title={detailsTask?.title ?? "Task"} description={detailsTask?.description || "Task details and scheduling information."} footer={<><Button variant="outline" className="text-[hsl(var(--destructive))]" onClick={() => { if (detailsTask) onDelete(detailsTask); setDetailsTask(null); }} leftIcon={<Trash2 className="h-4 w-4" />}>Delete</Button><Button onClick={() => { if (detailsTask) onEdit(detailsTask); setDetailsTask(null); }} leftIcon={<Pencil className="h-4 w-4" />}>Edit task</Button></>}>
+        {detailsTask && <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2"><StatusBadge status={detailsTask.status} /><span className={cn("rounded-full px-2.5 py-1 text-xs font-bold capitalize", (PRIORITY[detailsTask.priority] ?? PRIORITY.medium).pill)}>{detailsTask.priority} priority</span></div>
+          {showMission && detailsTask.missionTitle && <div className="rounded-xl bg-[hsl(var(--background-subtle))] p-3"><p className="text-[11px] font-bold uppercase tracking-wide text-[hsl(var(--text-secondary))]">Mission</p><p className="mt-0.5 text-sm font-medium">{detailsTask.missionTitle}</p></div>}
+          <div className="flex flex-wrap gap-4 text-sm text-[hsl(var(--text-secondary))]">{detailsTask.dueDate && <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" />{formatDeadline(detailsTask.dueDate)}{detailsTask.dueTime ? ` · ${detailsTask.dueTime}` : ""}</span>}{detailsTask.estimatedDurationMinutes && <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{formatDuration(detailsTask.estimatedDurationMinutes)}</span>}</div>
+        </div>}
+    </SideSheet>
+  </>;
 }

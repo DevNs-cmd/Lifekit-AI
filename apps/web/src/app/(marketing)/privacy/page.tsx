@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/constants/routes";
 import type { Metadata } from "next";
+import { LegalExplorer } from "@/components/marketing/premium-interactions";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | LifeKit",
@@ -238,9 +239,19 @@ const HIGHLIGHTS = [
 ];
 
 export default function PrivacyPage() {
+  const explorerSections = SECTIONS.map((section) => ({
+    title: section.title,
+    searchText: section.body.map((item) => `${item.sub} ${item.text}`).join(" "),
+    important: /Protect|Sharing|Rights|Retention/.test(section.title),
+    content: (
+      <div className="space-y-4">
+        {section.body.map((item) => <div key={item.sub}><p className="font-bold text-[hsl(var(--text-primary))]">{item.sub}</p><p className="mt-1">{item.text}</p></div>)}
+      </div>
+    ),
+  }));
   return (
-    <div className="py-12 px-4">
-      <div className="mx-auto max-w-3xl">
+    <div className="marketing-page-shell">
+      <div className="mx-auto max-w-6xl">
 
         {/* Back */}
         <Button variant="ghost" size="sm" className="mb-6 -ml-2" asChild>
@@ -249,6 +260,8 @@ export default function PrivacyPage() {
           </Link>
         </Button>
 
+        <div className="marketing-story-hero mb-8">
+        <div className="mb-4 flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-white"><Shield className="h-3.5 w-3.5" />Privacy by design</div>
         {/* Header */}
         <h1 className="text-3xl font-black text-[hsl(var(--text-primary))] mb-2">
           Privacy Policy
@@ -258,59 +271,31 @@ export default function PrivacyPage() {
         </p>
 
         {/* Intro */}
-        <p className="text-[hsl(var(--text-secondary))] leading-relaxed mb-8">
+        <p className="mb-8 max-w-5xl text-[hsl(var(--text-secondary))] leading-relaxed">
           At LifeKit, your privacy is not a legal formality — it is a core product principle. We built
           LifeKit on the belief that your personal goals, decisions, and progress data belong to you.
           This policy explains clearly what we collect, why, and how you can control it.
         </p>
 
         {/* Highlights grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {HIGHLIGHTS.map(({ icon: Icon, label }) => (
-            <Card key={label} className="border-[hsl(var(--primary))]/20 bg-[hsl(var(--background-subtle))]">
-              <CardContent className="p-3 flex items-center gap-2.5">
+            <Card key={label} className="privacy-highlight-card min-h-[130px] border-white/25 bg-white/95 shadow-none backdrop-blur-sm">
+              <CardContent className="flex h-full flex-col items-start gap-3 p-4">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]">
                   <Icon className="h-4 w-4" />
                 </div>
-                <p className="text-xs font-medium text-[hsl(var(--text-primary))] leading-snug">{label}</p>
+                <p className="text-xs font-bold leading-snug">{label}</p>
               </CardContent>
             </Card>
           ))}
         </div>
-
-        {/* Sections */}
-        <div className="space-y-10">
-          {SECTIONS.map(section => {
-            const Icon = section.icon;
-            return (
-              <section key={section.title}>
-                <div className="flex items-center gap-2.5 mb-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <h2 className="text-lg font-bold text-[hsl(var(--text-primary))]">
-                    {section.title}
-                  </h2>
-                </div>
-                <div className="space-y-4 pl-10">
-                  {section.body.map(item => (
-                    <div key={item.sub}>
-                      <p className="text-sm font-semibold text-[hsl(var(--text-primary))] mb-1">
-                        {item.sub}
-                      </p>
-                      <p className="text-sm text-[hsl(var(--text-secondary))] leading-relaxed">
-                        {item.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
         </div>
 
+        <LegalExplorer sections={explorerSections} />
+
         {/* Controls CTA */}
-        <div className="mt-12 rounded-xl border border-[hsl(var(--primary))]/20 bg-[hsl(var(--background-subtle))] p-6">
+        <div className="mt-8 rounded-[28px] border border-[hsl(var(--primary))]/20 bg-[hsl(var(--background-subtle))] p-6 sm:p-8">
           <h3 className="font-bold text-[hsl(var(--text-primary))] mb-2">
             Manage your privacy settings
           </h3>

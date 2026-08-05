@@ -1,29 +1,52 @@
 "use client";
 
+import * as React from "react";
 import { Bot, Brain, Target, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AICoachPanel } from "@/components/ai/ai-coach-panel";
+import { RecentChatsSidebar, type ChatSession } from "@/components/shared/recent-chats-sidebar";
 import { useAICoachStore } from "@/stores/ai-coach-store";
 import { ROUTES } from "@/constants/routes";
 import { useRouter } from "next/navigation";
 
-const AGENT_QUICK_LINKS = [
-  { label: "Career Agent",  desc: "Job search & career planning",   href: ROUTES.AGENTS + "/agent-career",   color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
-  { label: "Finance Agent", desc: "Savings, budgeting & investing",  href: ROUTES.AGENTS + "/agent-finance",  color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
-  { label: "Health Agent",  desc: "Fitness & wellness planning",     href: ROUTES.AGENTS + "/agent-health",   color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
-  { label: "Travel Agent",  desc: "Trip planning & travel goals",    href: ROUTES.AGENTS + "/agent-travel",   color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300" },
-  { label: "Business Agent",desc: "Startup & business strategy",     href: ROUTES.AGENTS + "/agent-business", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
+const INITIAL_CHATS: ChatSession[] = [
+  { id: "c1", title: "Career planning",        preview: "Help me plan my next 6 months",     timestamp: "Today" },
+  { id: "c2", title: "Mission review",         preview: "What should I focus on this week?", timestamp: "Yesterday" },
+  { id: "c3", title: "Resource finder",        preview: "Find React learning resources",      timestamp: "2 days ago" },
 ];
 
 export default function AICoachPage() {
   const router = useRouter();
-  const { addMessage } = useAICoachStore();
+  const { clearMessages } = useAICoachStore();
+  const [chats, setChats] = React.useState<ChatSession[]>(INITIAL_CHATS);
+  const [activeChatId, setActiveChatId] = React.useState<string | undefined>("c1");
+
+  function handleSelectChat(id: string) {
+    setActiveChatId(id);
+    clearMessages();
+  }
+
+  function handleNewChat() {
+    const id = `c-${Date.now()}`;
+    const newChat: ChatSession = { id, title: "New chat", preview: "…", timestamp: "Just now" };
+    setChats(prev => [newChat, ...prev]);
+    setActiveChatId(id);
+    clearMessages();
+  }
+
+  function handleDeleteChat(id: string) {
+    setChats(prev => prev.filter(c => c.id !== id));
+    if (activeChatId === id) {
+      const remaining = chats.filter(c => c.id !== id);
+      setActiveChatId(remaining[0]?.id);
+    }
+  }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-5 max-w-6xl mx-auto">
       <div>
-        <h1 className="text-2xl font-black text-[hsl(var(--text-primary))] flex items-center gap-2">
+        <h1 className="text-3xl font-black tracking-[-0.035em] text-[hsl(var(--text-primary))] flex items-center gap-2">
           <Bot className="h-7 w-7 text-[hsl(var(--primary))]" /> AI Coach
         </h1>
         <p className="text-sm text-[hsl(var(--text-secondary))] mt-1">
@@ -31,15 +54,23 @@ export default function AICoachPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chat panel */}
-        <div className="lg:col-span-2 h-[600px] rounded-xl border border-[hsl(var(--border))] overflow-hidden">
-          <AICoachPanel />
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4 items-start">
+        {/* Chat panel with recent chats sidebar */}
+        <div className="flex h-[520px] rounded-2xl border border-[hsl(var(--border))]/80 overflow-hidden shadow-[var(--shadow-md)] bg-[hsl(var(--card))]">
+          <RecentChatsSidebar
+            chats={chats}
+            activeId={activeChatId}
+            onSelect={handleSelectChat}
+            onNew={handleNewChat}
+            onDelete={handleDeleteChat}
+          />
+          <div className="flex-1 min-w-0">
+            <AICoachPanel />
+          </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-5">
-          {/* AI Planner link */}
+        {/* Right sidebar */}
+        <div className="space-y-4">
           <Card className="border-[hsl(var(--primary))]/30 bg-[hsl(var(--background-subtle))]">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -53,7 +84,6 @@ export default function AICoachPage() {
             </CardContent>
           </Card>
 
-          {/* Context indicators */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">

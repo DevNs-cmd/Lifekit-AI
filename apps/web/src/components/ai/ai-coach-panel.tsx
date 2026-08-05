@@ -20,7 +20,7 @@ export function AICoachPanel() {
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // intentionally no auto-scroll — user controls scroll position
   }, [messages]);
 
   async function handleSend(text?: string) {
@@ -103,9 +103,6 @@ export function AICoachPanel() {
       <ScrollArea className="flex-1 px-4 py-3">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-center">
-            <Bot className="h-10 w-10 text-[hsl(var(--primary))]/40 mb-3" />
-            <p className="text-sm font-medium text-[hsl(var(--text-primary))]">How can I help?</p>
-            <p className="text-xs text-[hsl(var(--text-secondary))] mt-1">Ask me about your missions, next steps, or finding resources.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -181,7 +178,7 @@ export function AICoachPanel() {
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <p className="text-[10px] text-[hsl(var(--text-secondary))] mt-1 pl-1">Enter to send · Shift+Enter for new line</p>
+
       </div>
     </div>
   );

@@ -22,8 +22,7 @@ export function CategoryBadge({ category, className, showIcon = true, size = "md
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full font-medium",
-        config.bgColor,
-        config.color,
+        "border border-[hsl(var(--primary))]/12 bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]",
         size === "sm" ? "px-2 py-0.5 text-xs" : "px-2.5 py-1 text-xs",
         className
       )}

@@ -12,7 +12,7 @@ export default function NotFound() {
         </div>
         <h1 className="text-2xl font-bold text-[hsl(var(--text-primary))]">Page not found</h1>
         <p className="mt-3 text-[hsl(var(--text-secondary))]">
-          This page doesn't exist or has been moved. Let's get you back on track.
+          This page doesn&apos;t exist or has been moved. Let&apos;s get you back on track.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button asChild leftIcon={<Home className="h-4 w-4" />}>

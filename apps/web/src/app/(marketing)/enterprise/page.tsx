@@ -3,6 +3,7 @@ import { Shield, Users, BarChart3, Puzzle, ArrowRight, CheckCircle } from "lucid
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/constants/routes";
+import { EnterpriseFlow } from "@/components/marketing/page-experiences";
 
 const ENTERPRISE_FEATURES = [
   { icon: Users,    title: "Team Workspaces",        desc: "Shared mission planning and execution for organisations and teams." },
@@ -13,9 +14,9 @@ const ENTERPRISE_FEATURES = [
 
 export default function EnterprisePage() {
   return (
-    <div className="py-16 px-4">
+    <div className="marketing-page-shell">
       <div className="mx-auto max-w-5xl">
-        <div className="text-center mb-16">
+        <div className="marketing-story-hero text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-black text-[hsl(var(--text-primary))]">LifeKit for Enterprise</h1>
           <p className="mt-4 text-lg text-[hsl(var(--text-secondary))] max-w-2xl mx-auto">
             Give every employee a personalised AI execution system. Drive productivity, learning and retention at scale.
@@ -28,13 +29,14 @@ export default function EnterprisePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-16">
           {ENTERPRISE_FEATURES.map(({ icon: Icon, title, desc }) => (
-            <Card key={title}><CardContent className="p-5 flex gap-4">
+            <Card key={title} className="marketing-premium-card"><CardContent className="p-5 flex gap-4">
               <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"><Icon className="h-5 w-5" /></div>
               <div><h3 className="font-semibold text-[hsl(var(--text-primary))] mb-1">{title}</h3><p className="text-sm text-[hsl(var(--text-secondary))]">{desc}</p></div>
             </CardContent></Card>
           ))}
         </div>
 
+        <EnterpriseFlow />
         <Card className="border-[hsl(var(--primary))]/30 bg-[hsl(var(--background-subtle))]">
           <CardContent className="p-8 text-center">
             <h2 className="text-2xl font-bold text-[hsl(var(--text-primary))] mb-3">Ready to transform your workforce?</h2>

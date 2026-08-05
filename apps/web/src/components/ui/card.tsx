@@ -2,13 +2,15 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+  ({ className, onClick, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-[var(--shadow-sm)]",
+        "rounded-2xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-[var(--shadow-sm)] transition-[transform,box-shadow,border-color] duration-200 hover:border-[hsl(var(--primary))]/20 hover:shadow-[0_12px_32px_rgb(25_55_35_/_0.08)] dark:bg-[hsl(var(--card))]/95 dark:backdrop-blur-sm dark:hover:shadow-[0_16px_40px_rgb(0_0_0_/_0.28)] animate-slide-up-fade",
+        onClick && "cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 motion-reduce:transform-none",
         className
       )}
+      onClick={onClick}
       {...props}
     />
   )

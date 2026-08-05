@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, Target, CheckSquare, Bot, Cpu, ShoppingBag, Compass,
-  Brain, Bell, User, Crown, Settings, HelpCircle,
+  Brain, Bell, Crown, Settings, HelpCircle,
   ChevronLeft, ChevronRight, Zap, LogOut, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,17 +19,22 @@ import { getInitials } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { useRouter } from "next/navigation";
 
-const NAV_ITEMS = [
-  { label: "Home",          href: ROUTES.DASHBOARD,      icon: Home },
-  { label: "Missions",      href: ROUTES.MISSIONS,       icon: Target },
-  { label: "Tasks",         href: ROUTES.TASKS,          icon: CheckSquare },
-  { label: "AI Coach",      href: ROUTES.AI_COACH,       icon: Bot },
-  { label: "AI Agents",     href: ROUTES.AGENTS,         icon: Cpu },
-  { label: "Marketplace",   href: ROUTES.MARKETPLACE_APP,icon: ShoppingBag },
-  { label: "Opportunities", href: ROUTES.OPPORTUNITIES,  icon: Compass },
-  { label: "Memory",        href: ROUTES.MEMORY,         icon: Brain },
-  { label: "Notifications", href: ROUTES.NOTIFICATIONS,  icon: Bell },
-  { label: "Profile",       href: ROUTES.PROFILE,        icon: User },
+const NAV_SECTIONS = [
+  { label: "Workspace", items: [
+    { label: "Today", href: ROUTES.DASHBOARD, icon: Home },
+    { label: "Missions", href: ROUTES.MISSIONS, icon: Target },
+    { label: "Tasks", href: ROUTES.TASKS, icon: CheckSquare },
+  ]},
+  { label: "Intelligence", items: [
+    { label: "AI Coach", href: ROUTES.AI_COACH, icon: Bot },
+    { label: "AI Agents", href: ROUTES.AGENTS, icon: Cpu },
+    { label: "Memory", href: ROUTES.MEMORY, icon: Brain },
+  ]},
+  { label: "Discover", items: [
+    { label: "Opportunities", href: ROUTES.OPPORTUNITIES, icon: Compass },
+    { label: "Marketplace", href: ROUTES.MARKETPLACE_APP, icon: ShoppingBag },
+    { label: "Notifications", href: ROUTES.NOTIFICATIONS, icon: Bell },
+  ]},
 ];
 
 const BOTTOM_ITEMS = [
@@ -52,9 +57,9 @@ function NavItem({ href, icon: Icon, label, collapsed, active, badge }: NavItemP
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group relative",
+        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative active:scale-[0.97]",
         active
-          ? "bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"
+          ? "bg-[hsl(var(--secondary))] text-[hsl(var(--primary))] shadow-sm before:absolute before:left-0 before:h-5 before:w-0.5 before:rounded-full before:bg-[hsl(var(--primary))]"
           : "text-[hsl(var(--text-secondary))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--primary))]"
       )}
       aria-current={active ? "page" : undefined}
@@ -111,7 +116,7 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: sidebarCollapsed ? 72 : 240 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
-      className="hidden lg:flex flex-col h-full bg-[hsl(var(--card))] border-r border-[hsl(var(--border))] relative"
+      className="hidden lg:flex flex-col h-full bg-[hsl(var(--card))] dark:bg-[hsl(var(--card))]/86 dark:backdrop-blur-xl border-r border-[hsl(var(--border))]/70 relative"
     >
       {/* Logo */}
       <div className={cn("flex items-center h-16 px-4 border-b border-[hsl(var(--border))]", sidebarCollapsed ? "justify-center" : "gap-2")}>
@@ -147,14 +152,15 @@ export function Sidebar() {
 
       {/* Primary nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5" aria-label="Main navigation">
-        {NAV_ITEMS.map((item) => (
-          <NavItem
-            key={item.href}
-            {...item}
-            collapsed={sidebarCollapsed}
-            active={pathname === item.href || pathname.startsWith(item.href + "/")}
-            badge={item.href === ROUTES.NOTIFICATIONS ? unreadCount : undefined}
-          />
+        {NAV_SECTIONS.map(section => (
+          <div key={section.label} className="mb-4">
+            {!sidebarCollapsed && <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[hsl(var(--text-secondary))]/70">{section.label}</p>}
+            <div className="space-y-0.5">{section.items.map((item) => (
+              <NavItem key={item.href} {...item} collapsed={sidebarCollapsed}
+                active={pathname === item.href || pathname.startsWith(item.href + "/")}
+                badge={item.href === ROUTES.NOTIFICATIONS ? unreadCount : undefined} />
+            ))}</div>
+          </div>
         ))}
       </nav>
 

@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import { Search, Target, CheckSquare, ShoppingBag, Compass, Brain, Bot, Home, User, Settings, Plus } from "lucide-react";
+import { Search, Target, CheckSquare, ShoppingBag, Compass, Brain, Bot, Home, User, Settings, Plus, LayoutGrid, ListFilter, Sparkles } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUIStore } from "@/stores/ui-store";
 import { ROUTES } from "@/constants/routes";
@@ -29,6 +29,7 @@ const COMMANDS = [
 
 export function CommandMenu() {
   const router = useRouter();
+  const pathname = usePathname();
   const { commandMenuOpen, setCommandMenuOpen } = useUIStore();
   const [search, setSearch] = React.useState("");
 
@@ -49,6 +50,18 @@ export function CommandMenu() {
     setSearch("");
     router.push(href);
   }
+
+  const contextualItems = pathname.startsWith(ROUTES.TASKS) ? [
+    { label: "Create a task", icon: Plus, href: `${ROUTES.TASKS}?create=true`, shortcut: "C" },
+    { label: "Open task board", icon: LayoutGrid, href: `${ROUTES.TASKS}?view=kanban`, shortcut: "B" },
+    { label: "Show all tasks", icon: ListFilter, href: ROUTES.TASKS, shortcut: "A" },
+  ] : pathname.startsWith(ROUTES.MISSIONS) ? [
+    { label: "Create a mission", icon: Target, href: ROUTES.MISSION_NEW, shortcut: "C" },
+    { label: "Review active missions", icon: Sparkles, href: ROUTES.MISSIONS, shortcut: "R" },
+  ] : pathname.startsWith(ROUTES.OPPORTUNITIES) ? [
+    { label: "Browse matched opportunities", icon: Compass, href: ROUTES.OPPORTUNITIES, shortcut: "M" },
+    { label: "Review saved opportunities", icon: ShoppingBag, href: `${ROUTES.OPPORTUNITIES}?saved=true`, shortcut: "S" },
+  ] : [];
 
   return (
     <Dialog open={commandMenuOpen} onOpenChange={(v) => { setCommandMenuOpen(v); if (!v) setSearch(""); }}>
@@ -71,6 +84,9 @@ export function CommandMenu() {
             <Command.Empty className="py-8 text-center text-sm text-[hsl(var(--text-secondary))]">
               No results found
             </Command.Empty>
+            {contextualItems.length > 0 && <Command.Group heading="On this page" className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-[hsl(var(--primary))]">
+              {contextualItems.map(({ label, icon: Icon, href, shortcut }) => <Command.Item key={label} value={label} onSelect={() => handleSelect(href)} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-sm aria-selected:bg-[hsl(var(--secondary))] aria-selected:text-[hsl(var(--primary))]"><Icon className="h-4 w-4" /><span className="flex-1">{label}</span><kbd className="rounded border border-[hsl(var(--border))] px-1.5 py-0.5 text-[10px] text-[hsl(var(--text-secondary))]">{shortcut}</kbd></Command.Item>)}
+            </Command.Group>}
             {COMMANDS.map(({ group, items }) => (
               <Command.Group key={group} heading={group} className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-[hsl(var(--text-secondary))]">
                 {items.map(({ label, icon: Icon, href }) => (
