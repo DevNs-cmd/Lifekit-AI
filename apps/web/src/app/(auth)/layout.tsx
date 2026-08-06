@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight, Check, CheckSquare, Sparkles, Target, Zap } from "lucide-react";
@@ -10,11 +10,21 @@ import { ROUTES } from "@/constants/routes";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
+  // Wait for the Zustand persist store to rehydrate on the client before
+  // checking auth. Without this, isAuthenticated reads stale persisted state
+  // on the server/first render and the layout returns null, blocking the page.
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) router.replace(ROUTES.DASHBOARD);
-  }, [isAuthenticated, router]);
+    setHydrated(true);
+  }, []);
 
+  useEffect(() => {
+    if (hydrated && isAuthenticated) router.replace(ROUTES.DASHBOARD);
+  }, [hydrated, isAuthenticated, router]);
+
+  // Render nothing until we know the real auth state
+  if (!hydrated) return null;
   if (isAuthenticated) return null;
 
   return (
