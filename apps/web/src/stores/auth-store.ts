@@ -7,12 +7,14 @@ import { MOCK_USER } from "@/constants/mock-data";
 
 interface AuthState {
   user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 
   setUser: (user: User | null) => void;
   setIsLoading: (v: boolean) => void;
-  login: (user: User) => void;
+  login: (user: Partial<User> | null, accessToken?: string, refreshToken?: string) => void;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
 }
@@ -20,9 +22,10 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      // Pre-populated with mock user so the app works without a real backend
-      user: MOCK_USER,
-      isAuthenticated: true,
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
       isLoading: false,
 
       setUser: (user) =>
@@ -30,11 +33,46 @@ export const useAuthStore = create<AuthState>()(
 
       setIsLoading: (v) => set({ isLoading: v }),
 
-      login: (user) =>
-        set({ user, isAuthenticated: true, isLoading: false }),
+      login: (user, accessToken, refreshToken) => {
+        const rawUser = user as { id?: string; userId?: string; user_id?: string; fullName?: string; full_name?: string; email?: string };
+        const mergedUser = user
+          ? {
+              ...MOCK_USER,
+              ...user,
+              id: rawUser.id ?? rawUser.userId ?? rawUser.user_id ?? MOCK_USER.id,
+              fullName: rawUser.fullName ?? rawUser.full_name ?? MOCK_USER.fullName,
+              email: rawUser.email ?? MOCK_USER.email,
+            }
+          : null;
+        set({
+          user: mergedUser,
+          accessToken: accessToken ?? "mock-access-token",
+          refreshToken: refreshToken ?? "mock-refresh-token",
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      },
 
-      logout: () =>
-        set({ user: null, isAuthenticated: false }),
+      logout: () => {
+        const rToken = useAuthStore.getState().refreshToken;
+        if (rToken && rToken !== "mock-refresh-token") {
+          const API_BASE_URL =
+            process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+          fetch(`${API_BASE_URL}/auth/logout`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refreshToken: rToken }),
+          }).catch(() => {});
+        }
+        set({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        });
+      },
 
       updateUser: (patch) =>
         set((s) => ({
@@ -43,7 +81,12 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "lifekit-auth",
-      partialize: (s) => ({ user: s.user, isAuthenticated: s.isAuthenticated }),
+      partialize: (s) => ({
+        user: s.user,
+        accessToken: s.accessToken,
+        refreshToken: s.refreshToken,
+        isAuthenticated: s.isAuthenticated,
+      }),
     }
   )
 );

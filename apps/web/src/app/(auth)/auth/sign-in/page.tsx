@@ -17,6 +17,7 @@ import { signInSchema, type SignInFormData } from "@/lib/validation/schemas";
 import { useAuthStore } from "@/stores/auth-store";
 import { MOCK_USER } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
+import { authApi } from "@/lib/api";
 
 const SOCIAL_PROVIDERS = [
   {
@@ -64,14 +65,15 @@ export default function SignInPage() {
     setError,
   } = useForm<SignInFormData>({ resolver: zodResolver(signInSchema) });
 
-  async function onSubmit() {
-    await new Promise(r => setTimeout(r, 800));
+  async function onSubmit(data: SignInFormData) {
     try {
-      login(MOCK_USER);
+      const result = await authApi.login(data);
+      login(result.user, result.accessToken, result.refreshToken);
       toast.success("Welcome back!");
       router.push(ROUTES.DASHBOARD);
-    } catch {
-      setError("root", { message: "Invalid email or password." });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Invalid email or password.";
+      setError("root", { message });
     }
   }
 

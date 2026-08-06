@@ -5,7 +5,7 @@ import { Bell, BellOff, Check, Trash2, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { MOCK_NOTIFICATIONS } from "@/constants/mock-data";
+import { notificationsApi } from "@/lib/api";
 import { useUIStore } from "@/stores/ui-store";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -23,27 +23,58 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
   const { setUnreadNotificationCount } = useUIStore();
 
-  // Keep sidebar badge count in sync whenever unread changes
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const list = await notificationsApi.getNotifications();
+        setNotifications(list);
+      } catch {
+        toast.error("Failed to load notifications.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
   useEffect(() => {
     setUnreadNotificationCount(unreadCount);
   }, [unreadCount, setUnreadNotificationCount]);
 
-  function markRead(id: string) {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  async function markRead(id: string) {
+    try {
+      await notificationsApi.markAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch {
+      toast.error("Failed to update notification.");
+    }
   }
 
-  function markAllRead() {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-    toast.success("All notifications marked as read.");
+  async function markAllRead() {
+    const unread = notifications.filter(n => !n.isRead);
+    try {
+      await Promise.all(unread.map(n => notificationsApi.markAsRead(n.id)));
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      toast.success("All notifications marked as read.");
+    } catch {
+      toast.error("Failed to mark all as read.");
+    }
   }
 
-  function deleteNotif(id: string) {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    toast("Notification removed.");
+  async function deleteNotif(id: string) {
+    try {
+      await notificationsApi.deleteNotification(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      toast("Notification removed.");
+    } catch {
+      toast.error("Failed to remove notification.");
+    }
   }
 
   return (
@@ -74,7 +105,9 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {loading ? (
+        <div className="p-6 text-center text-sm text-[hsl(var(--text-secondary))]">Loading notifications...</div>
+      ) : notifications.length === 0 ? (
         <EmptyState
           icon={<BellOff className="h-8 w-8" />}
           title="You're all caught up!"

@@ -37,43 +37,20 @@ function transformObject(obj: any): any {
       const camelKey = camelCase(key);
       const transformedVal = transformObject(val);
 
+      // Keep both original and camelCase keys for E2E and frontend compatibility
+      newObj[key] = transformedVal;
       newObj[camelKey] = transformedVal;
 
       if (
-        key === "id" ||
         key === "user_id" ||
         key === "mission_id" ||
         key === "task_id" ||
         key === "opportunity_id" ||
         key === "memory_id" ||
         key === "service_id" ||
-        key === "preference_id" ||
-        key === "subscription_id" ||
-        key === "transaction_id" ||
-        key === "payment_id" ||
-        key === "profile_id" ||
-        key === "interest_id" ||
-        key === "journal_id" ||
-        key.endsWith("_id") ||
-        key.endsWith("Id")
+        key === "profile_id"
       ) {
-        const stringId =
-          transformedVal !== null && transformedVal !== undefined
-            ? String(transformedVal)
-            : transformedVal;
-        newObj[camelKey] = stringId;
-
-        if (
-          key === "user_id" ||
-          key === "mission_id" ||
-          key === "task_id" ||
-          key === "opportunity_id" ||
-          key === "memory_id" ||
-          key === "service_id" ||
-          key === "profile_id"
-        ) {
-          newObj["id"] = stringId;
-        }
+        newObj["id"] = transformedVal;
       }
 
       if (key === "profile_photo" || key === "profile_picture") {
@@ -98,7 +75,10 @@ export class TransformInterceptor<T> implements NestInterceptor<T, any> {
         const transformedData = transformObject(data);
 
         if (transformedData && typeof transformedData === "object") {
-          if ("success" in transformedData && transformedData.success === true) {
+          if (
+            "success" in transformedData &&
+            transformedData.success === true
+          ) {
             return transformedData;
           }
           if (

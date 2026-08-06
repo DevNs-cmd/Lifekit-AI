@@ -9,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
-import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useMissionStore } from "@/stores";
+import { missionsApi } from "@/lib/api";
+import { useEffect } from "react";
 
 type PlanAction = "generate" | "optimise" | "reduce" | "accelerate";
 
@@ -25,12 +27,28 @@ const PLAN_CHANGES = [
 
 export default function AIPlannerPage() {
   const router = useRouter();
-  const [selectedMission, setSelectedMission] = useState(MOCK_MISSIONS[0]?.id ?? "");
+  const { cachedMissions, setCachedMissions } = useMissionStore();
+  const [selectedMission, setSelectedMission] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
 
-  const mission = MOCK_MISSIONS.find(m => m.id === selectedMission);
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await missionsApi.getMissions();
+        setCachedMissions(data);
+        if (data.length > 0 && !selectedMission) {
+          setSelectedMission(data[0].id);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    load();
+  }, [setCachedMissions, selectedMission]);
+
+  const mission = cachedMissions.find(m => m.id === selectedMission);
 
   async function runAction(action: PlanAction) {
     setIsGenerating(true);
@@ -65,7 +83,7 @@ export default function AIPlannerPage() {
               <Select value={selectedMission} onValueChange={setSelectedMission}>
                 <SelectTrigger><SelectValue placeholder="Choose a mission" /></SelectTrigger>
                 <SelectContent>
-                  {MOCK_MISSIONS.map(m => (
+                  {cachedMissions.map(m => (
                     <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                   ))}
                 </SelectContent>

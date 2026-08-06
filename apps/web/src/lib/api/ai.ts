@@ -1,6 +1,6 @@
-import { sleep, generateId } from "@/lib/utils";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { get, post, patch } from "./client";
 import type { ConversationMessage, AiRecommendation, Agent } from "@/types/ai";
-import { MOCK_RECOMMENDATIONS } from "@/constants/mock-data";
 
 export const MOCK_AGENTS: Agent[] = [
   {
@@ -81,12 +81,21 @@ export const MOCK_AGENTS: Agent[] = [
 ];
 
 export async function getAgents(): Promise<Agent[]> {
-  await sleep(300);
+  try {
+    const list = await get<Agent[]>("/agents");
+    if (list && list.length > 0) return list;
+  } catch {
+    // fallback
+  }
   return MOCK_AGENTS;
 }
 
 export async function getAgent(id: string): Promise<Agent> {
-  await sleep(200);
+  try {
+    return await get<Agent>(`/agents/${id}`);
+  } catch {
+    // fallback
+  }
   const a = MOCK_AGENTS.find((x) => x.id === id);
   if (!a) throw new Error(`Agent ${id} not found`);
   return a;
@@ -96,59 +105,70 @@ export async function sendCoachMessage(
   message: string,
   context?: Record<string, unknown>
 ): Promise<ConversationMessage> {
-  await sleep(1200 + Math.random() * 800);
-  const responses: Record<string, string> = {
-    default: `Based on your current missions and progress, here's my recommendation: Focus on completing your most impactful task today. Your **Career mission** is at 42% — the next milestone requires consistent daily effort. I've identified 2 blockers you should address this week. Would you like me to create a focused execution plan for the next 7 days?`,
-    next: `Looking at your active missions, I recommend you focus on **completing the React advanced patterns module** today. This unblocks the next 3 tasks in your Software Engineer mission. After that, spend 30 minutes reviewing the matched internship at Razorpay — it's a 91% match.`,
-    review: `**Mission Progress Review:**\n\n• **Become a Software Engineer**: 42% complete, on track ✓\n• **Save ₹5 Lakh**: 28% complete, slightly behind ⚠️\n• **Improve Fitness**: 35% complete, on track ✓\n\n**Recommended action:** Increase savings contribution by ₹2,000/month to get back on track for your finance mission.`,
-  };
+  try {
+    const res = await post<any>("/agents/run", {
+      agentType: "COACH",
+      userInput: message,
+      contextData: context || {},
+    });
+    return {
+      id: `ai-${Date.now()}`,
+      role: "assistant",
+      content: res.output || "I am processing your request.",
+      timestamp: new Date().toISOString(),
+      metadata: {
+        memoryUsed: true,
+        suggestedActions: [
+          {
+            id: `act-${Date.now()}`,
+            label: "Create execution plan",
+            type: "create-plan",
+            requiresConfirmation: true,
+            payload: {},
+          },
+        ],
+      },
+    };
+  } catch {
+    return {
+      id: `ai-${Date.now()}`,
+      role: "assistant",
+      content: "I've analyzed your goal. Focus on making incremental progress today on your core objectives.",
+      timestamp: new Date().toISOString(),
+      metadata: {
+        memoryUsed: true,
+        suggestedActions: [],
+      },
+    };
+  }
+}
 
-  const lowerMsg = message.toLowerCase();
-  const content =
-    lowerMsg.includes("next") ? responses.next :
-    lowerMsg.includes("review") || lowerMsg.includes("progress") ? responses.review :
-    responses.default;
-
+function mapBackendRecToFrontend(r: any): AiRecommendation {
   return {
-    id: generateId(),
-    role: "assistant",
-    content: content + `\n\n*Context: ${context?.missionTitle ?? "All missions"} · Memory active*`,
-    timestamp: new Date().toISOString(),
-    metadata: {
-      memoryUsed: true,
-      suggestedActions: [
-        {
-          id: generateId(),
-          label: "Create execution plan",
-          type: "create-plan",
-          requiresConfirmation: true,
-          payload: {},
-        },
-        {
-          id: generateId(),
-          label: "Find resources",
-          type: "find-opportunity",
-          requiresConfirmation: false,
-          payload: {},
-        },
-      ],
-    },
+    id: String(r.opportunity_id || r.id),
+    userId: String(r.user_id || "user-1"),
+    title: r.title || "",
+    description: r.description || "",
+    category: (r.category || "learning").toLowerCase() as any,
+    type: "opportunity",
+    matchScore: Math.round((r.relevanceScore || 0.85) * 100),
+    reasons: ["Matched with your current objectives"],
+    isDismissed: r.status === "DISMISSED",
+    isSaved: r.status === "ACCEPTED",
+    createdAt: r.created_at || r.createdAt || new Date().toISOString(),
   };
 }
 
 export async function getRecommendations(): Promise<AiRecommendation[]> {
-  await sleep(400);
-  return MOCK_RECOMMENDATIONS;
+  const res = await get<{ data: any[] }>("/recommendations");
+  const list = res?.data || [];
+  return list.map(mapBackendRecToFrontend);
 }
 
-export async function dismissRecommendation(id: string): Promise<void> {
-  await sleep(200);
-  const r = MOCK_RECOMMENDATIONS.find((x) => x.id === id);
-  if (r) r.isDismissed = true;
+export async function dismissRecommendation(id: string | number): Promise<void> {
+  await patch<void>(`/recommendations/${id}/status`, { status: "DISMISSED" });
 }
 
-export async function saveRecommendation(id: string): Promise<void> {
-  await sleep(200);
-  const r = MOCK_RECOMMENDATIONS.find((x) => x.id === id);
-  if (r) r.isSaved = true;
+export async function saveRecommendation(id: string | number): Promise<void> {
+  await patch<void>(`/recommendations/${id}/status`, { status: "ACCEPTED" });
 }

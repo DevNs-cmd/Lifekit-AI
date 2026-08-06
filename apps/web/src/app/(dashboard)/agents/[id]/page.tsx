@@ -21,8 +21,9 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { RecentChatsSidebar, type ChatSession } from "@/components/shared/recent-chats-sidebar";
 import { MOCK_AGENTS } from "@/lib/api/ai";
 import { sendCoachMessage } from "@/lib/api/ai";
-import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
+import { useMissionStore } from "@/stores";
+import { missionsApi } from "@/lib/api";
 import { generateId, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ConversationMessage } from "@/types/ai";
@@ -50,6 +51,20 @@ export default function AgentDetailPage() {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const { cachedMissions, setCachedMissions } = useMissionStore();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await missionsApi.getMissions();
+        setCachedMissions(data);
+      } catch {
+        // ignore
+      }
+    }
+    load();
+  }, [setCachedMissions]);
 
   // Recent chats state
   const [recentChats, setRecentChats] = useState<ChatSession[]>([
@@ -95,7 +110,7 @@ export default function AgentDetailPage() {
   const cfg = DOMAIN_CONFIG[agent.domain] ?? FALLBACK_CFG;
   const DomainIcon = cfg.icon;
 
-  const relatedMissions = MOCK_MISSIONS.filter(m =>
+  const relatedMissions = cachedMissions.filter(m =>
     agent.relatedCategories.includes(m.category) && m.status === "active"
   );
 

@@ -4,7 +4,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import * as express from "express";
 import helmet from "helmet";
-import compression from "compression";
+import * as compression from "compression";
 
 import { AppModule } from "./app.module";
 import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";

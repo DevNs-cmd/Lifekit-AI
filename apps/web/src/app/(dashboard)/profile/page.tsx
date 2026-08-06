@@ -14,6 +14,7 @@ import { getInitials, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORIES } from "@/constants/categories";
 import type { Category } from "@/types/common";
+import { usersApi } from "@/lib/api";
 
 export default function ProfilePage() {
   const { user, updateUser, logout } = useAuthStore();
@@ -23,12 +24,18 @@ export default function ProfilePage() {
   const [goalDraft, setGoalDraft] = useState<string[]>(user?.personalGoals ?? []);
   const [newGoalText, setNewGoalText] = useState("");
 
-  function toggleFocusArea(cat: Category) {
+  async function toggleFocusArea(cat: Category) {
     if (!user) return;
     const areas = user.focusAreas.includes(cat)
       ? user.focusAreas.filter(a => a !== cat)
       : [...user.focusAreas, cat];
-    updateUser({ focusAreas: areas });
+    try {
+      await usersApi.updatePreferences({ interests: areas });
+      updateUser({ focusAreas: areas });
+      toast.success("Focus areas updated.");
+    } catch {
+      toast.error("Failed to update focus areas.");
+    }
   }
 
   return (

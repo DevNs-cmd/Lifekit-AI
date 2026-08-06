@@ -32,8 +32,6 @@ export default function NewMissionPage() {
   const { draftGoalInput } = useMissionStore();
   const [step, setStep] = React.useState(1);
   const [generatedPlan, setGeneratedPlan] = React.useState<GeneratedMissionPlan | null>(null);
-  const [isGenerating, setIsGenerating] = React.useState(false);
-  const [genStep, setGenStep] = React.useState(0);
   const [isSaving, setIsSaving] = React.useState(false);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CreateMissionFormData>({
@@ -45,18 +43,18 @@ export default function NewMissionPage() {
   const category = watch("category");
 
   const genSteps = ["Understanding goal…", "Identifying milestones…", "Calculating timeline…", "Finding resources…", "Preparing execution plan…"];
+  const genStep = genSteps.length - 1;
 
   async function handleGenerate(data: CreateMissionFormData) {
     setStep(2);
-    setIsGenerating(true);
-    for (let i = 0; i < genSteps.length; i++) {
-      setGenStep(i);
-      await new Promise(r => setTimeout(r, 600));
+    try {
+      const plan = await generateMissionPlan({ ...data, category: data.category as Category });
+      setGeneratedPlan(plan);
+      setStep(3);
+    } catch {
+      toast.error("Plan generation failed.");
+      setStep(1);
     }
-    const plan = await generateMissionPlan({ ...data, category: data.category as Category });
-    setGeneratedPlan(plan);
-    setIsGenerating(false);
-    setStep(3);
   }
 
   async function handleActivate() {
@@ -64,7 +62,7 @@ export default function NewMissionPage() {
     setIsSaving(true);
     try {
       const mission = await createMission({ goal, category: category as Category });
-      await updateMission(mission.id, { title: generatedPlan.title, description: generatedPlan.description, milestones: generatedPlan.milestones as never, successMetrics: generatedPlan.successMetrics as never, status: "active" });
+      await updateMission(mission.id, { title: generatedPlan.title, description: generatedPlan.description });
       toast.success("Mission activated! Let's get to work.");
       router.push(ROUTES.MISSION_DETAIL(mission.id));
     } catch {
@@ -77,11 +75,16 @@ export default function NewMissionPage() {
   async function handleSaveDraft() {
     if (!generatedPlan) return;
     setIsSaving(true);
-    const mission = await createMission({ goal, category: category as Category });
-    await updateMission(mission.id, { title: generatedPlan.title, status: "draft" });
-    toast.success("Saved as draft.");
-    router.push(ROUTES.MISSIONS);
-    setIsSaving(false);
+    try {
+      const mission = await createMission({ goal, category: category as Category });
+      await updateMission(mission.id, { title: generatedPlan.title });
+      toast.success("Saved as draft.");
+      router.push(ROUTES.MISSIONS);
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (

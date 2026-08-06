@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,12 +24,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard, type KanbanStatus } from "@/components/tasks/kanban-board";
-import { MOCK_TASKS, MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, formatDuration, cn } from "@/lib/utils";
+import { tasksApi } from "@/lib/api";
 import { createTaskSchema, type CreateTaskFormData } from "@/lib/validation/schemas";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useMissionStore } from "@/stores";
+import { missionsApi } from "@/lib/api";
 import type { Task } from "@/types/task";
 
 type ViewMode = "list" | "Board";
@@ -124,14 +127,14 @@ function TaskRow({ task, showMission = true, completed, onToggle, onEdit, onDele
   );
 }
 
-type TaskDialogProps = { mode: "create" | "edit"; form: UseFormReturn<CreateTaskFormData>; open: boolean; editTarget?: Task | null; preselectedMissionId: string; onOpenChange: (open: boolean) => void; onSubmit: (data: CreateTaskFormData) => Promise<void> };
+type TaskDialogProps = { mode: "create" | "edit"; form: UseFormReturn<CreateTaskFormData>; open: boolean; editTarget?: Task | null; preselectedMissionId: string; onOpenChange: (open: boolean) => void; onSubmit: (data: CreateTaskFormData) => Promise<void>; missions: any[] };
 
-function TaskDialog({ mode, form, open, editTarget, preselectedMissionId, onOpenChange, onSubmit }: TaskDialogProps) {
+function TaskDialog({ mode, form, open, editTarget, preselectedMissionId, onOpenChange, onSubmit, missions }: TaskDialogProps) {
   const isEdit = mode === "edit";
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{isEdit ? "Edit task" : "Add a task"}</DialogTitle></DialogHeader>
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <FormField label="Task title" htmlFor={`${mode}-title`} required error={form.formState.errors.title?.message}><Input id={`${mode}-title`} placeholder="e.g. Complete React advanced patterns module" autoFocus {...form.register("title")} error={!!form.formState.errors.title} /></FormField>
-      <FormField label="Mission" htmlFor={`${mode}-mission`} required error={form.formState.errors.missionId?.message}><Select defaultValue={isEdit ? editTarget?.missionId : (preselectedMissionId || undefined)} onValueChange={v => form.setValue("missionId", v)}><SelectTrigger id={`${mode}-mission`} error={!!form.formState.errors.missionId}><SelectValue placeholder="Select a mission" /></SelectTrigger><SelectContent>{MOCK_MISSIONS.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}</SelectContent></Select></FormField>
+      <FormField label="Mission" htmlFor={`${mode}-mission`} required error={form.formState.errors.missionId?.message}><Select defaultValue={isEdit ? editTarget?.missionId : (preselectedMissionId || undefined)} onValueChange={v => form.setValue("missionId", v)}><SelectTrigger id={`${mode}-mission`} error={!!form.formState.errors.missionId}><SelectValue placeholder="Select a mission" /></SelectTrigger><SelectContent>{missions.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}</SelectContent></Select></FormField>
       <div className="grid grid-cols-2 gap-3"><FormField label="Priority" htmlFor={`${mode}-priority`}><Select defaultValue={isEdit ? (editTarget?.priority ?? "medium") : "medium"} onValueChange={v => form.setValue("priority", v as CreateTaskFormData["priority"])}><SelectTrigger id={`${mode}-priority`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="urgent">Urgent</SelectItem></SelectContent></Select></FormField><FormField label="Due date" htmlFor={`${mode}-due`}><Input id={`${mode}-due`} type="date" {...form.register("dueDate")} /></FormField></div>
       <FormField label="Est. duration (minutes)" htmlFor={`${mode}-duration`}><Input id={`${mode}-duration`} type="number" min={1} placeholder="e.g. 60" {...form.register("estimatedDurationMinutes")} /></FormField>
       <DialogFooter><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" loading={form.formState.isSubmitting}>{isEdit ? "Save changes" : "Create task"}</Button></DialogFooter>
@@ -145,13 +148,43 @@ export default function TasksPage() {
 
   const preselectedMissionId = params.get("missionId") ?? "";
   const shouldOpenCreate = params.get("create") === "true";
-
-  const [tasks, setTasks]           = useState<Task[]>(MOCK_TASKS);
+  const { cachedMissions, setCachedMissions } = useMissionStore();
+  const [tasks, setTasks]           = useState<Task[]>([]);
   const [completed, setCompleted]   = useState<Set<string>>(new Set());
   const [view, setView]             = useState<ViewMode>("list");
   const [createOpen, setCreateOpen] = useState(shouldOpenCreate);
   const [editTarget, setEditTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  const [loading, setLoading]       = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const missionsData = await missionsApi.getMissions();
+        setCachedMissions(missionsData);
+        if (preselectedMissionId) {
+          const list = await tasksApi.getTasks(preselectedMissionId);
+          setTasks(list);
+          const doneSet = new Set(list.filter(t => t.status === "completed").map(t => t.id));
+          setCompleted(doneSet);
+        } else {
+          const lists = await Promise.all(
+            missionsData.map(m => tasksApi.getTasks(m.id).catch(() => []))
+          );
+          const all = lists.flat();
+          setTasks(all);
+          const doneSet = new Set(all.filter(t => t.status === "completed").map(t => t.id));
+          setCompleted(doneSet);
+        }
+      } catch {
+        toast.error("Failed to load tasks.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [preselectedMissionId, setCachedMissions]);
 
   useEffect(() => {
     if (shouldOpenCreate) {
@@ -170,15 +203,24 @@ export default function TasksPage() {
     resolver: zodResolver(createTaskSchema),
   });
 
-  function toggle(id: string) {
-    const isCompleted = completed.has(id);
-    setCompleted(prev => {
-      const next = new Set(prev);
-      if (isCompleted) { next.delete(id); } else { next.add(id); }
-      return next;
-    });
-    if (isCompleted) { toast("Task uncompleted"); }
-    else { toast.success("Task complete! ✓"); }
+  async function toggle(id: string) {
+    const targetTask = tasks.find(t => t.id === id);
+    if (!targetTask) return;
+    const nextStatus = targetTask.status === "completed" ? "not-started" : "completed";
+    const backendStatus = nextStatus === "completed" ? "COMPLETED" : "PENDING";
+    try {
+      const updated = await tasksApi.updateTaskStatus(id, backendStatus);
+      setTasks(prev => prev.map(t => t.id === id ? updated : t));
+      if (nextStatus === "completed") {
+        setCompleted(prev => new Set([...prev, id]));
+        toast.success("Task complete! ✓");
+      } else {
+        setCompleted(prev => { const n = new Set(prev); n.delete(id); return n; });
+        toast("Task uncompleted");
+      }
+    } catch {
+      toast.error("Failed to toggle task.");
+    }
   }
 
   function openEdit(task: Task) {
@@ -194,69 +236,74 @@ export default function TasksPage() {
     });
   }
 
-  /** Called by Kanban when a card is dropped into a new column */
-  function handleKanbanStatusChange(taskId: string, newStatus: KanbanStatus) {
-    setTasks(prev =>
-      prev.map(t =>
-        t.id === taskId
-          ? { ...t, status: newStatus, updatedAt: new Date().toISOString() }
-          : t
-      )
-    );
-    if (newStatus === "completed") {
-      setCompleted(prev => new Set([...prev, taskId]));
-    } else {
-      setCompleted(prev => { const n = new Set(prev); n.delete(taskId); return n; });
+  async function handleKanbanStatusChange(taskId: string, newStatus: KanbanStatus) {
+    let backendStatus = "PENDING";
+    if (newStatus === "in-progress") backendStatus = "IN_PROGRESS";
+    else if (newStatus === "completed") backendStatus = "COMPLETED";
+
+    try {
+      const updated = await tasksApi.updateTaskStatus(taskId, backendStatus);
+      setTasks(prev => prev.map(t => t.id === taskId ? updated : t));
+      if (newStatus === "completed") {
+        setCompleted(prev => new Set([...prev, taskId]));
+      } else {
+        setCompleted(prev => { const n = new Set(prev); n.delete(taskId); return n; });
+      }
+    } catch {
+      toast.error("Failed to update status.");
     }
   }
 
   async function onCreateTask(data: CreateTaskFormData) {
-    await new Promise(r => setTimeout(r, 300));
-    const mission = MOCK_MISSIONS.find(m => m.id === data.missionId);
-    const newTask: Task = {
-      id: `task-${crypto.randomUUID()}`,
-      userId: "user-1",
-      missionId: data.missionId,
-      missionTitle: mission?.title ?? "",
-      title: data.title,
-      description: data.description,
-      status: "not-started",
-      priority: data.priority ?? "medium",
-      dueDate: data.dueDate,
-      dueTime: data.dueTime,
-      estimatedDurationMinutes: data.estimatedDurationMinutes,
-      dependencies: [], notes: [], resources: [], tags: [],
-      order: tasks.length + 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setTasks(prev => [...prev, newTask]);
-    setCreateOpen(false);
-    createForm.reset({ missionId: preselectedMissionId, priority: "medium" });
-    toast.success(`Task "${newTask.title}" created!`);
+    try {
+      const newTask = await tasksApi.createTask({
+        missionId: data.missionId,
+        title: data.title,
+        description: data.description || "",
+        priority: data.priority || "medium",
+        dueDate: data.dueDate,
+        dueTime: data.dueTime,
+        estimatedDurationMinutes: data.estimatedDurationMinutes,
+      });
+      setTasks(prev => [...prev, newTask]);
+      setCreateOpen(false);
+      createForm.reset({ missionId: preselectedMissionId, priority: "medium" });
+      toast.success(`Task "${newTask.title}" created!`);
+    } catch {
+      toast.error("Failed to create task.");
+    }
   }
 
   async function onEditTask(data: CreateTaskFormData) {
     if (!editTarget) return;
-    await new Promise(r => setTimeout(r, 300));
-    const mission = MOCK_MISSIONS.find(m => m.id === data.missionId);
-    setTasks(prev => prev.map(t => t.id === editTarget.id
-      ? { ...t, ...data, missionTitle: mission?.title ?? t.missionTitle, updatedAt: new Date().toISOString() }
-      : t
-    ));
-    setEditTarget(null);
-    toast.success("Task updated.");
+    try {
+      const updatedTask = await tasksApi.updateTask(editTarget.id, {
+        title: data.title,
+        description: data.description || "",
+        priority: data.priority || "medium",
+        dueDate: data.dueDate,
+        dueTime: data.dueTime,
+        estimatedDurationMinutes: data.estimatedDurationMinutes,
+      });
+      setTasks(prev => prev.map(t => t.id === editTarget.id ? updatedTask : t));
+      setEditTarget(null);
+      toast.success("Task updated.");
+    } catch {
+      toast.error("Failed to update task.");
+    }
   }
 
-  function deleteTask(task?: Task) {
+  async function deleteTask(task?: Task) {
     const target = task ?? deleteTarget;
     if (!target) return;
-    const previousIndex = tasks.findIndex(t => t.id === target.id);
-    setTasks(prev => prev.filter(t => t.id !== target.id));
-    setCompleted(prev => { const n = new Set(prev); n.delete(target.id); return n; });
-    toast("Task deleted.", { action: { label: "Undo", onClick: () => setTasks(prev => {
-      const next = [...prev]; next.splice(Math.max(0, previousIndex), 0, target); return next;
-    }) } });
+    try {
+      await tasksApi.deleteTask(target.id);
+      setTasks(prev => prev.filter(t => t.id !== target.id));
+      setCompleted(prev => { const n = new Set(prev); n.delete(target.id); return n; });
+      toast.success("Task deleted.");
+    } catch {
+      toast.error("Failed to delete task.");
+    }
     setDeleteTarget(null);
   }
 
@@ -265,7 +312,7 @@ export default function TasksPage() {
     : tasks;
 
   const missionContext = preselectedMissionId
-    ? MOCK_MISSIONS.find(m => m.id === preselectedMissionId)
+    ? cachedMissions.find(m => m.id === preselectedMissionId)
     : null;
 
   const completedList  = filteredTasks.filter(t => completed.has(t.id));
@@ -336,34 +383,38 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "Total", value: filteredTasks.length, icon: <ListTodo className="h-4 w-4" />, tone: "task-tone-total" },
-          { label: "In progress", value: inProgressList.length, icon: <PlayCircle className="h-4 w-4" />, tone: "task-tone-progress" },
-          { label: "High priority", value: urgentCount, icon: <Flame className="h-4 w-4" />, tone: "task-tone-high" },
-          { label: "Completed", value: completedList.length, icon: <CheckCircle2 className="h-4 w-4" />, tone: "task-tone-complete" },
-        ].map(s => (
-          <div key={s.label} className="rounded-2xl bg-[hsl(var(--card))] p-3.5 flex items-center gap-3 border border-[hsl(var(--border))]/80 shadow-[var(--shadow-xs)]">
-            <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", s.tone)}>{s.icon}</div>
-            <div>
-              <p className="text-xl font-black leading-none tabular-nums text-[hsl(var(--text-primary))]"><AnimatedNumber value={s.value} /></p>
-              <p className="text-xs text-[hsl(var(--text-secondary))] mt-0.5">{s.label}</p>
-            </div>
+      {loading ? (
+        <div className="p-6 text-center text-sm text-[hsl(var(--text-secondary))]">Loading tasks...</div>
+      ) : (
+        <>
+          {/* Stats strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Total", value: filteredTasks.length, icon: <ListTodo className="h-4 w-4" />, tone: "task-tone-total" },
+              { label: "In progress", value: inProgressList.length, icon: <PlayCircle className="h-4 w-4" />, tone: "task-tone-progress" },
+              { label: "High priority", value: urgentCount, icon: <Flame className="h-4 w-4" />, tone: "task-tone-high" },
+              { label: "Completed", value: completedList.length, icon: <CheckCircle2 className="h-4 w-4" />, tone: "task-tone-complete" },
+            ].map(s => (
+              <div key={s.label} className="rounded-2xl bg-[hsl(var(--card))] p-3.5 flex items-center gap-3 border border-[hsl(var(--border))]/80 shadow-[var(--shadow-xs)]">
+                <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", s.tone)}>{s.icon}</div>
+                <div>
+                  <p className="text-xl font-black leading-none tabular-nums text-[hsl(var(--text-primary))]"><AnimatedNumber value={s.value} /></p>
+                  <p className="text-xs text-[hsl(var(--text-secondary))] mt-0.5">{s.label}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* ── Kanban view ── */}
-      {view === "Board" && (
-        <KanbanBoard
-          tasks={filteredTasks}
-          onStatusChange={handleKanbanStatusChange}
-          onEdit={openEdit}
-          onDelete={t => setDeleteTarget(t)}
-          showMission={!missionContext}
-        />
-      )}
+          {/* ── Kanban view ── */}
+          {view === "Board" && (
+            <KanbanBoard
+              tasks={filteredTasks}
+              onStatusChange={handleKanbanStatusChange}
+              onEdit={openEdit}
+              onDelete={t => setDeleteTarget(t)}
+              showMission={!missionContext}
+            />
+          )}
 
       {/* ── List view ── */}
       {view === "list" && (
@@ -447,9 +498,11 @@ export default function TasksPage() {
           </TabsContent>
         </Tabs>
       )}
+        </>
+      )}
 
-      <TaskDialog mode="create" form={createForm} open={createOpen} preselectedMissionId={preselectedMissionId} onSubmit={onCreateTask} onOpenChange={(open) => { setCreateOpen(open); if (!open) createForm.reset({ missionId: preselectedMissionId, priority: "medium" }); }} />
-      <TaskDialog mode="edit" form={editForm} open={!!editTarget} editTarget={editTarget} preselectedMissionId={preselectedMissionId} onSubmit={onEditTask} onOpenChange={(open) => { if (!open) setEditTarget(null); }} />
+      <TaskDialog mode="create" form={createForm} open={createOpen} preselectedMissionId={preselectedMissionId} onOpenChange={setCreateOpen} onSubmit={onCreateTask} missions={cachedMissions} />
+      <TaskDialog mode="edit" form={editForm} open={!!editTarget} editTarget={editTarget} preselectedMissionId={preselectedMissionId} onOpenChange={open => !open && setEditTarget(null)} onSubmit={onEditTask} missions={cachedMissions} />
 
       <ConfirmationDialog
         open={!!deleteTarget}

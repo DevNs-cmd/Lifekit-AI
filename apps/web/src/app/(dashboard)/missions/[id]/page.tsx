@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import * as React from "react";
@@ -20,22 +21,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/shared/form-field";
-import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, formatDate, cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { MissionStatus } from "@/types/mission";
+import { missionsApi } from "@/lib/api";
+import { useMissionStore } from "@/stores";
 
 export default function MissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
-  const baseMission = MOCK_MISSIONS.find((m) => m.id === id);
-
-  // Local status state so pause/resume changes are reflected immediately
-  const [status, setStatus] = React.useState<MissionStatus>(
-    baseMission?.status ?? "active"
-  );
+  const [mission, setMission] = React.useState<any | null>(null);
+  const [loading, setLoading] = React.useState(true);
   const [completedMilestones, setCompletedMilestones] = React.useState<Set<string>>(new Set());
   const [celebratingMilestone, setCelebratingMilestone] = React.useState<string | null>(null);
   const [pauseDialogOpen, setPauseDialogOpen] = React.useState(false);
@@ -43,22 +40,94 @@ export default function MissionDetailPage() {
   // Edit mission state
   const [editOpen, setEditOpen] = React.useState(false);
   const [editFields, setEditFields] = React.useState({
-    title: baseMission?.title ?? "",
-    goal: baseMission?.goal ?? "",
-    targetDate: baseMission?.targetDate ?? "",
-    weeklyAvailableHours: baseMission?.weeklyAvailableHours?.toString() ?? "",
-    budgetAmount: baseMission?.budgetAmount?.toString() ?? "",
+    title: "",
+    goal: "",
+    targetDate: "",
+    weeklyAvailableHours: "",
+    budgetAmount: "",
   });
-  // Local overrides applied after save — typed against a known shape
-  const [overrides, setOverrides] = React.useState<{
-    title?: string;
-    goal?: string;
-    targetDate?: string;
-    weeklyAvailableHours?: number;
-    budgetAmount?: number;
-  }>({});
 
-  if (!baseMission) {
+  const { updateCachedMission } = useMissionStore();
+
+  React.useEffect(() => {
+    async function load() {
+      try {
+        const data = await missionsApi.getMission(id);
+        setMission({
+          ...data,
+          milestones: data.milestones || [],
+          successMetrics: data.successMetrics || [],
+          risks: data.risks || [],
+          resources: data.resources || [],
+        });
+        setEditFields({
+          title: data.title,
+          goal: data.goal || data.description || "",
+          targetDate: data.targetDate ? data.targetDate.split("T")[0] : "",
+          weeklyAvailableHours: data.weeklyAvailableHours?.toString() ?? "",
+          budgetAmount: data.budgetAmount?.toString() ?? "",
+        });
+      } catch {
+        // fail silently or handle in render
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [id]);
+
+  const isPaused = mission?.status === "paused";
+
+  async function handleSaveEdit() {
+    if (!mission) return;
+    try {
+      const updated = await missionsApi.updateMission(id, {
+        title: editFields.title.trim() || mission.title,
+        description: editFields.goal.trim() || mission.goal,
+        targetDate: editFields.targetDate || undefined,
+      });
+      setMission((prev: any) => ({ ...prev, ...updated }));
+      updateCachedMission(String(id), updated);
+      setEditOpen(false);
+      toast.success("Mission updated.");
+    } catch {
+      toast.error("Failed to update mission.");
+    }
+  }
+
+  async function handlePause() {
+    if (!mission) return;
+    try {
+      updateCachedMission(String(id), { status: "paused" });
+      setMission((prev: any) => prev ? { ...prev, status: "paused" } : null);
+      toast.success("Mission paused.");
+    } catch {
+      toast.error("Failed to pause mission.");
+    }
+  }
+
+  async function handleResume() {
+    if (!mission) return;
+    try {
+      updateCachedMission(String(id), { status: "active" });
+      setMission((prev: any) => prev ? { ...prev, status: "active" } : null);
+      toast.success("Mission resumed.");
+    } catch {
+      toast.error("Failed to resume mission.");
+    }
+  }
+
+  // Navigate to Tasks page pre-filtered to this mission, and open create dialog
+  function handleAddTask() {
+    if (!mission) return;
+    router.push(`${ROUTES.TASKS}?missionId=${mission.id}&create=true`);
+  }
+
+  if (loading) {
+    return <div className="p-6 text-center text-sm text-[hsl(var(--text-secondary))]">Loading mission details…</div>;
+  }
+
+  if (!mission) {
     return (
       <div className="p-6">
         <EmptyState
@@ -71,40 +140,7 @@ export default function MissionDetailPage() {
     );
   }
 
-  const mission = { ...baseMission, ...overrides, status };
-  const isPaused = status === "paused";
-  const isActive = status === "active";
-
-  function handleSaveEdit() {
-    setOverrides({
-      title: editFields.title.trim() || baseMission?.title,
-      goal: editFields.goal.trim() || baseMission?.goal,
-      targetDate: editFields.targetDate || undefined,
-      weeklyAvailableHours: editFields.weeklyAvailableHours
-        ? Number(editFields.weeklyAvailableHours)
-        : undefined,
-      budgetAmount: editFields.budgetAmount
-        ? Number(editFields.budgetAmount)
-        : undefined,
-    });
-    setEditOpen(false);
-    toast.success("Mission updated.");
-  }
-
-  function handlePause() {
-    setStatus("paused");
-    toast.success("Mission paused. Resume it any time to continue.", { action: { label: "Undo", onClick: () => setStatus("active") } });
-  }
-
-  function handleResume() {
-    setStatus("active");
-    toast.success("Mission resumed! Keep going.", { action: { label: "Undo", onClick: () => setStatus("paused") } });
-  }
-
-  // Navigate to Tasks page pre-filtered to this mission, and open create dialog
-  function handleAddTask() {
-    router.push(`${ROUTES.TASKS}?missionId=${mission.id}&create=true`);
-  }
+  const isActive = mission.status === "active";
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
@@ -258,7 +294,7 @@ export default function MissionDetailPage() {
                         Success Metrics
                       </p>
                       <ul className="space-y-1.5">
-                        {mission.successMetrics.map((m, i) => (
+                        {mission.successMetrics.map((m: any, i: number) => (
                           <li key={m.id ?? i} className="flex items-start gap-2 text-sm">
                             <CheckCircle
                               className={cn(
@@ -293,7 +329,7 @@ export default function MissionDetailPage() {
                       Risks & Blockers
                     </p>
                     <div className="space-y-2">
-                      {mission.risks.map((r, i) => (
+                      {mission.risks.map((r: any, i: number) => (
                         <div
                           key={r.id ?? i}
                           className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3"
@@ -334,7 +370,7 @@ export default function MissionDetailPage() {
                       },
                       {
                         label: "Milestones",
-                        value: `${mission.milestones.filter(m => m.status === "completed").length}/${mission.milestones.length}`,
+                        value: `${mission.milestones.filter((m: any) => m.status === "completed").length}/${mission.milestones.length}`,
                       },
                       { label: "Created", value: formatDate(mission.createdAt) },
                       ...(mission.targetDate
@@ -422,7 +458,7 @@ export default function MissionDetailPage() {
                 className="absolute left-5 top-8 bottom-0 w-0.5 bg-[hsl(var(--border))]"
                 aria-hidden
               />
-              {mission.milestones.map((ms, i) => (
+              {mission.milestones.map((ms: any, i: number) => (
                 <div key={ms.id ?? i} className="relative flex gap-4 pl-0 pb-6 animate-slide-up-fade" style={{ animationDelay: `${Math.min(i * 55, 275)}ms`, animationFillMode: "both" }}>
                   <button
                     type="button"

@@ -16,12 +16,13 @@ import { MissionCardSkeleton } from "@/components/shared/loading-skeleton";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
 import { SideSheet } from "@/components/ui/side-sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MOCK_MISSIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Mission, MissionStatus } from "@/types/mission";
 import { MoreHorizontal, Pause, Play, Copy, Archive, Trash2 } from "lucide-react";
+import { missionsApi } from "@/lib/api";
+import { useMissionStore } from "@/stores";
 
 export default function MissionsPage() {
   const router = useRouter();
@@ -31,11 +32,25 @@ export default function MissionsPage() {
   const [sortBy, setSortBy] = React.useState("updated");
   const [deleteTarget, setDeleteTarget] = React.useState<Mission | null>(null);
   const [previewMission, setPreviewMission] = React.useState<Mission | null>(null);
-  const [deletedIds, setDeletedIds] = React.useState<Set<string>>(new Set());
-  const [dataReady, setDataReady] = React.useState(false);
-  React.useEffect(() => { const timer = window.setTimeout(() => setDataReady(true), 180); return () => window.clearTimeout(timer); }, []);
+  const [loading, setLoading] = React.useState(true);
 
-  const filtered = MOCK_MISSIONS.filter(m => !deletedIds.has(m.id)).filter(m => {
+  const { cachedMissions, setCachedMissions, removeCachedMission } = useMissionStore();
+
+  React.useEffect(() => {
+    async function load() {
+      try {
+        const data = await missionsApi.getMissions();
+        setCachedMissions(data);
+      } catch {
+        toast.error("Failed to load missions.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [setCachedMissions]);
+
+  const filtered = cachedMissions.filter(m => {
     const matchSearch = !search || m.title.toLowerCase().includes(search.toLowerCase()) || m.goal.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || m.status === statusFilter;
     return matchSearch && matchStatus;
@@ -46,11 +61,16 @@ export default function MissionsPage() {
     return a.title.localeCompare(b.title);
   });
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return;
     const deleted = deleteTarget;
-    setDeletedIds(prev => new Set([...prev, deleted.id]));
-    toast.success(`Mission "${deleted.title}" deleted.`, { action: { label: "Undo", onClick: () => setDeletedIds(prev => { const n = new Set(prev); n.delete(deleted.id); return n; }) } });
+    try {
+      await missionsApi.deleteMission(deleted.id);
+      removeCachedMission(deleted.id);
+      toast.success(`Mission "${deleted.title}" deleted.`);
+    } catch {
+      toast.error("Failed to delete mission.");
+    }
     setDeleteTarget(null);
   }
 
@@ -59,7 +79,7 @@ export default function MissionsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-[hsl(var(--text-primary))]">Missions</h1>
-          <p className="text-sm text-[hsl(var(--text-secondary))]">{MOCK_MISSIONS.filter(m => m.status === "active").length} active missions</p>
+          <p className="text-sm text-[hsl(var(--text-secondary))]">{cachedMissions.filter(m => m.status === "active").length} active missions</p>
         </div>
         <Button onClick={() => router.push(ROUTES.MISSION_NEW)} leftIcon={<Plus className="h-4 w-4" />}>New Mission</Button>
       </div>
@@ -97,7 +117,7 @@ export default function MissionsPage() {
       </div>
 
       {/* Grid view */}
-      {!dataReady ? (
+      {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-label="Loading missions" aria-busy="true">
           {Array.from({ length: 6 }).map((_, i) => <MissionCardSkeleton key={i} />)}
         </div>
