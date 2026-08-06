@@ -66,12 +66,16 @@ export async function createMarketplaceListing(payload: {
   imageUrl?: string;
 }): Promise<MarketplaceListing> {
   const data = await post<any>("/marketplace", {
-    serviceName: payload.title,
-    providerName: payload.providerName,
-    category: payload.category,
+    title: payload.title,
     description: payload.description,
+    category: payload.category,
     price: Number(payload.price),
-    imageUrl: payload.imageUrl || "",
+    isFree: Number(payload.price) === 0,
+    tags: [],
+    availability: {
+      isAvailable: true,
+      stock: 99,
+    },
   });
   return mapBackendListingToFrontend(data);
 }
@@ -81,7 +85,7 @@ export async function updateMarketplaceListing(
   patchData: Partial<MarketplaceListing>
 ): Promise<MarketplaceListing> {
   const payload: any = {};
-  if (patchData.title !== undefined) payload.serviceName = patchData.title;
+  if (patchData.title !== undefined) payload.title = patchData.title;
   if (patchData.description !== undefined) payload.description = patchData.description;
   if (patchData.basePrice !== undefined) payload.price = Number(patchData.basePrice);
 

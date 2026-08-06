@@ -51,7 +51,7 @@ async function getAccessToken(): Promise<string | null> {
   } catch {
     // ignore
   }
-  return "mock-access-token";
+  return null;
 }
 
 async function performTokenRefresh(

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { AgentRequestDto, AgentType } from "./dto/agent-request.dto";
 import { AgentResponseDto } from "./dto/agent-response.dto";
+import { AppConfigService } from "../config/app-config.service";
 
 export interface DomainAgent {
   id: string;
@@ -97,6 +98,8 @@ export class AgentsService {
     },
   ];
 
+  constructor(private readonly config: AppConfigService) {}
+
   async getAgents(): Promise<DomainAgent[]> {
     return this.domainAgents;
   }
@@ -110,31 +113,83 @@ export class AgentsService {
   }
 
   async run(userId: number, dto: AgentRequestDto): Promise<AgentResponseDto> {
-    // Simulated AI execution mapping based on the input agentType
+    const aiServiceUrl = this.config.aiServiceUrl;
     let output = "";
-    switch (dto.agentType) {
-      case AgentType.COACH:
-        output = `Hello from Coach Agent. Based on your input: "${dto.userInput}", I recommend focusing on small, iterative daily habits.`;
-        break;
-      case AgentType.PLANNER:
-        output = `Hello from Planner Agent. Let's create a roadmap. Your goal: "${dto.userInput}". Let's start with breaking it into 3 phases.`;
-        break;
-      case AgentType.ANALYST:
-        output = `Hello from Analyst Agent. Analyzing context data: ${JSON.stringify(dto.contextData ?? {})}. Analysis suggests optimal efficiency.`;
-        break;
-      default:
-        output = `Processed request for agent: ${dto.agentType} with input: "${dto.userInput}".`;
+    let success = false;
+    let metadata: Record<string, any> = {
+      processedAt: new Date().toISOString(),
+      userId: String(userId),
+      engine: "gemini-3.5-flash",
+    };
+
+    if (aiServiceUrl) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+      try {
+        const response = await fetch(`${aiServiceUrl}/api/v1/orchestrate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: String(userId),
+            message: dto.userInput,
+            session_id:
+              dto.contextData?.sessionId || `sess-${userId}-${Date.now()}`,
+            context: dto.contextData || {},
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const resJson: any = await response.json();
+          if (resJson && resJson.domain_result) {
+            output =
+              resJson.domain_result.advice ||
+              resJson.domain_result.output ||
+              JSON.stringify(resJson.domain_result);
+            success = true;
+            metadata = {
+              ...metadata,
+              intent: resJson.intent,
+              memoryWritten: resJson.memory_written,
+              fastapiResponse: true,
+            };
+          }
+        }
+      } catch {
+        clearTimeout(timeoutId);
+        // Fall back to simulated response below
+      }
+    }
+
+    if (!success) {
+      // Simulated AI execution mapping based on the input agentType (Fallback)
+      switch (dto.agentType) {
+        case AgentType.COACH:
+          output = `Hello from Coach Agent. Based on your input: "${dto.userInput}", I recommend focusing on small, iterative daily habits.`;
+          break;
+        case AgentType.PLANNER:
+          output = `Hello from Planner Agent. Let's create a roadmap. Your goal: "${dto.userInput}". Let's start with breaking it into 3 phases.`;
+          break;
+        case AgentType.ANALYST:
+          output = `Hello from Analyst Agent. Analyzing context data: ${JSON.stringify(dto.contextData ?? {})}. Analysis suggests optimal efficiency.`;
+          break;
+        default:
+          output = `Processed request for agent: ${dto.agentType} with input: "${dto.userInput}".`;
+      }
+      success = true;
+      metadata.fallback = true;
     }
 
     return {
       agentType: dto.agentType,
-      success: true,
+      success,
       output,
-      metadata: {
-        processedAt: new Date().toISOString(),
-        userId: String(userId),
-        engine: "gemini-3.5-flash",
-      },
+      metadata,
     };
   }
 }

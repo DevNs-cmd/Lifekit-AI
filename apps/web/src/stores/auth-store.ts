@@ -1,9 +1,42 @@
 "use client";
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User } from "@/types/user";
-import { MOCK_USER } from "@/constants/mock-data";
+
+const DEFAULT_USER_VALUES = {
+  phone: "",
+  avatarUrl: undefined,
+  userType: "professional" as const,
+  location: "",
+  bio: "",
+  focusAreas: [],
+  skills: [],
+  interests: [],
+  careerInfo: {
+    currentRole: "",
+    company: "",
+    industry: "",
+    yearsOfExperience: 0,
+    education: "",
+  },
+  preferences: {
+    notificationPreference: "important" as const,
+    theme: "light" as const,
+    language: "en",
+    timezone: "Asia/Kolkata",
+    dateFormat: "DD/MM/YYYY",
+    aiResponseStyle: "balanced" as const,
+    recommendationFrequency: "weekly" as const,
+    planningDepth: "standard" as const,
+    memoryEnabled: true,
+  },
+  personalGoals: [],
+  isEmailVerified: true,
+  isTwoFactorEnabled: false,
+  role: "user" as const,
+  subscriptionPlan: "free" as const,
+  onboardingCompleted: true,
+};
 
 interface AuthState {
   user: User | null;
@@ -14,7 +47,7 @@ interface AuthState {
 
   setUser: (user: User | null) => void;
   setIsLoading: (v: boolean) => void;
-  login: (user: Partial<User> | null, accessToken?: string, refreshToken?: string) => void;
+  login: (user: Partial<User> | null, accessToken?: string | null, refreshToken?: string | null) => void;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
 }
@@ -37,18 +70,18 @@ export const useAuthStore = create<AuthState>()(
         const rawUser = user as { id?: string; userId?: string; user_id?: string; fullName?: string; full_name?: string; email?: string };
         const mergedUser = user
           ? {
-              ...MOCK_USER,
+              ...DEFAULT_USER_VALUES,
               ...user,
-              id: rawUser.id ?? rawUser.userId ?? rawUser.user_id ?? MOCK_USER.id,
-              fullName: rawUser.fullName ?? rawUser.full_name ?? MOCK_USER.fullName,
-              email: rawUser.email ?? MOCK_USER.email,
-            }
+              id: String(rawUser.id ?? rawUser.userId ?? rawUser.user_id ?? ""),
+              fullName: rawUser.fullName ?? rawUser.full_name ?? "",
+              email: rawUser.email ?? "",
+            } as User
           : null;
         set({
           user: mergedUser,
-          accessToken: accessToken ?? "mock-access-token",
-          refreshToken: refreshToken ?? "mock-refresh-token",
-          isAuthenticated: true,
+          accessToken: accessToken ?? null,
+          refreshToken: refreshToken ?? null,
+          isAuthenticated: !!accessToken,
           isLoading: false,
         });
       },

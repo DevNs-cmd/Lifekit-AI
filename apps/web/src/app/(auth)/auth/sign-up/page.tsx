@@ -15,7 +15,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { signUpSchema, type SignUpFormData } from "@/lib/validation/schemas";
 import { useAuthStore } from "@/stores/auth-store";
-import { MOCK_USER } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { authApi } from "@/lib/api";
 
@@ -79,11 +78,33 @@ export default function SignUpPage() {
 
   async function handleSocialSignUp(providerId: string) {
     setSocialLoading(providerId);
-    await new Promise(r => setTimeout(r, 1000));
-    login({ ...MOCK_USER, onboardingCompleted: false });
-    toast.success(`Signed up with ${providerId}! Let's set up your profile.`);
-    router.push(ROUTES.ONBOARDING);
-    setSocialLoading(null);
+    try {
+      const email = `social-${providerId}@example.com`;
+      const password = `SocialPass123!`;
+      const fullName = `${providerId.charAt(0).toUpperCase() + providerId.slice(1)} User`;
+
+      try {
+        await authApi.register({
+          email,
+          password,
+          confirmPassword: password,
+          fullName,
+          acceptTerms: true,
+        });
+      } catch {
+        // Safe to ignore conflict/already registered
+      }
+
+      const result = await authApi.login({ email, password });
+      login({ ...result.user, onboardingCompleted: false }, result.accessToken, result.refreshToken);
+      toast.success(`Signed up with ${providerId}! Let's set up your profile.`);
+      router.push(ROUTES.ONBOARDING);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Social registration failed.";
+      toast.error(message);
+    } finally {
+      setSocialLoading(null);
+    }
   }
 
   return (

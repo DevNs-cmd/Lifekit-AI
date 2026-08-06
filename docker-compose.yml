@@ -41,7 +41,7 @@ services:
     volumes:
       - qdrant-data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,6 +74,62 @@ services:
       timeout: 5s
       retries: 3
 
+  ai-service:
+    build:
+      context: ./apps/ai-service
+      dockerfile: Dockerfile
+    container_name: lifekit-ai-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      AI_SERVICE_PORT: 8000
+      AI_SERVICE_DATABASE_URL: postgresql://${POSTGRES_USER:-lifekit}:${POSTGRES_PASSWORD:-lifekit}@postgres:5432/${POSTGRES_DB:-lifekit}
+      AI_SERVICE_REDIS_URL: redis://redis:6379
+      AI_SERVICE_QDRANT_URL: http://qdrant:6333
+      AI_SERVICE_OPENAI_API_KEY: ${AI_SERVICE_OPENAI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build:
+      context: ./apps/worker
+      dockerfile: Dockerfile
+    container_name: lifekit-worker
+    restart: unless-stopped
+    environment:
+      WORKER_DATABASE_URL: postgresql://${POSTGRES_USER:-lifekit}:${POSTGRES_PASSWORD:-lifekit}@postgres:5432/${POSTGRES_DB:-lifekit}
+      WORKER_REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: lifekit-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+      NEXT_PUBLIC_WS_URL: ws://localhost:4000
+    depends_on:
+      - api
 
 volumes:
   postgres-data:

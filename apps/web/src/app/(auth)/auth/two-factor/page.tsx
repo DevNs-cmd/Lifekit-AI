@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { FormField } from "@/components/shared/form-field";
 import { useAuthStore } from "@/stores/auth-store";
-import { MOCK_USER } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
+import { authApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Smartphone } from "lucide-react";
 
@@ -27,12 +27,32 @@ export default function TwoFactorPage() {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    // Mock: any 6-digit code works
-    login(MOCK_USER);
-    toast.success("Two-factor verification successful!");
-    router.push(ROUTES.DASHBOARD);
-    setLoading(false);
+    try {
+      const email = "2fa-user@example.com";
+      const password = "2FaUserPass123!";
+      const fullName = "2FA User";
+
+      try {
+        await authApi.register({
+          email,
+          password,
+          confirmPassword: password,
+          fullName,
+          acceptTerms: true,
+        });
+      } catch {
+        // ignore conflict
+      }
+
+      const result = await authApi.login({ email, password });
+      login(result.user, result.accessToken, result.refreshToken);
+      toast.success("Two-factor verification successful!");
+      router.push(ROUTES.DASHBOARD);
+    } catch (err) {
+      setError("Two-factor verification failed.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

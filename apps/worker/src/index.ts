@@ -12,13 +12,16 @@
 
 import { Worker } from 'bullmq';
 
-const connection = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379', 10),
-};
+const connectionString = process.env.WORKER_REDIS_URL || process.env.REDIS_URL || 'redis://localhost:6380';
+const connection = connectionString.startsWith('redis://') || connectionString.startsWith('rediss://')
+  ? connectionString
+  : {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    };
 
 console.log('LifeKit Worker starting...');
-console.log(`Redis connection: ${connection.host}:${connection.port}`);
+console.log(`Redis connection: ${typeof connection === 'string' ? connection : `${connection.host}:${connection.port}`}`);
 
 // Placeholder worker queues — to be implemented with specific job processors
 const queues = ['opportunity-processing', 'progress-processing', 'notification-processing'];
@@ -31,7 +34,7 @@ queues.forEach((queueName) => {
       // TODO: Implement job processor logic
       return { processed: true, queue: queueName, jobId: job.id };
     },
-    { connection },
+    { connection: connection as any },
   );
 
   worker.on('completed', (job) => {

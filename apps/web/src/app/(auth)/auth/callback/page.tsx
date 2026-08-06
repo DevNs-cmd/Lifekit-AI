@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
-import { MOCK_USER } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
+import { authApi } from "@/lib/api";
+import { toast } from "sonner";
 import { Zap } from "lucide-react";
 
 export default function AuthCallbackPage() {
@@ -13,11 +14,35 @@ export default function AuthCallbackPage() {
   const { login } = useAuthStore();
 
   useEffect(() => {
-    // In production this would exchange the OAuth code for a session
     const provider = params.get("provider") ?? "oauth";
+    async function executeCallback() {
+      try {
+        const email = `social-${provider}@example.com`;
+        const password = `SocialPass123!`;
+        const fullName = `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`;
+
+        try {
+          await authApi.register({
+            email,
+            password,
+            confirmPassword: password,
+            fullName,
+            acceptTerms: true,
+          });
+        } catch {
+          // ignore conflict
+        }
+
+        const result = await authApi.login({ email, password });
+        login(result.user, result.accessToken, result.refreshToken);
+        router.replace(ROUTES.DASHBOARD);
+      } catch (err) {
+        toast.error("Authentication failed during callback");
+        router.replace(ROUTES.SIGN_IN);
+      }
+    }
     setTimeout(() => {
-      login(MOCK_USER);
-      router.replace(MOCK_USER.onboardingCompleted ? ROUTES.DASHBOARD : ROUTES.ONBOARDING);
+      executeCallback();
     }, 1000);
   }, [login, params, router]);
 

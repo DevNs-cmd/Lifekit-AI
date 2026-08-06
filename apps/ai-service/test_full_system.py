@@ -9,6 +9,17 @@ import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+# Pre-import submodules so unittest.mock.patch can resolve their paths
+import app.modules.intent.service
+import app.modules.mission.service
+import app.modules.planner.service
+import app.modules.domain_agents.base
+import app.modules.domain_agents.agents
+import app.modules.opportunity.service
+import app.modules.recommendation.service
+import app.modules.execution.service
+import app.modules.memory.service
+
 results = []
 
 

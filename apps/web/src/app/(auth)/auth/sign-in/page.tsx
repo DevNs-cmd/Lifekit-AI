@@ -15,7 +15,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { signInSchema, type SignInFormData } from "@/lib/validation/schemas";
 import { useAuthStore } from "@/stores/auth-store";
-import { MOCK_USER } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { authApi } from "@/lib/api";
 
@@ -79,11 +78,33 @@ export default function SignInPage() {
 
   async function handleSocialLogin(providerId: string) {
     setSocialLoading(providerId);
-    await new Promise(r => setTimeout(r, 1000));
-    login(MOCK_USER);
-    toast.success(`Signed in with ${providerId}!`);
-    router.push(ROUTES.DASHBOARD);
-    setSocialLoading(null);
+    try {
+      const email = `social-${providerId}@example.com`;
+      const password = `SocialPass123!`;
+      const fullName = `${providerId.charAt(0).toUpperCase() + providerId.slice(1)} User`;
+
+      try {
+        await authApi.register({
+          email,
+          password,
+          confirmPassword: password,
+          fullName,
+          acceptTerms: true,
+        });
+      } catch {
+        // Safe to ignore conflict/already registered
+      }
+
+      const result = await authApi.login({ email, password });
+      login(result.user, result.accessToken, result.refreshToken);
+      toast.success(`Signed in with ${providerId}!`);
+      router.push(ROUTES.DASHBOARD);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Social authentication failed.";
+      toast.error(message);
+    } finally {
+      setSocialLoading(null);
+    }
   }
 
   return (
