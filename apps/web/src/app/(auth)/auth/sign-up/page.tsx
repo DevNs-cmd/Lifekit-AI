@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
@@ -62,6 +62,7 @@ export default function SignUpPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<SignUpFormData>({ resolver: zodResolver(signUpSchema) });
 
@@ -176,7 +177,18 @@ export default function SignUpPage() {
 
         {/* Terms */}
         <div className="flex items-start gap-2.5 pt-1">
-          <Checkbox id="acceptTerms" {...register("acceptTerms")} className="mt-0.5" />
+          <Controller
+            name="acceptTerms"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                id="acceptTerms"
+                className="mt-0.5"
+                checked={field.value === true}
+                onCheckedChange={(checked) => field.onChange(checked === true ? true : false)}
+              />
+            )}
+          />
           <Label htmlFor="acceptTerms" className="text-sm font-normal cursor-pointer leading-relaxed select-none">
             I agree to the{" "}
             <Link

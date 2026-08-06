@@ -33,6 +33,7 @@ export default function MissionDetailPage() {
 
   const [mission, setMission] = React.useState<any | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState(false);
   const [completedMilestones, setCompletedMilestones] = React.useState<Set<string>>(new Set());
   const [celebratingMilestone, setCelebratingMilestone] = React.useState<string | null>(null);
   const [pauseDialogOpen, setPauseDialogOpen] = React.useState(false);
@@ -67,8 +68,29 @@ export default function MissionDetailPage() {
           weeklyAvailableHours: data.weeklyAvailableHours?.toString() ?? "",
           budgetAmount: data.budgetAmount?.toString() ?? "",
         });
-      } catch {
-        // fail silently or handle in render
+      } catch (err) {
+        console.error("Failed to load mission:", err);
+        // If API is unavailable, try to fall back to cached mission from the store
+        const { cachedMissions } = useMissionStore.getState();
+        const cached = cachedMissions.find(m => String(m.id) === String(id));
+        if (cached) {
+          setMission({
+            ...cached,
+            milestones: [],
+            successMetrics: [],
+            risks: [],
+            resources: [],
+          });
+          setEditFields({
+            title: cached.title,
+            goal: cached.goal || "",
+            targetDate: cached.targetDate ? cached.targetDate.split("T")[0] : "",
+            weeklyAvailableHours: "",
+            budgetAmount: "",
+          });
+        } else {
+          setLoadError(true);
+        }
       } finally {
         setLoading(false);
       }
@@ -132,8 +154,8 @@ export default function MissionDetailPage() {
       <div className="p-6">
         <EmptyState
           icon={<Target className="h-8 w-8" />}
-          title="Mission not found"
-          description="This mission doesn't exist or has been removed."
+          title={loadError ? "Failed to load mission" : "Mission not found"}
+          description={loadError ? "Could not connect to the server. Make sure the API is running." : "This mission doesn't exist or has been removed."}
           action={{ label: "Back to Missions", onClick: () => router.push(ROUTES.MISSIONS) }}
         />
       </div>

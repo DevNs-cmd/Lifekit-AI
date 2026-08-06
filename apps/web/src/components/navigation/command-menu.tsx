@@ -3,7 +3,7 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import { Search, Target, CheckSquare, ShoppingBag, Compass, Brain, Bot, Home, User, Settings, Plus, LayoutGrid, ListFilter, Sparkles } from "lucide-react";
+import { Target, CheckSquare, ShoppingBag, Compass, Brain, Bot, Home, User, Settings, Plus, LayoutGrid, ListFilter, Sparkles } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUIStore } from "@/stores/ui-store";
 import { ROUTES } from "@/constants/routes";
@@ -68,7 +68,6 @@ export function CommandMenu() {
       <DialogContent className="p-0 max-w-lg overflow-hidden top-[20%] translate-y-0">
         <Command className="rounded-xl" shouldFilter>
           <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
-            <Search className="h-4 w-4 text-[hsl(var(--text-secondary))] shrink-0" />
             <Command.Input
               value={search}
               onValueChange={setSearch}
@@ -76,9 +75,6 @@ export function CommandMenu() {
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))] text-[hsl(var(--text-primary))]"
               aria-label="Command search"
             />
-            <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-[hsl(var(--border))] px-1.5 text-[10px] font-medium text-[hsl(var(--text-secondary))]">
-              ESC
-            </kbd>
           </div>
           <Command.List className="max-h-80 overflow-y-auto p-2">
             <Command.Empty className="py-8 text-center text-sm text-[hsl(var(--text-secondary))]">
