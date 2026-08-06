@@ -32,8 +32,6 @@ export default function NewMissionPage() {
   const { draftGoalInput } = useMissionStore();
   const [step, setStep] = React.useState(1);
   const [generatedPlan, setGeneratedPlan] = React.useState<GeneratedMissionPlan | null>(null);
-  const [isGenerating, setIsGenerating] = React.useState(false);
-  const [genStep, setGenStep] = React.useState(0);
   const [isSaving, setIsSaving] = React.useState(false);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CreateMissionFormData>({
@@ -45,10 +43,10 @@ export default function NewMissionPage() {
   const category = watch("category");
 
   const genSteps = ["Understanding goal…", "Identifying milestones…", "Calculating timeline…", "Finding resources…", "Preparing execution plan…"];
+  const genStep = genSteps.length - 1;
 
   async function handleGenerate(data: CreateMissionFormData) {
     setStep(2);
-    setIsGenerating(true);
     try {
       const plan = await generateMissionPlan({ ...data, category: data.category as Category });
       setGeneratedPlan(plan);
@@ -56,8 +54,6 @@ export default function NewMissionPage() {
     } catch {
       toast.error("Plan generation failed.");
       setStep(1);
-    } finally {
-      setIsGenerating(false);
     }
   }
 

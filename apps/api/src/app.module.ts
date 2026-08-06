@@ -19,7 +19,7 @@ import { MarketplaceModule } from "./marketplace/marketplace.module";
 import { AgentsModule } from "./agents/agents.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 
-import { ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
 
 // Infrastructure Modules
@@ -68,6 +68,7 @@ import { RequestLoggingMiddleware } from "./common/middleware/request-logging.mi
     QueueModule,
     UploadModule,
   ],
+  providers: [ThrottlerGuard],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

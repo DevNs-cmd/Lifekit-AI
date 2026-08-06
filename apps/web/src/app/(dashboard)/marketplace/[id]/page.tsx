@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { ArrowLeft, ShoppingBag, Star, CheckCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,15 +9,36 @@ import { Badge } from "@/components/ui/badge";
 import { RatingDisplay } from "@/components/shared/rating-display";
 import { CategoryBadge } from "@/components/shared/category-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import { MOCK_MARKETPLACE_LISTINGS } from "@/constants/mock-data";
+import { marketplaceApi } from "@/lib/api";
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { MarketplaceListing } from "@/types/marketplace";
 
 export default function MarketplaceListingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const listing = MOCK_MARKETPLACE_LISTINGS.find(l => l.id === id) ?? MOCK_MARKETPLACE_LISTINGS[0];
+  const [listing, setListing] = useState<MarketplaceListing | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const data = await marketplaceApi.getMarketplaceListing(id);
+        setListing(data);
+      } catch {
+        toast.error("Failed to load listing details.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (id) load();
+  }, [id]);
+
+  if (loading) {
+    return <div className="p-6 text-center text-sm text-[hsl(var(--text-secondary))]">Loading listing details...</div>;
+  }
 
   if (!listing) {
     return (

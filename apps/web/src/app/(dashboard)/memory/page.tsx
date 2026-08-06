@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Brain, Plus, Pin, Trash2, Search, Pencil } from "lucide-react";
+import { Brain, Plus, Pin, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,12 +15,11 @@ import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
 import { FormField } from "@/components/shared/form-field";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MOCK_MEMORIES } from "@/constants/mock-data";
-import { formatRelativeTime, cn, generateId } from "@/lib/utils";
+import { formatRelativeTime, cn } from "@/lib/utils";
 import { createMemorySchema, type CreateMemoryFormData } from "@/lib/validation/schemas";
 import { toast } from "sonner";
 import { useMissionStore } from "@/stores";
-import { missionsApi } from "@/lib/api";
+import { missionsApi, memoryApi } from "@/lib/api";
 import { useEffect } from "react";
 import type { Memory, MemoryCategory } from "@/types/memory";
 
@@ -34,11 +34,12 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function MemoryPage() {
-  const [memories, setMemories] = useState<Memory[]>(MOCK_MEMORIES);
+  const [memories, setMemories] = useState<Memory[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<MemoryCategory | "all">("all");
-  const [deleteTarget, setDeleteTarget] = useState<Memory | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Memory | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const { register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<CreateMemoryFormData>({
     resolver: zodResolver(createMemorySchema),
@@ -49,11 +50,18 @@ export default function MemoryPage() {
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
       try {
-        const data = await missionsApi.getMissions();
-        setCachedMissions(data);
+        const [memList, missionsData] = await Promise.all([
+          memoryApi.getMemories(),
+          missionsApi.getMissions(),
+        ]);
+        setMemories(memList);
+        setCachedMissions(missionsData);
       } catch {
-        // ignore
+        toast.error("Failed to load memories.");
+      } finally {
+        setLoading(false);
       }
     }
     load();
@@ -72,36 +80,41 @@ export default function MemoryPage() {
 
   function togglePin(id: string) {
     setMemories(prev => prev.map(m => m.id === id ? { ...m, isPinned: !m.isPinned } : m));
+    toast.success("Memory pin updated.");
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return;
-    setMemories(prev => prev.filter(m => m.id !== deleteTarget.id));
-    toast("Memory deleted.");
+    try {
+      await memoryApi.deleteMemory(deleteTarget.id);
+      setMemories(prev => prev.filter(m => m.id !== deleteTarget.id));
+      toast.success("Memory deleted.");
+    } catch {
+      toast.error("Failed to delete memory.");
+    }
     setDeleteTarget(null);
   }
 
   async function onAddMemory(data: CreateMemoryFormData) {
-    await new Promise(r => setTimeout(r, 300));
-    const newMemory: Memory = {
-      id: generateId(),
-      userId: "user-1",
-      content: data.content,
-      category: data.category,
-      relatedMissionId: data.relatedMissionId,
-      relatedMissionTitle: cachedMissions.find((m: any) => m.id === data.relatedMissionId)?.title,
-      source: "user",
-      importance: data.importance ?? "medium",
-      isPinned: false,
-      isArchived: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tags: data.tags ?? [],
-    };
-    setMemories(prev => [newMemory, ...prev]);
-    setAddOpen(false);
-    reset();
-    toast.success("Memory saved!");
+    try {
+      const newMemory = await memoryApi.createMemory({
+        content: data.content,
+        category: data.category,
+        importance: data.importance || "medium",
+        relatedMissionId: data.relatedMissionId || undefined,
+        tags: data.tags || [],
+      });
+      // Set related mission title for display
+      if (newMemory.relatedMissionId) {
+        newMemory.relatedMissionTitle = cachedMissions.find((m: any) => m.id === newMemory.relatedMissionId)?.title;
+      }
+      setMemories(prev => [newMemory, ...prev]);
+      setAddOpen(false);
+      reset();
+      toast.success("Memory saved!");
+    } catch {
+      toast.error("Failed to save memory.");
+    }
   }
 
   return (
@@ -138,7 +151,9 @@ export default function MemoryPage() {
       </div>
 
       {/* Memory cards */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="p-6 text-center text-sm text-[hsl(var(--text-secondary))]">Loading memories...</div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={<Brain className="h-8 w-8" />}
           title="No memories found"

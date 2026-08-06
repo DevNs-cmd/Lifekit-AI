@@ -41,7 +41,7 @@ export default function MissionsPage() {
       try {
         const data = await missionsApi.getMissions();
         setCachedMissions(data);
-      } catch (err) {
+      } catch {
         toast.error("Failed to load missions.");
       } finally {
         setLoading(false);

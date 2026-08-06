@@ -4,3 +4,6 @@ export * as tasksApi from "./tasks";
 export * as aiApi from "./ai";
 export * as authApi from "./auth";
 export * as usersApi from "./users";
+export * as memoryApi from "./memory";
+export * as marketplaceApi from "./marketplace";
+export * as notificationsApi from "./notifications";

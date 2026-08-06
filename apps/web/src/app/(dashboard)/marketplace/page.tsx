@@ -13,13 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CategoryBadge } from "@/components/shared/category-badge";
 import { RatingDisplay } from "@/components/shared/rating-display";
 import { EmptyState } from "@/components/shared/empty-state";
-import { MOCK_MARKETPLACE_LISTINGS } from "@/constants/mock-data";
 import { CATEGORIES } from "@/constants/categories";
 import { ROUTES } from "@/constants/routes";
+import { marketplaceApi } from "@/lib/api";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/types/common";
-import type { MarketplaceListingType } from "@/types/marketplace";
+import type { MarketplaceListing, MarketplaceListingType } from "@/types/marketplace";
 
 type SortOption = "recommended" | "highest-rated" | "lowest-price" | "most-popular" | "newest";
 
@@ -37,6 +38,23 @@ export default function MarketplacePage() {
   const [minRating, setMinRating] = useState(0);
   const [typeFilter, setTypeFilter] = useState<MarketplaceListingType | "all">("all");
   const [sortBy, setSortBy] = useState<SortOption>("recommended");
+  const [listings, setListings] = useState<MarketplaceListing[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const data = await marketplaceApi.getMarketplaceListings();
+        setListings(data);
+      } catch {
+        toast.error("Failed to load listings.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   const activeFiltersCount = [
     maxPrice < 50000 ? 1 : 0,
@@ -53,7 +71,7 @@ export default function MarketplacePage() {
     setSearch("");
   }
 
-  const filtered = MOCK_MARKETPLACE_LISTINGS
+  const filtered = listings
     .filter(l => {
       const matchSearch = !search || l.title.toLowerCase().includes(search.toLowerCase()) || l.provider.name.toLowerCase().includes(search.toLowerCase());
       const matchCat  = activeCategory === "all" || l.category === activeCategory;
@@ -221,8 +239,9 @@ export default function MarketplacePage() {
         </p>
       </div>
 
-      {/* Listings */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="p-6 text-center text-sm text-[hsl(var(--text-secondary))]">Loading listings...</div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={<ShoppingBag className="h-8 w-8" />}
           title="No listings match your filters"

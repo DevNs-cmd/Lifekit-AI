@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { get, post, patch, del } from "./client";
 import type {
   Mission,

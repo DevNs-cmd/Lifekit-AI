@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import * as React from "react";
@@ -23,7 +24,6 @@ import { FormField } from "@/components/shared/form-field";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, formatDate, cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { MissionStatus } from "@/types/mission";
 import { missionsApi } from "@/lib/api";
 import { useMissionStore } from "@/stores";
 

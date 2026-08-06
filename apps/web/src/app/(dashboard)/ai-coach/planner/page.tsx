@@ -38,18 +38,15 @@ export default function AIPlannerPage() {
       try {
         const data = await missionsApi.getMissions();
         setCachedMissions(data);
+        if (data.length > 0 && !selectedMission) {
+          setSelectedMission(data[0].id);
+        }
       } catch {
         // ignore
       }
     }
     load();
-  }, [setCachedMissions]);
-
-  useEffect(() => {
-    if (cachedMissions.length > 0 && !selectedMission) {
-      setSelectedMission(cachedMissions[0].id);
-    }
-  }, [cachedMissions, selectedMission]);
+  }, [setCachedMissions, selectedMission]);
 
   const mission = cachedMissions.find(m => m.id === selectedMission);
 
