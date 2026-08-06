@@ -41,10 +41,41 @@ function buildUrl(
   return url.toString();
 }
 
+import { useAuthStore } from "@/stores/auth-store";
+import type { User } from "@/types/user";
+
 async function getAccessToken(): Promise<string | null> {
-  // In production this would read from the auth session / cookie.
-  // For the mock implementation we return a placeholder.
+  try {
+    const token = useAuthStore.getState().accessToken;
+    if (token) return token;
+  } catch {
+    // ignore
+  }
   return "mock-access-token";
+}
+
+async function performTokenRefresh(
+  refreshToken: string
+): Promise<{ accessToken: string; refreshToken: string; user: unknown } | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    if (json && json.success && json.data) {
+      return json.data;
+    }
+    return json;
+  } catch {
+    return null;
+  }
 }
 
 export async function apiRequest<T>(
@@ -52,9 +83,9 @@ export async function apiRequest<T>(
   options: RequestOptions = {}
 ): Promise<T> {
   const { method = "GET", body, params, headers = {}, signal } = options;
-  const token = await getAccessToken();
+  let token = await getAccessToken();
 
-  const res = await fetch(buildUrl(path, params), {
+  let res = await fetch(buildUrl(path, params), {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -64,6 +95,38 @@ export async function apiRequest<T>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal,
   });
+
+  // Intercept 401 Unauthorized for token refresh
+  if (res.status === 401) {
+    const rToken = useAuthStore.getState().refreshToken;
+    if (rToken && rToken !== "mock-refresh-token") {
+      const refreshResult = await performTokenRefresh(rToken);
+      if (refreshResult && refreshResult.accessToken) {
+        useAuthStore.getState().login(
+          refreshResult.user as Partial<User>,
+          refreshResult.accessToken,
+          refreshResult.refreshToken
+        );
+
+        token = refreshResult.accessToken;
+        res = await fetch(buildUrl(path, params), {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...headers,
+          },
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+          signal,
+        });
+      } else {
+        useAuthStore.getState().logout();
+        if (typeof window !== "undefined") {
+          window.location.href = "/auth/sign-in";
+        }
+      }
+    }
+  }
 
   if (!res.ok) {
     let errorBody: { message?: string; code?: string; details?: Record<string, string[]> } = {};
@@ -83,7 +146,19 @@ export async function apiRequest<T>(
   // 204 No Content
   if (res.status === 204) return undefined as T;
 
-  return res.json() as Promise<T>;
+  const json = await res.json();
+  if (json && typeof json === "object" && "success" in json) {
+    if ("meta" in json) {
+      return {
+        data: json.data,
+        meta: json.meta,
+      } as unknown as T;
+    }
+    if ("data" in json) {
+      return json.data as T;
+    }
+  }
+  return json as T;
 }
 
 // Convenience wrappers

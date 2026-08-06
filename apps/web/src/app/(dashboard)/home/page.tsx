@@ -17,42 +17,75 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { GoalInput } from "@/components/navigation/goal-input";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUIStore } from "@/stores/ui-store";
-import { MOCK_MISSIONS, MOCK_TASKS, MOCK_RECOMMENDATIONS } from "@/constants/mock-data";
 import { ROUTES } from "@/constants/routes";
 import { cn, formatDeadline, formatDuration } from "@/lib/utils";
+import { useMissionStore } from "@/stores";
+import { missionsApi, tasksApi, aiApi } from "@/lib/api";
+import type { Task } from "@/types/task";
+import type { AiRecommendation } from "@/types/ai";
 
 export default function DashboardPage() {
   const router = useRouter();
   const user = useAuthStore(s => s.user);
   const setAiCoachPanelOpen = useUIStore(s => s.setAiCoachPanelOpen);
   const [completed, setCompleted] = React.useState<Set<string>>(new Set());
+  const { cachedMissions, setCachedMissions } = useMissionStore();
   const [dataReady, setDataReady] = React.useState(false);
+  const [todayTasks, setTodayTasks] = React.useState<Task[]>([]);
+  const [insight, setInsight] = React.useState<AiRecommendation | null>(null);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => setDataReady(true), 180);
-    return () => window.clearTimeout(timer);
-  }, []);
+    async function load() {
+      try {
+        const [missionsData, tasksData, recsData] = await Promise.all([
+          missionsApi.getMissions(),
+          tasksApi.getTodayTasks(),
+          aiApi.getRecommendations(),
+        ]);
+        setCachedMissions(missionsData);
+        setTodayTasks(tasksData.slice(0, 4));
+        const doneSet = new Set(tasksData.filter(t => t.status === "completed").map(t => t.id));
+        setCompleted(doneSet);
+        if (recsData && recsData.length > 0) {
+          setInsight(recsData[0]);
+        }
+      } catch {
+        // fail silently on dashboard background fetch
+      } finally {
+        setDataReady(true);
+      }
+    }
+    load();
+  }, [setCachedMissions]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const activeMissions = MOCK_MISSIONS.filter(m => m.status === "active");
+  const activeMissions = cachedMissions.filter(m => m.status === "active");
   const activeMission = activeMissions[0];
-  const todayTasks = MOCK_TASKS.slice(0, 4);
   const nextTask = todayTasks.find(task => !completed.has(task.id)) ?? todayTasks[0];
-  const insight = MOCK_RECOMMENDATIONS[0];
   const completedCount = completed.size;
   const score = 78 + Math.min(completedCount * 3, 12);
 
-  function toggleTask(id: string) {
-    setCompleted(previous => {
-      const next = new Set(previous);
-      if (next.has(id)) next.delete(id);
-      else {
-        next.add(id);
-        toast.success("Task completed", { description: "Your daily plan has been updated." });
-      }
-      return next;
-    });
+  async function toggleTask(id: string) {
+    const task = todayTasks.find(t => t.id === id);
+    if (!task) return;
+    const isCompleted = completed.has(id);
+    const nextStatus = isCompleted ? "PENDING" : "COMPLETED";
+    try {
+      await tasksApi.updateTaskStatus(id, nextStatus);
+      setCompleted(previous => {
+        const next = new Set(previous);
+        if (next.has(id)) next.delete(id);
+        else {
+          next.add(id);
+          toast.success("Task completed", { description: "Your daily plan has been updated." });
+        }
+        return next;
+      });
+      setTodayTasks(prev => prev.map(t => t.id === id ? { ...t, status: isCompleted ? "not-started" : "completed" } : t));
+    } catch {
+      toast.error("Failed to toggle task.");
+    }
   }
 
   return (
