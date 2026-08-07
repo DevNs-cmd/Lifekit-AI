@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.modules.orchestrator.router import router as orchestrator_router
 from app.modules.memory.router import router as memory_router
+from app.modules.recommendation.router import router as recommendations_router
 
 app = FastAPI(
     title="LifeKit AI Service",
@@ -28,6 +29,7 @@ app.add_middleware(
 
 app.include_router(orchestrator_router)
 app.include_router(memory_router)
+app.include_router(recommendations_router)
 
 
 @app.get("/health")

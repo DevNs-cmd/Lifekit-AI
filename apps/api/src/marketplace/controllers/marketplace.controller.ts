@@ -65,10 +65,13 @@ export class MarketplaceController {
     isArray: true,
   })
   @ApiUnauthorizedResponse({ description: "Invalid or expired access token" })
-  async findAll(@Query() query: MarketplaceQueryDto) {
+  async findAll(
+    @CurrentUser("user_id") userId: number,
+    @Query() query: MarketplaceQueryDto,
+  ) {
     const { page, limit, ...filters } = query;
     const pagination = { page, limit };
-    return this.marketplaceService.findAll(filters, pagination);
+    return this.marketplaceService.findAll(userId, filters, pagination);
   }
 
   @Get(":id")
