@@ -230,8 +230,37 @@ describe("Planner API (e2e)", () => {
   });
 
   describe("POST /api/planner/generate", () => {
-    it("should generate a plan using placeholder response", async () => {
+    let globalFetchBackup: typeof global.fetch;
+
+    beforeAll(() => {
+      globalFetchBackup = global.fetch;
+    });
+
+    afterAll(() => {
+      global.fetch = globalFetchBackup;
+    });
+
+    it("should generate a plan using real orchestrator pipeline", async () => {
       mockUserRepo.findById.mockResolvedValue(mockUser());
+
+      const mockFastApiResponse = {
+        plan: {
+          title: "Run a marathon Plan",
+          total_estimated_days: 84,
+          steps: [{ order: 1, task: "Train hard", estimated_days: 84 }],
+        },
+        domain_result: {
+          advice: "Some advice",
+          risks: ["Injury"],
+          resources: ["Running shoes"],
+        },
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockFastApiResponse),
+      });
+
       const res = await request(app.getHttpServer())
         .post("/api/planner/generate")
         .set("Authorization", `Bearer ${token}`)
@@ -244,9 +273,8 @@ describe("Planner API (e2e)", () => {
         .expect(HttpStatus.CREATED);
 
       expect(res.body.success).toBe(true);
-      expect(res.body.data.message).toBe("Plan generation request received");
-      expect(res.body.data.received.goalInput).toBe("Run a marathon");
-      expect(res.body.data.userId).toBe(testUserId);
+      expect(res.body.data.title).toBe("Run a marathon Plan");
+      expect(res.body.data.milestones[0].title).toBe("Train hard");
     });
   });
 });

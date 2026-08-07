@@ -97,85 +97,13 @@ export async function deleteMission(id: string | number): Promise<void> {
 export async function generateMissionPlan(
   input: CreateMissionInput
 ): Promise<GeneratedMissionPlan> {
-  try {
-    await post<any>("/plans/generate", {
-      goalInput: input.goal,
-      planningHorizon: "6 months",
-      priority: "MEDIUM",
-      userConstraints: input.constraints ? [input.constraints] : [],
-    });
-  } catch {
-    // Fail-safe if planner routes are not initialized
-  }
-
-  return {
-    title: `Mission: ${input.goal.slice(0, 60)}`,
-    description: `A structured execution plan to: ${input.goal}`,
-    category: input.category,
-    goal: input.goal,
-    estimatedDurationWeeks: 12,
-    milestones: [
-      {
-        id: "ms-gen-1",
-        title: "Foundation & Setup",
-        description:
-          "Configure workspace, define milestones, and gather initial resources.",
-        status: "pending",
-        progress: 0,
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 14 * 86400000).toISOString(),
-        tasks: [],
-        resources: [],
-        dependencies: [],
-        order: 1,
-      },
-      {
-        id: "ms-gen-2",
-        title: "Execution Phase",
-        description:
-          "Conduct daily sessions and apply skills to build core project elements.",
-        status: "pending",
-        progress: 0,
-        startDate: new Date(Date.now() + 15 * 86400000).toISOString(),
-        endDate: new Date(Date.now() + 45 * 86400000).toISOString(),
-        tasks: [],
-        resources: [],
-        dependencies: [],
-        order: 2,
-      },
-      {
-        id: "ms-gen-3",
-        title: "Evaluation & Launch",
-        description:
-          "Assess success metrics, handle remaining risks, and optimize implementation.",
-        status: "pending",
-        progress: 0,
-        startDate: new Date(Date.now() + 46 * 86400000).toISOString(),
-        endDate: new Date(Date.now() + 60 * 86400000).toISOString(),
-        tasks: [],
-        resources: [],
-        dependencies: [],
-        order: 3,
-      },
-    ],
-    successMetrics: [
-      {
-        id: "sm-gen-1",
-        description: "All milestones accomplished on schedule",
-        measurable: true,
-        achieved: false,
-      },
-    ],
-    risks: [
-      {
-        id: "r-gen-1",
-        description: "Competing priorities from other schedules",
-        severity: "medium",
-        mitigation: "Establish weekly focused blocks",
-      },
-    ],
-    resources: [],
-  };
+  const data = await post<GeneratedMissionPlan>("/plans/generate", {
+    goalInput: input.goal,
+    planningHorizon: "MONTHLY",
+    priority: "MEDIUM",
+    userConstraints: input.constraints ? [input.constraints] : [],
+  });
+  return data;
 }
 
 export async function getMissionActivity(

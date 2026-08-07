@@ -9,7 +9,8 @@ from app.config import settings
 @lru_cache
 def get_llm(temperature: float = 0.3) -> ChatOpenAI:
     return ChatOpenAI(
-        model="gpt-4o-mini",
-        api_key=settings.openai_api_key,
+        model=settings.openai_model,
+        api_key=settings.openai_api_key or "placeholder-key",
+        base_url=settings.openai_api_base,
         temperature=temperature,
     )

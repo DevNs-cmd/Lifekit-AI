@@ -11,12 +11,15 @@ from app.config import settings
 from app.core.vector_store import get_qdrant, MEMORY_COLLECTION
 
 def get_openai_client() -> AsyncOpenAI:
-    return AsyncOpenAI(api_key=settings.openai_api_key or "placeholder-key")
+    return AsyncOpenAI(
+        api_key=settings.openai_api_key or "placeholder-key",
+        base_url=settings.openai_api_base,
+    )
 
 
 async def _embed(text: str) -> list[float]:
     client = get_openai_client()
-    resp = await client.embeddings.create(model="text-embedding-3-small", input=text)
+    resp = await client.embeddings.create(model=settings.openai_embedding_model, input=text)
     return resp.data[0].embedding
 
 

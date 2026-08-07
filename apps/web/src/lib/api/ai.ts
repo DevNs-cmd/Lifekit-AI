@@ -81,66 +81,48 @@ export const MOCK_AGENTS: Agent[] = [
 ];
 
 export async function getAgents(): Promise<Agent[]> {
-  try {
-    const list = await get<Agent[]>("/agents");
-    if (list && list.length > 0) return list;
-  } catch {
-    // fallback
-  }
+  const list = await get<Agent[]>("/agents");
+  if (list && list.length > 0) return list;
   return MOCK_AGENTS;
 }
 
 export async function getAgent(id: string): Promise<Agent> {
   try {
     return await get<Agent>(`/agents/${id}`);
-  } catch {
-    // fallback
+  } catch (error) {
+    const a = MOCK_AGENTS.find((x) => x.id === id);
+    if (!a) throw error;
+    return a;
   }
-  const a = MOCK_AGENTS.find((x) => x.id === id);
-  if (!a) throw new Error(`Agent ${id} not found`);
-  return a;
 }
 
 export async function sendCoachMessage(
   message: string,
   context?: Record<string, unknown>
 ): Promise<ConversationMessage> {
-  try {
-    const res = await post<any>("/agents/run", {
-      agentType: "COACH",
-      userInput: message,
-      contextData: context || {},
-    });
-    return {
-      id: `ai-${Date.now()}`,
-      role: "assistant",
-      content: res.output || "I am processing your request.",
-      timestamp: new Date().toISOString(),
-      metadata: {
-        memoryUsed: true,
-        suggestedActions: [
-          {
-            id: `act-${Date.now()}`,
-            label: "Create execution plan",
-            type: "create-plan",
-            requiresConfirmation: true,
-            payload: {},
-          },
-        ],
-      },
-    };
-  } catch {
-    return {
-      id: `ai-${Date.now()}`,
-      role: "assistant",
-      content: "I've analyzed your goal. Focus on making incremental progress today on your core objectives.",
-      timestamp: new Date().toISOString(),
-      metadata: {
-        memoryUsed: true,
-        suggestedActions: [],
-      },
-    };
-  }
+  const res = await post<any>("/agents/run", {
+    agentType: "COACH",
+    userInput: message,
+    contextData: context || {},
+  });
+  return {
+    id: `ai-${Date.now()}`,
+    role: "assistant",
+    content: res.output || "I am processing your request.",
+    timestamp: new Date().toISOString(),
+    metadata: {
+      memoryUsed: true,
+      suggestedActions: [
+        {
+          id: `act-${Date.now()}`,
+          label: "Create execution plan",
+          type: "create-plan",
+          requiresConfirmation: true,
+          payload: {},
+        },
+      ],
+    },
+  };
 }
 
 function mapBackendRecToFrontend(r: any): AiRecommendation {

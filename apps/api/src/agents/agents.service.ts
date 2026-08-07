@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { AgentRequestDto, AgentType } from "./dto/agent-request.dto";
+import { AgentRequestDto } from "./dto/agent-request.dto";
 import { AgentResponseDto } from "./dto/agent-response.dto";
 import { AppConfigService } from "../config/app-config.service";
 
@@ -144,45 +144,32 @@ export class AgentsService {
 
         clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const resJson: any = await response.json();
-          if (resJson && resJson.domain_result) {
-            output =
-              resJson.domain_result.advice ||
-              resJson.domain_result.output ||
-              JSON.stringify(resJson.domain_result);
-            success = true;
-            metadata = {
-              ...metadata,
-              intent: resJson.intent,
-              memoryWritten: resJson.memory_written,
-              fastapiResponse: true,
-            };
-          }
+        if (!response.ok) {
+          throw new Error(`AI service returned status ${response.status}: ${await response.text()}`);
         }
-      } catch {
-        clearTimeout(timeoutId);
-        // Fall back to simulated response below
-      }
-    }
 
-    if (!success) {
-      // Simulated AI execution mapping based on the input agentType (Fallback)
-      switch (dto.agentType) {
-        case AgentType.COACH:
-          output = `Hello from Coach Agent. Based on your input: "${dto.userInput}", I recommend focusing on small, iterative daily habits.`;
-          break;
-        case AgentType.PLANNER:
-          output = `Hello from Planner Agent. Let's create a roadmap. Your goal: "${dto.userInput}". Let's start with breaking it into 3 phases.`;
-          break;
-        case AgentType.ANALYST:
-          output = `Hello from Analyst Agent. Analyzing context data: ${JSON.stringify(dto.contextData ?? {})}. Analysis suggests optimal efficiency.`;
-          break;
-        default:
-          output = `Processed request for agent: ${dto.agentType} with input: "${dto.userInput}".`;
+        const resJson: any = await response.json();
+        if (resJson && resJson.domain_result) {
+          output =
+            resJson.domain_result.advice ||
+            resJson.domain_result.output ||
+            JSON.stringify(resJson.domain_result);
+          success = true;
+          metadata = {
+            ...metadata,
+            intent: resJson.intent,
+            memoryWritten: resJson.memory_written,
+            fastapiResponse: true,
+          };
+        } else {
+          throw new Error("AI service returned an invalid response structure");
+        }
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        throw new Error(`AI Service connection failed: ${err.message}`);
       }
-      success = true;
-      metadata.fallback = true;
+    } else {
+      throw new Error("AI Service URL is not configured");
     }
 
     return {

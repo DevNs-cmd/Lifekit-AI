@@ -11,6 +11,7 @@ import { CreatePlanDto, PlanningHorizon } from "../dto/create-plan.dto";
 import { GeneratePlanRequestDto } from "../dto/generate-plan-request.dto";
 import { Plan } from "../entities/plan.entity";
 import { PriorityLevel, MissionStatus } from "../../common/enums";
+import { AppConfigService } from "../../config/app-config.service";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -56,6 +57,10 @@ function createMockMission(overrides: any = {}): any {
   };
 }
 
+const mockConfigService = {
+  aiServiceUrl: "http://mock-ai-service:8000",
+};
+
 describe("PlannerService", () => {
   let service: PlannerService;
 
@@ -65,6 +70,7 @@ describe("PlannerService", () => {
         PlannerService,
         { provide: PlannerRepository, useValue: mockPlannerRepository },
         { provide: LifeMissionRepository, useValue: mockMissionRepository },
+        { provide: AppConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -76,7 +82,17 @@ describe("PlannerService", () => {
   });
 
   describe("generate", () => {
-    it("should return a placeholder response for valid input", async () => {
+    let globalFetchBackup: typeof global.fetch;
+
+    beforeAll(() => {
+      globalFetchBackup = global.fetch;
+    });
+
+    afterAll(() => {
+      global.fetch = globalFetchBackup;
+    });
+
+    it("should return a generated plan response for valid input", async () => {
       const dto = {
         goalInput: "Run 5k under 22 minutes",
         planningHorizon: PlanningHorizon.WEEKLY,
@@ -84,12 +100,28 @@ describe("PlannerService", () => {
         userConstraints: ["No equipment"],
       } as GeneratePlanRequestDto;
 
-      const result = await service.generate(123, dto);
-      expect(result).toEqual({
-        message: "Plan generation request received",
-        received: dto,
-        userId: 123,
+      const mockFastApiResponse = {
+        plan: {
+          title: "Run 5k under 22 minutes Plan",
+          total_estimated_days: 28,
+          steps: [{ order: 1, task: "Train hard", estimated_days: 28 }],
+        },
+        domain_result: {
+          advice: "Some advice",
+          risks: ["Injury"],
+          resources: ["Running shoes"],
+        },
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockFastApiResponse),
       });
+
+      const result = await service.generate(123, dto);
+      expect(result.title).toBe("Run 5k under 22 minutes Plan");
+      expect(result.milestones.length).toBe(1);
+      expect(result.milestones[0].title).toBe("Train hard");
     });
 
     it("should throw BadRequestException when required fields missing", async () => {

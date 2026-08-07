@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
@@ -61,8 +61,18 @@ export default function SignUpPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
-  } = useForm<SignUpFormData>({ resolver: zodResolver(signUpSchema) });
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      acceptTerms: false as unknown as true,
+    },
+  });
 
   async function onSubmit(data: SignUpFormData) {
     try {
@@ -197,7 +207,18 @@ export default function SignUpPage() {
 
         {/* Terms */}
         <div className="flex items-start gap-2.5 pt-1">
-          <Checkbox id="acceptTerms" {...register("acceptTerms")} className="mt-0.5" />
+          <Controller
+            control={control}
+            name="acceptTerms"
+            render={({ field }) => (
+              <Checkbox
+                id="acceptTerms"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+                className="mt-0.5"
+              />
+            )}
+          />
           <Label htmlFor="acceptTerms" className="text-sm font-normal cursor-pointer leading-relaxed select-none">
             I agree to the{" "}
             <Link

@@ -11,17 +11,19 @@
  */
 
 import { Worker } from 'bullmq';
+import Redis from 'ioredis';
 
 const connectionString = process.env.WORKER_REDIS_URL || process.env.REDIS_URL || 'redis://localhost:6380';
 const connection = connectionString.startsWith('redis://') || connectionString.startsWith('rediss://')
-  ? connectionString
-  : {
+  ? new Redis(connectionString, { maxRetriesPerRequest: null })
+  : new Redis({
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
-    };
+      maxRetriesPerRequest: null,
+    });
 
 console.log('LifeKit Worker starting...');
-console.log(`Redis connection: ${typeof connection === 'string' ? connection : `${connection.host}:${connection.port}`}`);
+console.log(`Redis connection: ${connectionString}`);
 
 // Placeholder worker queues — to be implemented with specific job processors
 const queues = ['opportunity-processing', 'progress-processing', 'notification-processing'];
