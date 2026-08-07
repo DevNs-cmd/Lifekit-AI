@@ -64,8 +64,7 @@ export function GoalInput({ placeholder = "Describe a goal, challenge or outcome
           )}
           aria-label="Describe your goal"
         />
-        <div className="flex items-center justify-between px-4 pb-3 pt-1">
-          <p className="text-xs text-[hsl(var(--text-secondary))]">Press Ctrl+Enter to start</p>
+        <div className="flex items-center justify-end px-4 pb-3 pt-1">
           <Button
             type="submit"
             size="sm"

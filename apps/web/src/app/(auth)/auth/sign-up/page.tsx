@@ -208,14 +208,14 @@ export default function SignUpPage() {
         {/* Terms */}
         <div className="flex items-start gap-2.5 pt-1">
           <Controller
-            control={control}
             name="acceptTerms"
+            control={control}
             render={({ field }) => (
               <Checkbox
                 id="acceptTerms"
-                checked={field.value}
-                onCheckedChange={field.onChange}
                 className="mt-0.5"
+                checked={field.value === true}
+                onCheckedChange={(checked) => field.onChange(checked === true ? true : false)}
               />
             )}
           />

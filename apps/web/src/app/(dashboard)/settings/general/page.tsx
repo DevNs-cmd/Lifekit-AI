@@ -12,11 +12,13 @@ import { useTheme } from "next-themes";
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { usersApi } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 
 export default function GeneralSettingsPage() {
   const router = useRouter();
   const { user, updateUser } = useAuthStore();
   const { setTheme, theme } = useTheme();
+  const { t } = useI18n();
   const prefs = user?.preferences;
 
   return (
@@ -25,67 +27,33 @@ export default function GeneralSettingsPage() {
         <Button variant="ghost" size="icon-sm" onClick={() => router.push(ROUTES.SETTINGS)} aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-black text-[hsl(var(--text-primary))]">General Settings</h1>
+        <h1 className="text-2xl font-black text-[hsl(var(--text-primary))]">{t("generalSettings")}</h1>
       </div>
 
       {/* Locale */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Locale & Format</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("localeFormat")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="language">Language</Label>
+            <Label htmlFor="language">{t("language")}</Label>
             <Select
               defaultValue={prefs?.language ?? "en"}
-              onValueChange={v => {
+              onValueChange={async v => {
                 if (prefs) {
+                  try {
+                    await usersApi.updatePreferences({ goals: undefined });
+                  } catch {
+                    // persist locally even if API is down
+                  }
                   updateUser({ preferences: { ...prefs, language: v } });
-                  toast.success("Language updated.");
+                  toast.success(t("languageUpdated"));
                 }
               }}
             >
               <SelectTrigger id="language"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="en">English</SelectItem>
-                <SelectItem value="hi">Hindi</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="timezone">Timezone</Label>
-            <Select
-              defaultValue={prefs?.timezone ?? "Asia/Kolkata"}
-              onValueChange={v => {
-                if (prefs) {
-                  updateUser({ preferences: { ...prefs, timezone: v } });
-                  toast.success("Timezone updated.");
-                }
-              }}
-            >
-              <SelectTrigger id="timezone"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Asia/Kolkata">India Standard Time (IST)</SelectItem>
-                <SelectItem value="UTC">UTC</SelectItem>
-                <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
-                <SelectItem value="Europe/London">London (GMT)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="dateFormat">Date Format</Label>
-            <Select
-              defaultValue={prefs?.dateFormat ?? "DD/MM/YYYY"}
-              onValueChange={v => {
-                if (prefs) {
-                  updateUser({ preferences: { ...prefs, dateFormat: v } });
-                  toast.success("Date format updated.");
-                }
-              }}
-            >
-              <SelectTrigger id="dateFormat"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                <SelectItem value="hi">हिन्दी (Hindi)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -94,34 +62,33 @@ export default function GeneralSettingsPage() {
 
       {/* Appearance */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Appearance</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("appearance")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Theme</Label>
+            <Label>{t("theme")}</Label>
             <div className="flex flex-wrap gap-2">
-              {(["light", "dark", "system"] as const).map(t => (
+              {(["light", "dark", "system"] as const).map(themeOption => (
                 <button
-                  key={t}
+                  key={themeOption}
                   onClick={async () => {
-                    setTheme(t);
+                    setTheme(themeOption);
                     if (prefs) {
                       try {
-                        await usersApi.updatePreferences({ theme: t });
-                        updateUser({
-                          preferences: {
-                            ...prefs,
-                            theme: t,
-                          },
-                        });
-                        toast.success("Theme preference saved.");
+                        await usersApi.updatePreferences({ theme: themeOption });
                       } catch {
                         // ignore
                       }
+                      updateUser({ preferences: { ...prefs, theme: themeOption } });
+                      toast.success(t("themePreferenceSaved"));
                     }
                   }}
-                  className={`rounded-lg border-2 px-4 py-2 text-sm font-medium capitalize transition-colors ${theme === t ? "border-[hsl(var(--primary))] bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]" : "border-[hsl(var(--border))] text-[hsl(var(--text-secondary))]"}`}
+                  className={`rounded-lg border-2 px-4 py-2 text-sm font-medium capitalize transition-colors ${
+                    theme === themeOption
+                      ? "border-[hsl(var(--primary))] bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]"
+                      : "border-[hsl(var(--border))] text-[hsl(var(--text-secondary))]"
+                  }`}
                 >
-                  {t}
+                  {t(themeOption as "light" | "dark" | "system")}
                 </button>
               ))}
             </div>
@@ -131,12 +98,12 @@ export default function GeneralSettingsPage() {
 
       {/* Notifications */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Notification Preferences</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("notificationPreferences")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {[
-            { key: "in-app", label: "In-app notifications", desc: "Show notifications inside the app" },
-            { key: "email", label: "Email notifications", desc: "Receive summaries and alerts by email" },
-            { key: "push", label: "Push notifications", desc: "Browser push alerts for important updates" },
+            { key: "in-app", label: t("inAppNotifications"), desc: t("inAppDesc") },
+            { key: "email",  label: t("emailNotifications"), desc: t("emailDesc") },
+            { key: "push",   label: t("pushNotifications"),  desc: t("pushDesc") },
           ].map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between">
               <div>
@@ -149,15 +116,10 @@ export default function GeneralSettingsPage() {
                   if (prefs) {
                     try {
                       await usersApi.updatePreferences({ notificationsEnabled: checked });
-                      updateUser({
-                        preferences: {
-                          ...prefs,
-                          notificationPreference: checked ? "all" : "none",
-                        },
-                      });
-                      toast.success("Notification preferences updated.");
+                      updateUser({ preferences: { ...prefs, notificationPreference: checked ? "all" : "none" } });
+                      toast.success(t("notificationPrefsUpdated"));
                     } catch {
-                      toast.error("Failed to update notification preferences.");
+                      toast.error(t("failedUpdateNotifPrefs"));
                     }
                   }
                 }}
