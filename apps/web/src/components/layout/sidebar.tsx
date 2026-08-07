@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { getInitials } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
 
 const NAV_SECTIONS = [
   { label: "Workspace", items: [
@@ -106,6 +107,31 @@ export function Sidebar() {
   const { user, logout } = useAuthStore();
   const unreadCount = useUIStore((s) => s.unreadNotificationCount);
   const router = useRouter();
+  const { t } = useI18n();
+
+  const NAV_SECTIONS = [
+    { label: "Workspace", items: [
+      { label: t("home"), href: ROUTES.DASHBOARD, icon: Home },
+      { label: t("missions"), href: ROUTES.MISSIONS, icon: Target },
+      { label: t("tasks"), href: ROUTES.TASKS, icon: CheckSquare },
+    ]},
+    { label: "Intelligence", items: [
+      { label: t("aiCoach"), href: ROUTES.AI_COACH, icon: Bot },
+      { label: t("agents"), href: ROUTES.AGENTS, icon: Cpu },
+      { label: t("memory"), href: ROUTES.MEMORY, icon: Brain },
+    ]},
+    { label: "Discover", items: [
+      { label: t("opportunities"), href: ROUTES.OPPORTUNITIES, icon: Compass },
+      { label: t("marketplace"), href: ROUTES.MARKETPLACE_APP, icon: ShoppingBag },
+      { label: t("notifications"), href: ROUTES.NOTIFICATIONS, icon: Bell },
+    ]},
+  ];
+
+  const BOTTOM_ITEMS = [
+    { label: "Subscription", href: ROUTES.SETTINGS_SUBSCRIPTION, icon: Crown },
+    { label: t("settings"), href: ROUTES.SETTINGS, icon: Settings },
+    { label: "Help", href: "/support", icon: HelpCircle },
+  ];
 
   function handleLogout() {
     logout();
@@ -190,7 +216,7 @@ export function Sidebar() {
             )}
           </AnimatePresence>
           {!sidebarCollapsed && (
-            <button onClick={handleLogout} className="p-1 rounded hover:bg-[hsl(var(--muted))] text-[hsl(var(--text-secondary))]" aria-label="Sign out">
+            <button onClick={handleLogout} className="p-1 rounded hover:bg-[hsl(var(--muted))] text-[hsl(var(--text-secondary))]" aria-label={t("logout")}>
               <LogOut className="h-4 w-4" />
             </button>
           )}

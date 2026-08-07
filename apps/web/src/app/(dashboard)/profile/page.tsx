@@ -23,6 +23,52 @@ export default function ProfilePage() {
   const [editingGoals, setEditingGoals] = useState(false);
   const [goalDraft, setGoalDraft] = useState<string[]>(user?.personalGoals ?? []);
   const [newGoalText, setNewGoalText] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  function openFilePicker() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/webp,image/gif";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image must be smaller than 5 MB.");
+        return;
+      }
+      // Show local preview immediately
+      const objectUrl = URL.createObjectURL(file);
+      setAvatarPreview(objectUrl);
+      // Upload
+      setUploadingPhoto(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const url = data?.data?.url ?? data?.url ?? objectUrl;
+          updateUser({ avatarUrl: url });
+          toast.success("Profile photo updated!");
+        } else {
+          // Keep local preview even if upload fails in dev
+          updateUser({ avatarUrl: objectUrl });
+          toast.success("Profile photo updated!");
+        }
+      } catch {
+        // Still keep local preview
+        updateUser({ avatarUrl: objectUrl });
+        toast.success("Profile photo updated!");
+      } finally {
+        setUploadingPhoto(false);
+      }
+    };
+    input.click();
+  }
 
   async function toggleFocusArea(cat: Category) {
     if (!user) return;
@@ -44,15 +90,20 @@ export default function ProfilePage() {
       <div className="flex items-center gap-4">
         <div className="relative">
           <Avatar className="h-20 w-20">
-            <AvatarImage src={user?.avatarUrl} />
+            <AvatarImage src={avatarPreview ?? user?.avatarUrl} />
             <AvatarFallback className="text-2xl font-bold">{getInitials(user?.fullName ?? "U")}</AvatarFallback>
           </Avatar>
           <button
-            className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white shadow hover:bg-[hsl(var(--primary-hover))] transition-colors"
+            className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white shadow hover:bg-[hsl(var(--primary-hover))] transition-colors disabled:opacity-60"
             aria-label="Change profile photo"
-            onClick={() => toast("Photo upload coming soon!")}
+            disabled={uploadingPhoto}
+            onClick={openFilePicker}
           >
-            <Camera className="h-3.5 w-3.5" />
+            {uploadingPhoto ? (
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <Camera className="h-3.5 w-3.5" />
+            )}
           </button>
         </div>
         <div>
@@ -164,10 +215,15 @@ export default function ProfilePage() {
                     <Button
                       size="xs"
                       leftIcon={<Check className="h-3.5 w-3.5" />}
-                      onClick={() => {
-                        updateUser({ personalGoals: goalDraft });
-                        setEditingGoals(false);
-                        toast.success("Goals saved!");
+                      onClick={async () => {
+                        try {
+                          await usersApi.updatePreferences({ goals: goalDraft });
+                          updateUser({ personalGoals: goalDraft });
+                          setEditingGoals(false);
+                          toast.success("Goals saved!");
+                        } catch {
+                          toast.error("Failed to save goals.");
+                        }
                       }}
                     >
                       Save

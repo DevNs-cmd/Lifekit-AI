@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell, Search, Plus, Menu, Moon, Sun, Monitor, Sparkles } from "lucide-react";
+import { Bell, Menu, Moon, Sun, Monitor, Sparkles } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
@@ -65,34 +65,14 @@ export function TopBar({ title }: TopBarProps) {
         className="hidden md:flex ml-auto w-64 items-center gap-2 rounded-xl border border-[hsl(var(--border))]/80 bg-[hsl(var(--background-subtle))]/70 px-3 py-2 text-sm text-[hsl(var(--text-secondary))] transition-all hover:border-[hsl(var(--primary))]/30 hover:bg-[hsl(var(--card))]"
         aria-label="Search and run commands"
       >
-        <Search className="h-4 w-4" /><span className="flex-1 text-left">Search anything…</span><kbd className="rounded border px-1.5 text-[10px]">⌘ K</kbd>
+        <span className="flex-1 text-left">Search anything…</span>
       </button>
 
       <div className="flex items-center gap-1">
 
-        {/* Search */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-sm" onClick={toggleCommandMenu} aria-label="Search (Ctrl+K)">
-              <Search className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Search (Ctrl+K)</TooltipContent>
-        </Tooltip>
-
         <Button variant="secondary" size="sm" className="hidden xl:flex" onClick={() => setAiCoachPanelOpen(true)} leftIcon={<Sparkles className="h-3.5 w-3.5" />}>
           Ask AI
         </Button>
-
-        {/* Quick create */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-sm" onClick={() => setQuickCreateOpen(true)} aria-label="Quick create">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Quick Create <kbd className="ml-1 rounded border px-1 text-[10px]">C</kbd></TooltipContent>
-        </Tooltip>
 
         {/* Notifications — plain Link button, no nested Slot */}
         <Tooltip>

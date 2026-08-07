@@ -9,7 +9,7 @@ const SETTINGS_SECTIONS = [
   {
     title: "Preferences",
     items: [
-      { label: "General",          desc: "Language, timezone, date format",      icon: Settings,    href: ROUTES.SETTINGS_GENERAL },
+      { label: "General",          desc: "Language, theme",      icon: Settings,    href: ROUTES.SETTINGS_GENERAL },
       { label: "Profile",          desc: "Name, phone, location, bio",           icon: User,        href: "/settings/profile" },
       { label: "AI Preferences",   desc: "Response style, planning depth",       icon: Bot,         href: ROUTES.SETTINGS_AI },
     ],
