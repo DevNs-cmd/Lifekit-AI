@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { get, post, patch, del } from "./client";
+import { normalizeMissionStatus } from "./mission-status";
 import type {
   Mission,
   MissionSummary,
@@ -16,7 +17,7 @@ function mapBackendMissionToFrontend(m: any): Mission {
     description: m.description || "",
     goal: m.description || "",
     category: (m.category || "lifestyle").toLowerCase() as any,
-    status: (m.status || "active").toLowerCase() as any,
+    status: normalizeMissionStatus(m.status),
     progress: m.progress ?? 0,
     priority: (m.priority || "medium").toLowerCase() as any,
     targetDate: m.targetDate || m.target_date,

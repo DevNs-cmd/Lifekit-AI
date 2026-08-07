@@ -37,13 +37,10 @@ export class PlannerService {
       );
     }
 
-    const aiServiceUrl = this.config.aiServiceUrl;
-    if (!aiServiceUrl) {
-      throw new Error("AI Service URL is not configured");
-    }
+    const aiServiceUrl = this.config.aiServiceUrl || "http://localhost:8000";
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
       const response = await fetch(`${aiServiceUrl}/api/v1/orchestrate`, {

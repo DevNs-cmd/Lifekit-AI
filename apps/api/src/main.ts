@@ -1,5 +1,5 @@
 import { Logger } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
+import { NestFactory, Reflector } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import * as express from "express";
@@ -43,7 +43,7 @@ async function bootstrap() {
   // Configure global interceptors for logging and response transformations
   app.useGlobalInterceptors(
     new TransformInterceptor(),
-    new TimeoutInterceptor(),
+    new TimeoutInterceptor(app.get(Reflector)),
   );
 
   // Configure global rate limiting guard

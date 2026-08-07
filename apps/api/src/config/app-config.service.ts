@@ -42,7 +42,10 @@ export class AppConfigService {
   }
 
   get aiServiceUrl(): string {
-    return this.configService.get<string>("AI_SERVICE_URL") || "";
+    return (
+      this.configService.get<string>("AI_SERVICE_URL") ||
+      "http://localhost:8000"
+    );
   }
 
   get corsOrigin(): string {

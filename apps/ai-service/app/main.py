@@ -39,6 +39,18 @@ async def health():
     }
 
 
+@app.get("/debug/config")
+async def debug_config():
+    """Debug endpoint to inspect loaded settings."""
+    from app.config import settings
+    return {
+        "openai_api_base": settings.openai_api_base,
+        "openai_model": settings.openai_model,
+        "openai_embedding_model": settings.openai_embedding_model,
+        "key_prefix": settings.openai_api_key[:20] if settings.openai_api_key else "(empty)",
+    }
+
+
 @app.get("/")
 async def root():
     return {
