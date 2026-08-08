@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, User, Activity, Plus, X, Target, Pencil, Check } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -10,11 +10,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CategoryBadge } from "@/components/shared/category-badge";
 import { useAuthStore } from "@/stores/auth-store";
-import { getInitials, formatDate } from "@/lib/utils";
+import { getInitials, formatRelativeTime } from "@/lib/utils";
 import { toast } from "sonner";
 import { CATEGORIES } from "@/constants/categories";
 import type { Category } from "@/types/common";
-import { usersApi } from "@/lib/api";
+import { usersApi, missionsApi, memoryApi } from "@/lib/api";
+import type { Mission } from "@/types/mission";
+import type { Memory } from "@/types/memory";
+
+interface ActivityItem {
+  id: string;
+  action: string;
+  detail: string;
+  time: string;
+  sortKey: string;
+}
 
 export default function ProfilePage() {
   const { user, updateUser, logout } = useAuthStore();
@@ -25,6 +35,52 @@ export default function ProfilePage() {
   const [newGoalText, setNewGoalText] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Activity state
+  const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+
+  async function loadActivity() {
+    setActivityLoading(true);
+    try {
+      const [missions, memories] = await Promise.all([
+        missionsApi.getMissions().catch(() => [] as Mission[]),
+        memoryApi.getMemories().catch(() => [] as Memory[]),
+      ]);
+
+      const items: ActivityItem[] = [];
+
+      // Missions: recently updated
+      missions.slice(0, 5).forEach((m) => {
+        items.push({
+          id: `mission-${m.id}`,
+          action: m.status === "completed" ? "Mission completed" : "Mission updated",
+          detail: m.title,
+          time: formatRelativeTime(m.updatedAt ?? m.createdAt),
+          sortKey: m.updatedAt ?? m.createdAt ?? "",
+        });
+      });
+
+      // Memories: recently saved
+      memories.slice(0, 5).forEach((mem) => {
+        items.push({
+          id: `memory-${mem.id}`,
+          action: "Memory saved",
+          detail: mem.content.length > 60 ? mem.content.slice(0, 60) + "…" : mem.content,
+          time: formatRelativeTime(mem.createdAt),
+          sortKey: mem.createdAt ?? "",
+        });
+      });
+
+      // Sort newest first
+      items.sort((a, b) => (a.sortKey < b.sortKey ? 1 : -1));
+      setActivityItems(items.slice(0, 10));
+    } catch {
+      // silently fail — show empty state
+    } finally {
+      setActivityLoading(false);
+    }
+  }
 
   function openFilePicker() {
     const input = document.createElement("input");
@@ -116,7 +172,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <Tabs defaultValue="personal">
+      <Tabs defaultValue="personal" onValueChange={(v) => { if (v === "activity") loadActivity(); }}>
         <TabsList className="w-full overflow-x-auto justify-start">
           <TabsTrigger value="personal"><User className="h-4 w-4 mr-1.5" />Personal</TabsTrigger>
           <TabsTrigger value="goals">Goals & Interests</TabsTrigger>
@@ -309,23 +365,24 @@ export default function ProfilePage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Recent Activity</CardTitle></CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {[
-                  { action: "Completed task", detail: "Complete React advanced patterns module", time: "2 hours ago" },
-                  { action: "Mission updated", detail: "Become a Software Engineer", time: "1 day ago" },
-                  { action: "Milestone achieved", detail: "Learn Python, DSA and GitHub", time: "3 days ago" },
-                  { action: "Memory saved", detail: "Prefers hands-on learning", time: "1 week ago" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm">
-                    <div className="h-2 w-2 rounded-full bg-[hsl(var(--primary))] mt-1.5 shrink-0" />
-                    <div>
-                      <span className="font-medium text-[hsl(var(--text-primary))]">{item.action}:</span>
-                      <span className="text-[hsl(var(--text-secondary))] ml-1">{item.detail}</span>
-                      <p className="text-[10px] text-[hsl(var(--text-secondary))] mt-0.5">{item.time}</p>
+              {activityLoading ? (
+                <p className="text-sm text-[hsl(var(--text-secondary))]">Loading activity…</p>
+              ) : activityItems.length === 0 ? (
+                <p className="text-sm text-[hsl(var(--text-secondary))]">No recent activity found. Complete tasks, update missions or save memories to see activity here.</p>
+              ) : (
+                <div className="space-y-3">
+                  {activityItems.map((item) => (
+                    <div key={item.id} className="flex items-start gap-3 text-sm">
+                      <div className="h-2 w-2 rounded-full bg-[hsl(var(--primary))] mt-1.5 shrink-0" />
+                      <div>
+                        <span className="font-medium text-[hsl(var(--text-primary))]">{item.action}:</span>
+                        <span className="text-[hsl(var(--text-secondary))] ml-1">{item.detail}</span>
+                        <p className="text-[10px] text-[hsl(var(--text-secondary))] mt-0.5">{item.time}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

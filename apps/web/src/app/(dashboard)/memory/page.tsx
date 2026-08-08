@@ -43,7 +43,7 @@ export default function MemoryPage() {
 
   const { register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } = useForm<CreateMemoryFormData>({
     resolver: zodResolver(createMemorySchema),
-    defaultValues: { importance: "medium", tags: [] },
+    defaultValues: { category: "context", importance: "medium", tags: [] },
   });
 
   const { cachedMissions, setCachedMissions } = useMissionStore();
@@ -112,7 +112,8 @@ export default function MemoryPage() {
       setAddOpen(false);
       reset();
       toast.success("Memory saved!");
-    } catch {
+    } catch (err) {
+      console.error("Failed to save memory:", err);
       toast.error("Failed to save memory.");
     }
   }
@@ -230,7 +231,7 @@ export default function MemoryPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Category" htmlFor="mem-category" required error={errors.category?.message}>
-                <Select onValueChange={v => setValue("category", v as CreateMemoryFormData["category"])}>
+                <Select defaultValue="context" onValueChange={v => setValue("category", v as CreateMemoryFormData["category"], { shouldValidate: true })}>
                   <SelectTrigger id="mem-category" error={!!errors.category}><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>
                     {(["goal","preference","decision","feedback","achievement","constraint","context"] as MemoryCategory[]).map(c => (
@@ -241,7 +242,7 @@ export default function MemoryPage() {
               </FormField>
 
               <FormField label="Importance" htmlFor="mem-importance">
-                <Select defaultValue="medium" onValueChange={v => setValue("importance", v as CreateMemoryFormData["importance"])}>
+                <Select defaultValue="medium" onValueChange={v => setValue("importance", v as CreateMemoryFormData["importance"], { shouldValidate: true })}>
                   <SelectTrigger id="mem-importance"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>

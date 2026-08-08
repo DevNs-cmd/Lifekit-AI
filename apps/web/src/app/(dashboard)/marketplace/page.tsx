@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ShoppingBag, SlidersHorizontal, X, Star } from "lucide-react";
+import { Search, ShoppingBag, SlidersHorizontal, X, Star, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { CATEGORIES } from "@/constants/categories";
 import { ROUTES } from "@/constants/routes";
 import { marketplaceApi } from "@/lib/api";
-import { useEffect } from "react";
+import { useMissionStore } from "@/stores";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/types/common";
@@ -40,21 +40,47 @@ export default function MarketplacePage() {
   const [sortBy, setSortBy] = useState<SortOption>("recommended");
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
+  // Shows an informational banner when backend is still regenerating after a new mission
+  const [regenerating, setRegenerating] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const data = await marketplaceApi.getMarketplaceListings();
-        setListings(data);
-      } catch {
-        toast.error("Failed to load listings.");
-      } finally {
-        setLoading(false);
-      }
+  const { missionCreatedAt, clearMissionCreatedFlag } = useMissionStore();
+  // Track which missionCreatedAt value we last handled so we don't double-fetch
+  const lastHandledMissionTs = useRef<number | null>(null);
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const data = await marketplaceApi.getMarketplaceListings();
+      setListings(data);
+      setRegenerating(false);
+    } catch {
+      if (!silent) toast.error("Failed to load listings.");
+    } finally {
+      if (!silent) setLoading(false);
     }
-    load();
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Re-fetch when a new mission was just created
+  useEffect(() => {
+    if (!missionCreatedAt) return;
+    if (lastHandledMissionTs.current === missionCreatedAt) return;
+    lastHandledMissionTs.current = missionCreatedAt;
+
+    // Clear the flag so other pages aren't affected after we handle it
+    clearMissionCreatedFlag();
+    setRegenerating(true);
+
+    // The backend event handler runs async — give it a moment to clear + reseed
+    // then poll twice (3s + 6s) to pick up the new AI-generated listings.
+    const t1 = setTimeout(() => load(true), 3000);
+    const t2 = setTimeout(() => load(true), 8000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [missionCreatedAt, clearMissionCreatedFlag, load]);
 
   const activeFiltersCount = [
     maxPrice < 50000 ? 1 : 0,
@@ -84,20 +110,42 @@ export default function MarketplacePage() {
       if (sortBy === "highest-rated")  return b.rating - a.rating;
       if (sortBy === "lowest-price")   return (a.basePrice ?? 0) - (b.basePrice ?? 0);
       if (sortBy === "most-popular")   return b.reviewCount - a.reviewCount;
-      return 0; // recommended / newest — keep insertion order
+      return 0;
     });
 
   return (
     <div className="p-4 sm:p-6 space-y-5 max-w-7xl mx-auto">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-[hsl(var(--text-primary))] flex items-center gap-2">
-          <ShoppingBag className="h-7 w-7 text-[hsl(var(--primary))]" /> Marketplace
-        </h1>
-        <p className="text-sm text-[hsl(var(--text-secondary))] mt-1">
-          Curated courses, experts, services and products for your missions.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-[hsl(var(--text-primary))] flex items-center gap-2">
+            <ShoppingBag className="h-7 w-7 text-[hsl(var(--primary))]" /> Marketplace
+          </h1>
+          <p className="text-sm text-[hsl(var(--text-secondary))] mt-1">
+            Curated courses, experts, services and products for your missions.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+          onClick={() => load()}
+          disabled={loading}
+          aria-label="Refresh listings"
+        >
+          Refresh
+        </Button>
       </div>
+
+      {/* Regenerating banner */}
+      {regenerating && (
+        <div className="flex items-center gap-3 rounded-xl border border-[hsl(var(--primary))]/30 bg-[hsl(var(--secondary))] px-4 py-3 text-sm">
+          <RefreshCw className="h-4 w-4 text-[hsl(var(--primary))] animate-spin shrink-0" />
+          <span className="text-[hsl(var(--text-secondary))]">
+            Updating listings based on your new mission — this takes a few seconds…
+          </span>
+        </div>
+      )}
 
       {/* Search + filter bar */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -289,3 +337,5 @@ export default function MarketplacePage() {
     </div>
   );
 }
+
+

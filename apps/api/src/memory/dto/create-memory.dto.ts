@@ -2,10 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
+  Max,
+  Min,
 } from "class-validator";
+import { Type } from "class-transformer";
 
 export enum MemoryType {
   JOURNAL = "JOURNAL",
@@ -32,6 +36,26 @@ export class CreateMemoryDto {
   })
   @IsEnum(MemoryType, { message: "type must be a valid MemoryType" })
   type!: MemoryType;
+
+  @ApiPropertyOptional({
+    description: "Importance score between 0.0 and 1.0",
+    example: 0.8,
+  })
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  @IsOptional()
+  @Type(() => Number)
+  importanceScore?: number;
+
+  @ApiPropertyOptional({
+    description: "ID of the related life mission",
+    example: 42,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  relatedMissionId?: number;
 
   @ApiPropertyOptional({
     description:

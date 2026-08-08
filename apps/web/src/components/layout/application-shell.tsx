@@ -54,6 +54,9 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
   const title = usePageTitle(pathname);
   const aiCoachOpen = useUIStore((s) => s.aiCoachPanelOpen);
 
+  // These routes manage their own scroll/height internally (chat UIs)
+  const isFullHeightPage = pathname.startsWith("/agents/");
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="flex h-[100dvh] w-full overflow-hidden bg-transparent">
@@ -69,23 +72,42 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
 
           <div className="flex flex-1 overflow-hidden">
             {/* Page content */}
-            <ScrollArea className="flex-1">
-              {/* pb-20 clears the fixed bottom nav on mobile; lg:pb-8 on desktop */}
-              <main className="app-canvas min-h-[calc(100dvh-4rem)] pb-20 lg:pb-8">
+            {isFullHeightPage ? (
+              // Full-height pages: no ScrollArea wrapper, no padding — they
+              // control their own layout with h-[calc(100dvh-4rem)] overflow-hidden
+              <div className="flex-1 overflow-hidden">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={pathname}
-                    className="relative z-[1]"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="relative z-[1] h-full"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
                   >
                     {children}
                   </motion.div>
                 </AnimatePresence>
-              </main>
-            </ScrollArea>
+              </div>
+            ) : (
+              <ScrollArea className="flex-1">
+                {/* pb-20 clears the fixed bottom nav on mobile; lg:pb-8 on desktop */}
+                <main className="app-canvas min-h-[calc(100dvh-4rem)] pb-20 lg:pb-8">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={pathname}
+                      className="relative z-[1]"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                    >
+                      {children}
+                    </motion.div>
+                  </AnimatePresence>
+                </main>
+              </ScrollArea>
+            )}
 
             {/* AI Coach side panel (desktop only) */}
             <AnimatePresence>

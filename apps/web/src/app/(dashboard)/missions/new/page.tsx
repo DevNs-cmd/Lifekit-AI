@@ -29,7 +29,7 @@ const TOTAL_STEPS = 4;
 
 export default function NewMissionPage() {
   const router = useRouter();
-  const { draftGoalInput } = useMissionStore();
+  const { draftGoalInput, markMissionCreated } = useMissionStore();
   const [step, setStep] = React.useState(1);
   const [generatedPlan, setGeneratedPlan] = React.useState<GeneratedMissionPlan | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -63,6 +63,7 @@ export default function NewMissionPage() {
     try {
       const mission = await createMission({ goal, category: category as Category });
       await updateMission(mission.id, { title: generatedPlan.title, description: generatedPlan.description });
+      markMissionCreated(); // signal marketplace + opportunities to refresh
       toast.success("Mission activated! Let's get to work.");
       router.push(ROUTES.MISSION_DETAIL(mission.id));
     } catch {
@@ -78,6 +79,7 @@ export default function NewMissionPage() {
     try {
       const mission = await createMission({ goal, category: category as Category });
       await updateMission(mission.id, { title: generatedPlan.title });
+      markMissionCreated(); // signal marketplace + opportunities to refresh
       toast.success("Saved as draft.");
       router.push(ROUTES.MISSIONS);
     } catch {

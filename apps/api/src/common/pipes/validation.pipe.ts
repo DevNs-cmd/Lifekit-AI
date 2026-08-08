@@ -9,7 +9,7 @@ export class CustomValidationPipe extends ValidationPipe {
     super({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false,
       exceptionFactory: (validationErrors: ValidationError[] = []) => {
         const messages = this.formatErrors(validationErrors);
         return new BadRequestException(messages);

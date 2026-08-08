@@ -5,13 +5,12 @@ import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft, Send, Bot, RefreshCw, CheckCircle,
   Briefcase, TrendingUp, Heart, Globe, Building2,
-  Target, Brain, ChevronRight,
+  Brain, ChevronRight,
 } from "lucide-react";
 import { LucideProps } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
@@ -19,8 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RecentChatsSidebar, type ChatSession } from "@/components/shared/recent-chats-sidebar";
-import { MOCK_AGENTS } from "@/lib/api/ai";
-import { sendCoachMessage } from "@/lib/api/ai";
+import { MOCK_AGENTS, sendCoachMessage } from "@/lib/api/ai";
 import { ROUTES } from "@/constants/routes";
 import { useMissionStore } from "@/stores";
 import { missionsApi } from "@/lib/api";
@@ -33,20 +31,63 @@ const DOMAIN_CONFIG: Record<string, {
   color: string; bg: string; border: string;
   icon: React.ComponentType<LucideProps>;
   tagline: string;
+  prompts: string[];
 }> = {
-  career:   { color: "text-blue-700 dark:text-blue-300",    bg: "bg-blue-50 dark:bg-blue-900/20",    border: "border-blue-200 dark:border-blue-800",    icon: Briefcase,   tagline: "Career · Jobs · Skills" },
-  finance:  { color: "text-green-700 dark:text-green-300",  bg: "bg-green-50 dark:bg-green-900/20",  border: "border-green-200 dark:border-green-800",  icon: TrendingUp,  tagline: "Finance · Savings · Investments" },
-  health:   { color: "text-red-700 dark:text-red-300",      bg: "bg-red-50 dark:bg-red-900/20",      border: "border-red-200 dark:border-red-800",      icon: Heart,       tagline: "Health · Fitness · Wellness" },
-  travel:   { color: "text-cyan-700 dark:text-cyan-300",    bg: "bg-cyan-50 dark:bg-cyan-900/20",    border: "border-cyan-200 dark:border-cyan-800",    icon: Globe,       tagline: "Travel · Trips · Itineraries" },
-  business: { color: "text-orange-700 dark:text-orange-300",bg: "bg-orange-50 dark:bg-orange-900/20",border: "border-orange-200 dark:border-orange-800",icon: Building2,   tagline: "Business · Strategy · Growth" },
+  career: {
+    color: "text-blue-700 dark:text-blue-300",
+    bg: "bg-blue-50 dark:bg-blue-900/20",
+    border: "border-blue-200 dark:border-blue-800",
+    icon: Briefcase,
+    tagline: "Career · Jobs · Skills",
+    prompts: ["Help me write a resume", "How do I prepare for interviews?", "What skills should I learn next?"],
+  },
+  finance: {
+    color: "text-green-700 dark:text-green-300",
+    bg: "bg-green-50 dark:bg-green-900/20",
+    border: "border-green-200 dark:border-green-800",
+    icon: TrendingUp,
+    tagline: "Finance · Savings · Investments",
+    prompts: ["Create a savings plan for me", "How should I start investing?", "Help me budget my income"],
+  },
+  health: {
+    color: "text-red-700 dark:text-red-300",
+    bg: "bg-red-50 dark:bg-red-900/20",
+    border: "border-red-200 dark:border-red-800",
+    icon: Heart,
+    tagline: "Health · Fitness · Wellness",
+    prompts: ["Build a workout plan for me", "What should I eat to lose weight?", "How do I stay consistent?"],
+  },
+  travel: {
+    color: "text-cyan-700 dark:text-cyan-300",
+    bg: "bg-cyan-50 dark:bg-cyan-900/20",
+    border: "border-cyan-200 dark:border-cyan-800",
+    icon: Globe,
+    tagline: "Travel · Trips · Itineraries",
+    prompts: ["Plan a 7-day Europe trip", "What's the best budget travel destination?", "Help me create a travel budget"],
+  },
+  business: {
+    color: "text-orange-700 dark:text-orange-300",
+    bg: "bg-orange-50 dark:bg-orange-900/20",
+    border: "border-orange-200 dark:border-orange-800",
+    icon: Building2,
+    tagline: "Business · Strategy · Growth",
+    prompts: ["Validate my business idea", "Help me build a go-to-market plan", "Create a pitch deck outline"],
+  },
 };
 
-const FALLBACK_CFG = { color: "text-gray-700", bg: "bg-gray-100", border: "border-gray-200", icon: Bot, tagline: "" };
+const FALLBACK_CFG = {
+  color: "text-gray-700 dark:text-gray-300",
+  bg: "bg-gray-100 dark:bg-gray-800/30",
+  border: "border-gray-200 dark:border-gray-700",
+  icon: Bot,
+  tagline: "",
+  prompts: [],
+};
 
 export default function AgentDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: agentId } = useParams<{ id: string }>();
   const router = useRouter();
-  const agent = MOCK_AGENTS.find(a => a.id === id);
+  const agent = MOCK_AGENTS.find(a => a.id === agentId);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -60,35 +101,36 @@ export default function AgentDetailPage() {
         const data = await missionsApi.getMissions();
         setCachedMissions(data);
       } catch {
-        // ignore
+        // ignore — missions are optional context
       }
     }
     load();
   }, [setCachedMissions]);
 
-  // Recent chats state
+  // Recent chats state — initialised per-agent so tabs feel independent
   const [recentChats, setRecentChats] = useState<ChatSession[]>([
-    { id: "rc1", title: "Interview prep",    preview: "Help me prepare for my interview",   timestamp: "Today",      agentName: agent?.name },
-    { id: "rc2", title: "Resume review",     preview: "Review my resume for senior roles",  timestamp: "Yesterday",  agentName: agent?.name },
-    { id: "rc3", title: "Career roadmap",    preview: "Plan my next 12 months",             timestamp: "3 days ago", agentName: agent?.name },
+    { id: "rc1", title: "First session", preview: "Start a new conversation…", timestamp: "Today", agentName: agent?.name },
   ]);
   const [activeChatId, setActiveChatId] = useState<string | undefined>("rc1");
 
-  function handleSelectChat(id: string) {
-    setActiveChatId(id);
+  function handleSelectChat(chatId: string) {
+    setActiveChatId(chatId);
     setMessages([]);
   }
 
   function handleNewChat() {
-    const id = `rc-${Date.now()}`;
-    setRecentChats(prev => [{ id, title: "New chat", preview: "…", timestamp: "Just now", agentName: agent?.name }, ...prev]);
-    setActiveChatId(id);
+    const chatId = `rc-${Date.now()}`;
+    setRecentChats(prev => [{ id: chatId, title: "New chat", preview: "…", timestamp: "Just now", agentName: agent?.name }, ...prev]);
+    setActiveChatId(chatId);
     setMessages([]);
   }
 
-  function handleDeleteChat(id: string) {
-    setRecentChats(prev => prev.filter(c => c.id !== id));
-    if (activeChatId === id) setActiveChatId(recentChats.filter(c => c.id !== id)[0]?.id);
+  function handleDeleteChat(chatId: string) {
+    setRecentChats(prev => {
+      const remaining = prev.filter(c => c.id !== chatId);
+      if (activeChatId === chatId) setActiveChatId(remaining[0]?.id);
+      return remaining;
+    });
   }
 
   useEffect(() => {
@@ -125,12 +167,10 @@ export default function AgentDetailPage() {
     };
     setMessages(prev => [...prev, userMsg]);
     setIsGenerating(true);
-
-    const loadingMsg: ConversationMessage = {
+    setMessages(prev => [...prev, {
       id: "loading", role: "assistant", content: "",
       timestamp: new Date().toISOString(), metadata: { loading: true },
-    };
-    setMessages(prev => [...prev, loadingMsg]);
+    }]);
 
     try {
       const response = await sendCoachMessage(msg, {
@@ -138,18 +178,25 @@ export default function AgentDetailPage() {
         agentName: agent!.name,
       });
       setMessages(prev => [...prev.filter(m => m.id !== "loading"), response]);
+
+      // Update the chat preview text in the sidebar
+      setRecentChats(prev => prev.map(c =>
+        c.id === activeChatId ? { ...c, title: msg.slice(0, 30) || c.title, preview: msg.slice(0, 50) } : c
+      ));
     } catch {
       setMessages(prev => prev.filter(m => m.id !== "loading"));
-      toast.error("Failed to get response. Please try again.");
+      toast.error("Failed to get a response. Please try again.");
     } finally {
       setIsGenerating(false);
     }
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    // Use fixed viewport height minus the top-bar (4rem). overflow-hidden keeps
+    // scroll contained inside the chat ScrollArea rather than the page scroll.
+    <div className="flex h-[calc(100dvh-4rem)] overflow-hidden">
 
-      {/* ══ RECENT CHATS SIDEBAR ══════════════════════════════ */}
+      {/* ── Recent chats narrow sidebar ─────────────────────── */}
       <RecentChatsSidebar
         chats={recentChats}
         activeId={activeChatId}
@@ -158,11 +205,11 @@ export default function AgentDetailPage() {
         onDelete={handleDeleteChat}
       />
 
-      {/* ══ LEFT PANEL ══════════════════════════════════════════ */}
-      <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-y-auto">
+      {/* ── Left info panel (desktop only) ──────────────────── */}
+      <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden">
 
-        {/* Back + agent identity */}
-        <div className={cn("p-5 border-b border-[hsl(var(--border))]", cfg.bg)}>
+        {/* Agent identity header */}
+        <div className={cn("p-5 border-b border-[hsl(var(--border))] shrink-0", cfg.bg)}>
           <Button
             variant="ghost"
             size="sm"
@@ -211,42 +258,42 @@ export default function AgentDetailPage() {
               </ul>
             </div>
 
-            <Separator />
-
-            {/* Active missions */}
             {relatedMissions.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wider mb-2">
-                  Active missions in context
-                </p>
-                <div className="space-y-2">
-                  {relatedMissions.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => router.push(ROUTES.MISSION_DETAIL(m.id))}
-                      className="w-full rounded-lg border border-[hsl(var(--border))] p-2.5 text-left hover:border-[hsl(var(--primary))]/50 hover:bg-[hsl(var(--secondary))] transition-colors group"
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-xs font-medium text-[hsl(var(--text-primary))] line-clamp-1 flex-1 mr-2">
-                          {m.title}
-                        </p>
-                        <ChevronRight className="h-3 w-3 text-[hsl(var(--text-secondary))] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Progress value={m.progress} className="flex-1 h-1" />
-                        <span className="text-[10px] text-[hsl(var(--text-secondary))] shrink-0">
-                          {m.progress}%
-                        </span>
-                      </div>
-                    </button>
-                  ))}
+              <>
+                <Separator />
+                <div>
+                  <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wider mb-2">
+                    Active missions in context
+                  </p>
+                  <div className="space-y-2">
+                    {relatedMissions.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => router.push(ROUTES.MISSION_DETAIL(m.id))}
+                        className="w-full rounded-lg border border-[hsl(var(--border))] p-2.5 text-left hover:border-[hsl(var(--primary))]/50 hover:bg-[hsl(var(--secondary))] transition-colors group"
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <p className="text-xs font-medium text-[hsl(var(--text-primary))] line-clamp-1 flex-1 mr-2">
+                            {m.title}
+                          </p>
+                          <ChevronRight className="h-3 w-3 text-[hsl(var(--text-secondary))] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Progress value={m.progress} className="flex-1 h-1" />
+                          <span className="text-[10px] text-[hsl(var(--text-secondary))] shrink-0">
+                            {m.progress}%
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             <Separator />
 
-            {/* Memory indicator */}
+            {/* Memory badge */}
             <div className={cn("rounded-xl border p-3", cfg.border, cfg.bg)}>
               <div className="flex items-center gap-2 mb-1.5">
                 <Brain className={cn("h-3.5 w-3.5", cfg.color)} />
@@ -257,7 +304,6 @@ export default function AgentDetailPage() {
               </p>
             </div>
 
-            {/* Clear conversation */}
             {messages.length > 0 && (
               <Button
                 variant="outline"
@@ -273,11 +319,11 @@ export default function AgentDetailPage() {
         </ScrollArea>
       </aside>
 
-      {/* ══ MAIN CHAT AREA ══════════════════════════════════════ */}
-      <div className="flex flex-1 flex-col min-w-0">
+      {/* ── Main chat area ───────────────────────────────────── */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
 
-        {/* Mobile header (sidebar hidden on mobile) */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] shrink-0">
           <Button variant="ghost" size="icon-sm" onClick={() => router.push(ROUTES.AGENTS)} aria-label="Back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -303,70 +349,85 @@ export default function AgentDetailPage() {
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4 sm:p-6">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-full text-center py-12">
-              <div className={cn("flex h-16 w-16 items-center justify-center rounded-2xl mb-4", cfg.bg)}>
-                <DomainIcon className={cn("h-8 w-8", cfg.color)} />
-              </div>
-              <h2 className="font-semibold text-[hsl(var(--text-primary))] mb-2">
-                Start a conversation with {agent.name}
-              </h2>
-              <p className="text-sm text-[hsl(var(--text-secondary))] max-w-sm mb-6 leading-relaxed">
-                {agent.description}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4 max-w-3xl mx-auto">
-              {messages.map(msg => (
-                <div
-                  key={msg.id}
-                  className={cn("flex gap-2.5", msg.role === "user" ? "justify-end" : "justify-start")}
-                >
-                  {msg.role === "assistant" && (
-                    <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-                      <AvatarFallback className={cn("text-xs font-bold", cfg.bg, cfg.color)}>
-                        {agent.name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className={cn(
-                    "max-w-[80%] rounded-xl px-3.5 py-2.5 text-sm",
-                    msg.role === "user"
-                      ? "bg-[hsl(var(--primary))] text-white rounded-tr-none"
-                      : "bg-[hsl(var(--secondary))] text-[hsl(var(--text-primary))] rounded-tl-none"
-                  )}>
-                    {msg.metadata?.loading ? (
-                      <div className="flex gap-1 py-1">
-                        {[0, 1, 2].map(i => (
-                          <span
-                            key={i}
-                            className="h-1.5 w-1.5 rounded-full bg-current opacity-60 animate-bounce"
-                            style={{ animationDelay: `${i * 0.15}s` }}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                    )}
-                    {!msg.metadata?.loading && (
-                      <p className={cn(
-                        "text-[10px] mt-1.5 opacity-60",
-                        msg.role === "user" ? "text-right text-white" : "text-[hsl(var(--text-secondary))]"
-                      )}>
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    )}
-                  </div>
+        <ScrollArea className="flex-1">
+          <div className="p-4 sm:p-6">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-[400px] text-center py-12">
+                <div className={cn("flex h-16 w-16 items-center justify-center rounded-2xl mb-4", cfg.bg)}>
+                  <DomainIcon className={cn("h-8 w-8", cfg.color)} />
                 </div>
-              ))}
-              <div ref={bottomRef} />
-            </div>
-          )}
+                <h2 className="font-semibold text-[hsl(var(--text-primary))] mb-2">
+                  Start a conversation with {agent.name}
+                </h2>
+                <p className="text-sm text-[hsl(var(--text-secondary))] max-w-sm mb-6 leading-relaxed">
+                  {agent.description}
+                </p>
+                {cfg.prompts.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-center max-w-md">
+                    {cfg.prompts.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => handleSend(p)}
+                        className="rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-1.5 text-xs text-[hsl(var(--text-secondary))] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--primary))] transition-colors"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-3xl mx-auto">
+                {messages.map(msg => (
+                  <div
+                    key={msg.id}
+                    className={cn("flex gap-2.5", msg.role === "user" ? "justify-end" : "justify-start")}
+                  >
+                    {msg.role === "assistant" && (
+                      <Avatar className="h-7 w-7 shrink-0 mt-0.5">
+                        <AvatarFallback className={cn("text-xs font-bold", cfg.bg, cfg.color)}>
+                          {agent.name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className={cn(
+                      "max-w-[80%] rounded-xl px-3.5 py-2.5 text-sm",
+                      msg.role === "user"
+                        ? "bg-[hsl(var(--primary))] text-white rounded-tr-none"
+                        : "bg-[hsl(var(--secondary))] text-[hsl(var(--text-primary))] rounded-tl-none"
+                    )}>
+                      {msg.metadata?.loading ? (
+                        <div className="flex gap-1 py-1">
+                          {[0, 1, 2].map(i => (
+                            <span
+                              key={i}
+                              className="h-1.5 w-1.5 rounded-full bg-current opacity-60 animate-bounce"
+                              style={{ animationDelay: `${i * 0.15}s` }}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      )}
+                      {!msg.metadata?.loading && (
+                        <p className={cn(
+                          "text-[10px] mt-1.5 opacity-60",
+                          msg.role === "user" ? "text-right text-white" : "text-[hsl(var(--text-secondary))]"
+                        )}>
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+            )}
+          </div>
         </ScrollArea>
 
-        {/* Input */}
-        <div className="p-4">
+        {/* Input bar */}
+        <div className="border-t border-[hsl(var(--border))] p-4 shrink-0 bg-[hsl(var(--card))]">
           <div className="flex gap-2 max-w-3xl mx-auto">
             <Textarea
               value={input}
@@ -377,10 +438,10 @@ export default function AgentDetailPage() {
                   handleSend();
                 }
               }}
-              placeholder={`Ask ${agent.name} anything…`}
+              placeholder={agent.isAvailable ? `Ask ${agent.name} anything…` : `${agent.name} is currently offline`}
               rows={1}
               className="resize-none min-h-[42px] max-h-32 text-sm"
-              disabled={!agent.isAvailable}
+              disabled={!agent.isAvailable || isGenerating}
             />
             <Button
               size="icon"

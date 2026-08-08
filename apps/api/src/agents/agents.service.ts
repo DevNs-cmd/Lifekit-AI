@@ -145,7 +145,7 @@ export class AgentsService {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error(`AI service returned status ${response.status}: ${await response.text()}`);
+          throw new Error(`AI service returned status ${response.status}`);
         }
 
         const resJson: any = await response.json();
@@ -162,14 +162,27 @@ export class AgentsService {
             fastapiResponse: true,
           };
         } else {
-          throw new Error("AI service returned an invalid response structure");
+          throw new Error("Unexpected AI service response structure");
         }
       } catch (err: any) {
         clearTimeout(timeoutId);
-        throw new Error(`AI Service connection failed: ${err.message}`);
+        // Return a graceful fallback instead of propagating a 500
+        const isTimeout = err?.name === "AbortError";
+        output = isTimeout
+          ? "The AI service is taking longer than expected. Please try again in a moment."
+          : "I'm currently unable to connect to the AI service. Please check that it is running and try again.";
+        success = false;
+        metadata = {
+          ...metadata,
+          fallback: true,
+          error: err?.message || "unknown",
+        };
       }
     } else {
-      throw new Error("AI Service URL is not configured");
+      output =
+        "AI Service is not configured. Please set the AI_SERVICE_URL environment variable.";
+      success = false;
+      metadata = { ...metadata, fallback: true };
     }
 
     return {

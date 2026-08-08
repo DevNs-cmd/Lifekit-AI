@@ -21,6 +21,7 @@ export class MemoryRepository implements IMemoryRepository {
         text: data.content,
         metadata: data.metadata ?? {},
         contextInfo: data.contextInfo ?? null,
+        relatedMissionId: data.relatedMissionId ?? null,
       });
 
       const memory = await this.prisma.ai_memory.create({
@@ -29,7 +30,7 @@ export class MemoryRepository implements IMemoryRepository {
           content: serializedContent,
           memory_type: data.type,
           title: data.contextInfo ? data.contextInfo.substring(0, 255) : null,
-          importance_score: null,
+          importance_score: data.importanceScore ?? null,
           embedding_id: null,
         },
       });
@@ -205,12 +206,14 @@ function mapPrismaMemoryToEntity(m: any): Memory {
   let text = m.content;
   let metadata = {};
   let contextInfo = null;
+  let relatedMissionId: number | null = null;
 
   try {
     const parsed = JSON.parse(m.content || "{}");
     text = parsed.text ?? m.content;
     metadata = parsed.metadata ?? {};
     contextInfo = parsed.contextInfo ?? null;
+    relatedMissionId = parsed.relatedMissionId ?? null;
   } catch {
     // raw string
   }
@@ -229,6 +232,7 @@ function mapPrismaMemoryToEntity(m: any): Memory {
     updated_at: m.updated_at,
     metadata,
     contextInfo,
+    relatedMissionId: relatedMissionId ?? undefined,
     id: m.memory_id,
     userId: m.user_id,
     type: m.memory_type,
