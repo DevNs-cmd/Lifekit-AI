@@ -124,7 +124,10 @@ export class AgentsService {
 
     if (aiServiceUrl) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      // The orchestrator runs 6+ sequential LLM calls (intent, mission,
+      // planner, domain agent, recommendation, execution). 8s was too short
+      // and caused premature aborts on real requests - raised to 45s.
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
       try {
         const response = await fetch(`${aiServiceUrl}/api/v1/orchestrate`, {
