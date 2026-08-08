@@ -17,19 +17,21 @@ export class MemoryRepository implements IMemoryRepository {
 
   async createMemory(userId: number, data: CreateMemoryDto): Promise<Memory> {
     try {
+      const memoryType = data.type || data.memoryType || "CONTEXT";
       const serializedContent = JSON.stringify({
         text: data.content,
         metadata: data.metadata ?? {},
         contextInfo: data.contextInfo ?? null,
+        relatedMissionId: data.relatedMissionId ?? null,
       });
 
       const memory = await this.prisma.ai_memory.create({
         data: {
           user_id: userId,
           content: serializedContent,
-          memory_type: data.type,
+          memory_type: memoryType,
           title: data.contextInfo ? data.contextInfo.substring(0, 255) : null,
-          importance_score: null,
+          importance_score: data.importanceScore ?? null,
           embedding_id: null,
         },
       });
@@ -146,12 +148,14 @@ export class MemoryRepository implements IMemoryRepository {
       let text = data.content;
       let metadata = data.metadata;
       let contextInfo = data.contextInfo;
+      let relatedMissionId = data.relatedMissionId;
 
       try {
         const parsed = JSON.parse(existing.content || "{}");
         if (text === undefined) text = parsed.text;
         if (metadata === undefined) metadata = parsed.metadata;
         if (contextInfo === undefined) contextInfo = parsed.contextInfo;
+        if (relatedMissionId === undefined) relatedMissionId = parsed.relatedMissionId;
       } catch {
         // legacy
       }
@@ -160,13 +164,16 @@ export class MemoryRepository implements IMemoryRepository {
         text: text ?? existing.content,
         metadata: metadata ?? {},
         contextInfo: contextInfo ?? null,
+        relatedMissionId: relatedMissionId ?? null,
       });
 
       const updatePayload: any = {
         content: serializedContent,
       };
 
-      if (data.type !== undefined) updatePayload.memory_type = data.type;
+      const memoryType = data.type || data.memoryType;
+      if (memoryType !== undefined) updatePayload.memory_type = memoryType;
+      if (data.importanceScore !== undefined) updatePayload.importance_score = data.importanceScore;
       if (contextInfo !== undefined)
         updatePayload.title = contextInfo
           ? contextInfo.substring(0, 255)
@@ -205,12 +212,14 @@ function mapPrismaMemoryToEntity(m: any): Memory {
   let text = m.content;
   let metadata = {};
   let contextInfo = null;
+  let relatedMissionId = null;
 
   try {
     const parsed = JSON.parse(m.content || "{}");
     text = parsed.text ?? m.content;
     metadata = parsed.metadata ?? {};
     contextInfo = parsed.contextInfo ?? null;
+    relatedMissionId = parsed.relatedMissionId ?? null;
   } catch {
     // raw string
   }
@@ -229,6 +238,7 @@ function mapPrismaMemoryToEntity(m: any): Memory {
     updated_at: m.updated_at,
     metadata,
     contextInfo,
+    relatedMissionId,
     id: m.memory_id,
     userId: m.user_id,
     type: m.memory_type,

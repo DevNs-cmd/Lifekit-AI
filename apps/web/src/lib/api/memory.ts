@@ -3,21 +3,34 @@ import { get, post, patch, del } from "./client";
 import type { Memory } from "@/types/memory";
 
 function mapBackendMemoryToFrontend(m: any): Memory {
-  let mappedCategory: any = (m.memory_type || "context").toLowerCase();
+  let mappedCategory: any = (m.memory_type || m.type || "context").toLowerCase();
   if (mappedCategory === "journal") mappedCategory = "context";
 
+  const score = m.importance_score ?? m.importanceScore;
   let importance: any = "medium";
-  if (m.importance_score !== undefined && m.importance_score !== null) {
-    if (m.importance_score > 0.7) importance = "high";
-    else if (m.importance_score < 0.4) importance = "low";
+  if (score !== undefined && score !== null) {
+    if (score > 0.7) importance = "high";
+    else if (score < 0.4) importance = "low";
+  }
+
+  let contentText = m.content || "";
+  let relatedMissionId = m.relatedMissionId;
+  try {
+    const parsed = typeof m.content === "string" ? JSON.parse(m.content) : m.content;
+    if (parsed && typeof parsed === "object") {
+      if (parsed.text) contentText = parsed.text;
+      if (parsed.relatedMissionId) relatedMissionId = parsed.relatedMissionId;
+    }
+  } catch {
+    // raw string content
   }
 
   return {
     id: String(m.memory_id || m.id),
     userId: String(m.user_id || m.userId || "1"),
-    content: m.content || "",
+    content: contentText,
     category: mappedCategory,
-    relatedMissionId: m.relatedMissionId || undefined,
+    relatedMissionId: relatedMissionId ? String(relatedMissionId) : undefined,
     source: "user",
     importance: importance,
     isPinned: false,
@@ -29,8 +42,8 @@ function mapBackendMemoryToFrontend(m: any): Memory {
 }
 
 export async function getMemories(): Promise<Memory[]> {
-  const res = await get<{ data: any[] }>("/memories");
-  const list = res?.data || [];
+  const res = await get<{ data: any[] } | any[]>("/memories");
+  const list = Array.isArray(res) ? res : res?.data || [];
   return list.map(mapBackendMemoryToFrontend);
 }
 
@@ -45,9 +58,11 @@ export async function createMemory(payload: {
   if (payload.importance === "high") score = 0.9;
   else if (payload.importance === "low") score = 0.2;
 
+  const typeVal = payload.category.toUpperCase();
   const data = await post<any>("/memories", {
     content: payload.content,
-    memoryType: payload.category.toUpperCase(),
+    type: typeVal,
+    memoryType: typeVal,
     importanceScore: score,
     relatedMissionId: payload.relatedMissionId
       ? Number(payload.relatedMissionId)
@@ -62,8 +77,11 @@ export async function updateMemory(
 ): Promise<Memory> {
   const payload: any = {};
   if (patchData.content !== undefined) payload.content = patchData.content;
-  if (patchData.category !== undefined)
-    payload.memoryType = patchData.category.toUpperCase();
+  if (patchData.category !== undefined) {
+    const typeVal = patchData.category.toUpperCase();
+    payload.type = typeVal;
+    payload.memoryType = typeVal;
+  }
   if (patchData.importance !== undefined) {
     let score = 0.5;
     if (patchData.importance === "high") score = 0.9;
@@ -78,3 +96,4 @@ export async function updateMemory(
 export async function deleteMemory(id: string | number): Promise<void> {
   await del<void>(`/memories/${id}`);
 }
+
