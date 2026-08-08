@@ -125,7 +125,9 @@ export function AICoachPanel() {
                     "max-w-[85%] rounded-xl px-3 py-2 text-sm",
                     msg.role === "user"
                       ? "bg-[hsl(var(--primary))] text-white rounded-tr-none"
-                      : "bg-[hsl(var(--secondary))] text-[hsl(var(--text-primary))] rounded-tl-none"
+                      : msg.metadata?.isError
+                        ? "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-tl-none"
+                        : "bg-[hsl(var(--secondary))] text-[hsl(var(--text-primary))] rounded-tl-none"
                   )}>
                     {msg.metadata?.loading ? (
                       <div className="flex gap-1 py-1">
