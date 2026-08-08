@@ -96,7 +96,7 @@ jobs:
         run: |
           cd apps/web
           if [ "${{ steps.check-init.outputs.lock_exists }}" = "true" ]; then
-            npm ci || npm install
+            npm ci
           else
             echo "Warning: package-lock.json is missing. Falling back to 'npm install'."
             npm install
