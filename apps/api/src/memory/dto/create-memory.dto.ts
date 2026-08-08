@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
@@ -13,6 +14,13 @@ export enum MemoryType {
   INSIGHT = "INSIGHT",
   DOCUMENT = "DOCUMENT",
   CONVERSATION = "CONVERSATION",
+  GOAL = "GOAL",
+  PREFERENCE = "PREFERENCE",
+  DECISION = "DECISION",
+  FEEDBACK = "FEEDBACK",
+  ACHIEVEMENT = "ACHIEVEMENT",
+  CONSTRAINT = "CONSTRAINT",
+  CONTEXT = "CONTEXT",
 }
 
 export class CreateMemoryDto {
@@ -25,13 +33,36 @@ export class CreateMemoryDto {
   @IsNotEmpty({ message: "Content is required" })
   content!: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "The classification category of this memory",
     enum: MemoryType,
     example: MemoryType.JOURNAL,
   })
   @IsEnum(MemoryType, { message: "type must be a valid MemoryType" })
-  type!: MemoryType;
+  @IsOptional()
+  type?: MemoryType;
+
+  @ApiPropertyOptional({
+    description: "The classification category of this memory (alias for type)",
+    enum: MemoryType,
+  })
+  @IsEnum(MemoryType, { message: "memoryType must be a valid MemoryType" })
+  @IsOptional()
+  memoryType?: MemoryType;
+
+  @ApiPropertyOptional({
+    description: "Importance rating score (0.0 to 1.0)",
+  })
+  @IsNumber()
+  @IsOptional()
+  importanceScore?: number;
+
+  @ApiPropertyOptional({
+    description: "Related mission ID",
+  })
+  @IsNumber()
+  @IsOptional()
+  relatedMissionId?: number;
 
   @ApiPropertyOptional({
     description:
@@ -51,3 +82,4 @@ export class CreateMemoryDto {
   @IsOptional()
   contextInfo?: string;
 }
+

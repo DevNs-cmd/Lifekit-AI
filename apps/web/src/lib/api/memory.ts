@@ -44,10 +44,13 @@ export async function createMemory(payload: {
   let score = 0.5;
   if (payload.importance === "high") score = 0.9;
   else if (payload.importance === "low") score = 0.2;
+  else if (payload.importance === "critical") score = 1.0;
 
+  const categoryType = payload.category.toUpperCase();
   const data = await post<any>("/memories", {
     content: payload.content,
-    memoryType: payload.category.toUpperCase(),
+    type: categoryType,
+    memoryType: categoryType,
     importanceScore: score,
     relatedMissionId: payload.relatedMissionId
       ? Number(payload.relatedMissionId)
@@ -62,12 +65,16 @@ export async function updateMemory(
 ): Promise<Memory> {
   const payload: any = {};
   if (patchData.content !== undefined) payload.content = patchData.content;
-  if (patchData.category !== undefined)
-    payload.memoryType = patchData.category.toUpperCase();
+  if (patchData.category !== undefined) {
+    const categoryType = patchData.category.toUpperCase();
+    payload.type = categoryType;
+    payload.memoryType = categoryType;
+  }
   if (patchData.importance !== undefined) {
     let score = 0.5;
     if (patchData.importance === "high") score = 0.9;
     else if (patchData.importance === "low") score = 0.2;
+    else if (patchData.importance === "critical") score = 1.0;
     payload.importanceScore = score;
   }
 
