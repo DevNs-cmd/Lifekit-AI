@@ -128,11 +128,12 @@ jobs:
         run: |
           cd apps/api
           if [ "${{ steps.check-init.outputs.lock_exists }}" = "true" ]; then
-            npm ci
+            npm ci || npm install
           else
             echo "Warning: package-lock.json is missing. Falling back to 'npm install'."
             npm install
           fi
+          npx prisma generate
 
       - name: Lint Code
         if: steps.check-init.outputs.is_implemented == 'true'

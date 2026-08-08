@@ -5,6 +5,8 @@ import { MarketplaceRepository } from "../repositories/marketplace.repository";
 import { CreateListingDto } from "../dto/create-listing.dto";
 import { SearchListingDto } from "../dto/search-listing.dto";
 import { MarketplaceListing } from "../entities/marketplace-listing.entity";
+import { AppConfigService } from "../../config/app-config.service";
+import { PrismaService } from "../../prisma/prisma.service";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -50,6 +52,14 @@ describe("MarketplaceService", () => {
         {
           provide: MarketplaceRepository,
           useValue: mockMarketplaceRepository,
+        },
+        {
+          provide: AppConfigService,
+          useValue: { aiServiceUrl: "http://localhost:8000" },
+        },
+        {
+          provide: PrismaService,
+          useValue: { marketplace: { count: jest.fn().mockResolvedValue(10) } },
         },
       ],
     }).compile();
@@ -107,7 +117,7 @@ describe("MarketplaceService", () => {
       };
       mockMarketplaceRepository.searchListings.mockResolvedValue(paginated);
 
-      const result = await service.findAll(filters, { page: 1, limit: 10 });
+      const result = await service.findAll(1, filters, { page: 1, limit: 10 });
       expect(mockMarketplaceRepository.searchListings).toHaveBeenCalledWith(
         filters,
         { page: 1, limit: 10 },
