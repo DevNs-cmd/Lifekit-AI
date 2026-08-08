@@ -3,7 +3,10 @@ Output feeds both the Domain Agent (for domain-specific enrichment) and
 Execution Intelligence (for tracking)."""
 
 import json
+import logging
 from app.core.llm import get_llm
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are the AI Life Planner of LifeKit. Given a user's goal
 and domain, produce a concrete plan. Respond ONLY with JSON:
@@ -12,13 +15,23 @@ and domain, produce a concrete plan. Respond ONLY with JSON:
 
 
 async def generate_plan(goal_summary: str, domain: str, mission_note: str) -> dict:
-    llm = get_llm(temperature=0.4)
-    prompt = (
-        f"{SYSTEM_PROMPT}\n\nDomain: {domain}\nGoal: {goal_summary}\n"
-        f"Mission context: {mission_note}"
-    )
-    response = await llm.ainvoke(prompt)
     try:
-        return json.loads(response.content)
+        llm = get_llm(temperature=0.4)
+        prompt = (
+            f"{SYSTEM_PROMPT}\n\nDomain: {domain}\nGoal: {goal_summary}\n"
+            f"Mission context: {mission_note}"
+        )
+        response = await llm.ainvoke(prompt)
+        raw = response.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
-        return {"title": goal_summary, "steps": [], "total_estimated_days": 0}
+        pass
+    except Exception as exc:  # noqa: BLE001 — LLM/network errors
+        logger.warning("generate_plan LLM call failed: %s", exc)
+
+    return {"title": goal_summary, "steps": [], "total_estimated_days": 0}

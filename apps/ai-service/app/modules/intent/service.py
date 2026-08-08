@@ -2,7 +2,10 @@
 Classifies the raw user message into an intent label + target life domain."""
 
 import json
+import logging
 from app.core.llm import get_llm
+
+logger = logging.getLogger(__name__)
 
 DOMAINS = ["career", "finance", "health", "travel", "business", "general"]
 
@@ -14,12 +17,28 @@ Respond ONLY with JSON: {{"intent": "<short_intent_label>", "domain": "<one of: 
 
 
 async def understand_intent(message: str, relevant_memory: list[dict]) -> dict:
-    llm = get_llm(temperature=0.1)
-    memory_snippet = "\n".join(m.get("text", "") for m in relevant_memory[:5])
-    prompt = f"{SYSTEM_PROMPT}\n\nRelevant memory:\n{memory_snippet}\n\nUser message:\n{message}"
-    response = await llm.ainvoke(prompt)
     try:
-        parsed = json.loads(response.content)
+        llm = get_llm(temperature=0.1)
+        memory_snippet = "\n".join(m.get("text", "") for m in relevant_memory[:5])
+        prompt = f"{SYSTEM_PROMPT}\n\nRelevant memory:\n{memory_snippet}\n\nUser message:\n{message}"
+        response = await llm.ainvoke(prompt)
+        raw = response.content.strip()
+        # Strip markdown fences if present
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        parsed = json.loads(raw)
+        return parsed
     except (json.JSONDecodeError, TypeError):
-        parsed = {"intent": "unknown", "domain": "general", "confidence": 0.0, "goal_summary": message}
-    return parsed
+        pass
+    except Exception as exc:  # noqa: BLE001 — LLM/network errors
+        logger.warning("understand_intent LLM call failed: %s", exc)
+
+    return {
+        "intent": "general_help",
+        "domain": "general",
+        "confidence": 0.0,
+        "goal_summary": message,
+    }
