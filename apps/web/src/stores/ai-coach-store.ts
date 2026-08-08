@@ -17,6 +17,7 @@ interface AICoachStore {
   // Conversation
   messages: ConversationMessage[];
   addMessage: (msg: ConversationMessage) => void;
+  removeMessage: (id: string) => void;
   clearMessages: () => void;
 
   // Loading
@@ -62,6 +63,8 @@ export const useAICoachStore = create<AICoachStore>((set) => ({
   messages: [],
   addMessage: (msg) =>
     set((s) => ({ messages: [...s.messages, msg] })),
+  removeMessage: (id) =>
+    set((s) => ({ messages: s.messages.filter((m) => m.id !== id) })),
   clearMessages: () => set({ messages: [] }),
 
   isGenerating: false,

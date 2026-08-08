@@ -15,7 +15,7 @@ import type { ConversationMessage } from "@/types/ai";
 
 export function AICoachPanel() {
   const { setAiCoachPanelOpen } = useUIStore();
-  const { messages, addMessage, isGenerating, setIsGenerating, suggestedPrompts, context, clearMessages } = useAICoachStore();
+  const { messages, addMessage, removeMessage, isGenerating, setIsGenerating, suggestedPrompts, context, clearMessages } = useAICoachStore();
   const [input, setInput] = React.useState("");
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
@@ -43,9 +43,10 @@ export function AICoachPanel() {
 
     try {
       const response = await sendCoachMessage(msg, { missionTitle: context.currentMissionTitle });
-      // Remove loading message (handled by index in real impl — here we just add the real one)
+      removeMessage(loadingId);
       addMessage(response);
     } catch {
+      removeMessage(loadingId);
       addMessage({
         id: generateId(),
         role: "assistant",
