@@ -105,23 +105,31 @@ export async function sendCoachMessage(
     userInput: message,
     contextData: context || {},
   });
+
+  // The gateway now returns HTTP 201 even when it could not reach the AI
+  // service (graceful fallback) - `success` is what actually tells us
+  // whether this was a real answer or an error message in disguise.
+  const isError = res?.success === false;
+
   return {
     id: `ai-${Date.now()}`,
     role: "assistant",
     content: res.output || "I am processing your request.",
     timestamp: new Date().toISOString(),
-    metadata: {
-      memoryUsed: true,
-      suggestedActions: [
-        {
-          id: `act-${Date.now()}`,
-          label: "Create execution plan",
-          type: "create-plan",
-          requiresConfirmation: true,
-          payload: {},
+    metadata: isError
+      ? { isError: true }
+      : {
+          memoryUsed: true,
+          suggestedActions: [
+            {
+              id: `act-${Date.now()}`,
+              label: "Create execution plan",
+              type: "create-plan",
+              requiresConfirmation: true,
+              payload: {},
+            },
+          ],
         },
-      ],
-    },
   };
 }
 

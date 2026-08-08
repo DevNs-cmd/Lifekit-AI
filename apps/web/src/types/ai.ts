@@ -28,6 +28,7 @@ export interface ConversationMessage {
     structuredResult?: AgentStructuredResult;
     suggestedActions?: AgentAction[];
     loading?: boolean;
+    isError?: boolean;
   };
 }
 
