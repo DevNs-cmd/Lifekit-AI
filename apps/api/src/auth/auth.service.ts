@@ -290,6 +290,7 @@ export class AuthService {
       fullName: user.full_name,
       createdAt: user.created_at,
       updatedAt: user.updated_at,
+      subscriptionPlan: user.subscriptionPlan ?? "free",
     } as any;
   }
 

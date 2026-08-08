@@ -1,5 +1,6 @@
 """Application configuration using pydantic-settings."""
 
+import os
 from pydantic_settings import BaseSettings
 from typing import List
 
@@ -31,7 +32,11 @@ class Settings(BaseSettings):
     model_config = {
         "env_prefix": "ai_service_",
         "case_sensitive": False,
-        "env_file": ".env",
+        "env_file": [
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")),
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")),
+            ".env"
+        ],
         "extra": "ignore",
     }
 

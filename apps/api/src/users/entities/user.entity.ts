@@ -62,6 +62,7 @@ export class User {
 
   // Virtual property to maintain compatibility
   preference?: UserPreference | null;
+  subscriptionPlan?: string;
 
   // Relations matching production
   user_preferences?: UserPreference[];

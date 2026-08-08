@@ -9,3 +9,5 @@ export * from "./error-state";
 export * from "./upgrade-prompt";
 export * from "./form-field";
 export * from "./rating-display";
+export * from "./social-auth-modal";
+

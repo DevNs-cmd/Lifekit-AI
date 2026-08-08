@@ -68,6 +68,7 @@ export class UserRepository implements IUserRepository {
             user_preferences: true,
             interests: true,
             goals: true,
+            subscriptions: true,
           },
         });
       });
@@ -86,6 +87,7 @@ export class UserRepository implements IUserRepository {
           user_preferences: true,
           interests: true,
           goals: true,
+          subscriptions: true,
         },
       });
       return mapPrismaUserToEntity(u);
@@ -102,6 +104,7 @@ export class UserRepository implements IUserRepository {
           user_preferences: true,
           interests: true,
           goals: true,
+          subscriptions: true,
         },
       });
       return mapPrismaUserToEntity(u);
@@ -202,6 +205,7 @@ export class UserRepository implements IUserRepository {
             user_preferences: true,
             interests: true,
             goals: true,
+            subscriptions: true,
           },
         });
       });
@@ -220,6 +224,7 @@ export class UserRepository implements IUserRepository {
           user_preferences: true,
           interests: true,
           goals: true,
+          subscriptions: true,
         },
       });
       if (u) {
@@ -337,6 +342,18 @@ function mapPrismaUserToEntity(prismaUser: any): User | null {
       }
     : null;
 
+  let subscriptionPlan = "free";
+  if (prismaUser.subscriptions && prismaUser.subscriptions.length > 0) {
+    const activeSub = prismaUser.subscriptions.find(
+      (sub: any) =>
+        sub.status === "ACTIVE" &&
+        (sub.end_date === null || new Date(sub.end_date) > new Date()),
+    );
+    if (activeSub) {
+      subscriptionPlan = activeSub.plan_name.toLowerCase();
+    }
+  }
+
   return {
     user_id: prismaUser.user_id,
     email: prismaUser.email,
@@ -349,5 +366,6 @@ function mapPrismaUserToEntity(prismaUser: any): User | null {
     created_at: prismaUser.created_at,
     updated_at: prismaUser.updated_at,
     preference,
+    subscriptionPlan,
   } as unknown as User;
 }

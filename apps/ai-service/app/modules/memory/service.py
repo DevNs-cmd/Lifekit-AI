@@ -34,12 +34,13 @@ async def retrieve_relevant_memory(user_id: str, query: str, limit: int = 5) -> 
     try:
         client = get_qdrant()
         vector = await _embed(query)
-        hits = client.search(
+        res = client.query_points(
             collection_name=MEMORY_COLLECTION,
-            query_vector=vector,
+            query=vector,
             query_filter=Filter(must=[FieldCondition(key="user_id", match=MatchValue(value=user_id))]),
             limit=limit,
         )
+        hits = res.points
         return [{"text": h.payload.get("text", ""), "score": h.score} for h in hits]
     except Exception as exc:  # noqa: BLE001
         logger.warning("Memory retrieval failed (non-fatal): %s", exc)

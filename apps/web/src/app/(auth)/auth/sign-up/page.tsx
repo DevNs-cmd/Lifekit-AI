@@ -10,7 +10,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { FormField } from "@/components/shared/form-field";
+import { FormField, SocialAuthModal } from "@/components/shared";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { signUpSchema, type SignUpFormData } from "@/lib/validation/schemas";
@@ -57,6 +57,8 @@ export default function SignUpPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [socialModalOpen, setSocialModalOpen] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
 
   const {
     register,
@@ -86,12 +88,16 @@ export default function SignUpPage() {
     }
   }
 
-  async function handleSocialSignUp(providerId: string) {
+  async function handleSocialSignUp(providerId: string, email: string) {
     setSocialLoading(providerId);
     try {
-      const email = `social-${providerId}@example.com`;
       const password = `SocialPass123!`;
-      const fullName = `${providerId.charAt(0).toUpperCase() + providerId.slice(1)} User`;
+      const emailPrefix = email.split("@")[0];
+      const parsedName = emailPrefix
+        .split(/[._\-+]/)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+      const fullName = parsedName || `${providerId.charAt(0).toUpperCase() + providerId.slice(1)} User`;
 
       try {
         await authApi.register({
@@ -243,7 +249,7 @@ export default function SignUpPage() {
       </form>
 
       <div className="flex items-center gap-3"><Separator className="flex-1" /><span className="shrink-0 px-1 text-xs font-medium text-[hsl(var(--text-secondary))]">or continue with</span><Separator className="flex-1" /></div>
-      <div className="grid grid-cols-3 gap-2.5">{SOCIAL_PROVIDERS.map(provider => <Button key={provider.id} type="button" variant="outline" className="flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium" loading={socialLoading === provider.id} disabled={socialLoading !== null} onClick={() => handleSocialSignUp(provider.id)} aria-label={`Continue with ${provider.label}`}>{socialLoading !== provider.id && provider.icon}<span className="hidden sm:inline">{provider.label}</span></Button>)}</div>
+      <div className="grid grid-cols-3 gap-2.5">{SOCIAL_PROVIDERS.map(provider => <Button key={provider.id} type="button" variant="outline" className="flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium" loading={socialLoading === provider.id} disabled={socialLoading !== null} onClick={() => { setActiveProvider(provider.id); setSocialModalOpen(true); }} aria-label={`Continue with ${provider.label}`}>{socialLoading !== provider.id && provider.icon}<span className="hidden sm:inline">{provider.label}</span></Button>)}</div>
 
       {/* Sign in link */}
       <p className="text-center text-sm text-[hsl(var(--text-secondary))]">
@@ -252,6 +258,17 @@ export default function SignUpPage() {
           Sign in
         </Link>
       </p>
+
+      <SocialAuthModal
+        isOpen={socialModalOpen}
+        onClose={() => setSocialModalOpen(false)}
+        providerId={activeProvider}
+        onSelectEmail={(email) => {
+          if (activeProvider) {
+            handleSocialSignUp(activeProvider, email);
+          }
+        }}
+      />
     </div>
   );
 }

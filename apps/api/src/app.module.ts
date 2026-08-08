@@ -19,6 +19,7 @@ import { MarketplaceModule } from "./marketplace/marketplace.module";
 import { OpportunitiesModule } from "./opportunities/opportunities.module";
 import { AgentsModule } from "./agents/agents.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { BillingModule } from "./billing/billing.module";
 
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
@@ -66,6 +67,7 @@ import { RequestLoggingMiddleware } from "./common/middleware/request-logging.mi
     OpportunitiesModule,
     AgentsModule,
     NotificationsModule,
+    BillingModule,
     CacheModule,
     QueueModule,
     UploadModule,

@@ -7,4 +7,5 @@ export interface UserProfile {
   profilePhoto: string | null;
   preferences: any;
   createdAt: Date;
+  subscriptionPlan?: string;
 }

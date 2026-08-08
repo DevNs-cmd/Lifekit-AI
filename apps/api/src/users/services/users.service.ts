@@ -137,6 +137,7 @@ export class UsersService {
           }
         : null,
       createdAt: user.created_at,
+      subscriptionPlan: user.subscriptionPlan ?? "free",
     };
   }
 }
