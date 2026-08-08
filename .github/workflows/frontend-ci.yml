@@ -86,7 +86,7 @@ jobs:
         if: steps.check-init.outputs.is_implemented == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           # Enable dependency caching only if package-lock.json is present
           cache: ${{ steps.check-init.outputs.lock_exists == 'true' && 'npm' || '' }}
           cache-dependency-path: ${{ steps.check-init.outputs.lock_exists == 'true' && 'apps/web/package-lock.json' || '' }}
