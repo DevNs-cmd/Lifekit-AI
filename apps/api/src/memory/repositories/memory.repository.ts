@@ -23,13 +23,16 @@ export class MemoryRepository implements IMemoryRepository {
         contextInfo: data.contextInfo ?? null,
       });
 
+      const memoryType = data.type || data.memoryType || "CONTEXT";
+      const importanceScore = data.importanceScore ?? null;
+
       const memory = await this.prisma.ai_memory.create({
         data: {
           user_id: userId,
           content: serializedContent,
-          memory_type: data.type,
+          memory_type: memoryType,
           title: data.contextInfo ? data.contextInfo.substring(0, 255) : null,
-          importance_score: null,
+          importance_score: importanceScore,
           embedding_id: null,
         },
       });
@@ -92,8 +95,9 @@ export class MemoryRepository implements IMemoryRepository {
     try {
       const where: any = { user_id: userId };
 
-      if (search.type) {
-        where.memory_type = search.type;
+      const searchType = search.type || (search as any).memoryType;
+      if (searchType) {
+        where.memory_type = searchType;
       }
 
       if (search.query) {
@@ -166,7 +170,10 @@ export class MemoryRepository implements IMemoryRepository {
         content: serializedContent,
       };
 
-      if (data.type !== undefined) updatePayload.memory_type = data.type;
+      const memoryType = data.type || data.memoryType;
+      if (memoryType !== undefined) updatePayload.memory_type = memoryType;
+      if (data.importanceScore !== undefined)
+        updatePayload.importance_score = data.importanceScore;
       if (contextInfo !== undefined)
         updatePayload.title = contextInfo
           ? contextInfo.substring(0, 255)
