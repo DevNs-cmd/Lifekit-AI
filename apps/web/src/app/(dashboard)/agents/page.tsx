@@ -77,13 +77,6 @@ export default function AgentsPage() {
                   </ul>
                 </div>
 
-                {relatedMissions.length > 0 && (
-                  <div className="mt-4">
-                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[hsl(var(--text-secondary))] dark:text-gray-400">Active mission</p>
-                    {relatedMissions.slice(0, 1).map(mission => <div key={mission.id} className={`truncate rounded-lg px-2.5 py-1.5 text-xs font-semibold ${config.bg} ${config.color}`} style={{ color: config.hex }}>{mission.title}</div>)}
-                  </div>
-                )}
-
               </CardContent>
             </Card>
           );
