@@ -16,6 +16,7 @@ import { TasksModule } from "./tasks/tasks.module";
 import { MemoryModule } from "./memory/memory.module";
 import { RecommendationsModule } from "./recommendations/recommendations.module";
 import { MarketplaceModule } from "./marketplace/marketplace.module";
+import { OpportunitiesModule } from "./opportunities/opportunities.module";
 import { AgentsModule } from "./agents/agents.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 
@@ -62,6 +63,7 @@ import { RequestLoggingMiddleware } from "./common/middleware/request-logging.mi
     MemoryModule,
     RecommendationsModule,
     MarketplaceModule,
+    OpportunitiesModule,
     AgentsModule,
     NotificationsModule,
     CacheModule,
