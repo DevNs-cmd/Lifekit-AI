@@ -27,10 +27,7 @@ export class PlannerService {
   /**
    * Generates a concrete execution plan by calling the FastAPI AI Orchestrator service.
    */
-  async generate(
-    userId: number,
-    dto: GeneratePlanRequestDto,
-  ): Promise<any> {
+  async generate(userId: number, dto: GeneratePlanRequestDto): Promise<any> {
     if (!dto.goalInput || !dto.planningHorizon || !dto.priority) {
       throw new BadRequestException(
         "goalInput, planningHorizon, and priority are required",
@@ -64,7 +61,9 @@ export class PlannerService {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`AI service returned status ${response.status}: ${await response.text()}`);
+        throw new Error(
+          `AI service returned status ${response.status}: ${await response.text()}`,
+        );
       }
 
       const resJson: any = await response.json();
@@ -76,7 +75,9 @@ export class PlannerService {
         description: domainResult.advice || plan.title || dto.goalInput,
         category: "lifestyle",
         goal: dto.goalInput,
-        estimatedDurationWeeks: Math.ceil((plan.total_estimated_days || 84) / 7),
+        estimatedDurationWeeks: Math.ceil(
+          (plan.total_estimated_days || 84) / 7,
+        ),
         milestones: (plan.steps || []).map((step: any) => ({
           id: `ms-gen-${step.order}`,
           title: step.task,
@@ -84,7 +85,9 @@ export class PlannerService {
           status: "pending",
           progress: 0,
           startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + (step.estimated_days || 14) * 86400000).toISOString(),
+          endDate: new Date(
+            Date.now() + (step.estimated_days || 14) * 86400000,
+          ).toISOString(),
           tasks: [],
           resources: [],
           dependencies: [],
@@ -98,16 +101,21 @@ export class PlannerService {
             achieved: false,
           },
         ],
-        risks: (domainResult.risks || ["Competing priorities from other schedules"]).map((risk: any, index: number) => ({
+        risks: (
+          domainResult.risks || ["Competing priorities from other schedules"]
+        ).map((risk: any, index: number) => ({
           id: `r-gen-${index}`,
-          description: typeof risk === "string" ? risk : (risk.description || "Identified execution risk"),
+          description:
+            typeof risk === "string"
+              ? risk
+              : risk.description || "Identified execution risk",
           severity: "medium",
           mitigation: "Establish weekly focused blocks",
         })),
         resources: (domainResult.resources || []).map((res: any) => ({
-          title: typeof res === "string" ? res : (res.title || "Resource Link"),
-          description: typeof res === "string" ? res : (res.description || ""),
-          url: typeof res === "string" ? "" : (res.url || ""),
+          title: typeof res === "string" ? res : res.title || "Resource Link",
+          description: typeof res === "string" ? res : res.description || "",
+          url: typeof res === "string" ? "" : res.url || "",
           type: "link",
         })),
       };

@@ -4,7 +4,10 @@ import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsOptional, IsString } from "class-validator";
 
 export class UpdateOpportunityDto extends PartialType(CreateOpportunityDto) {
-  @ApiPropertyOptional({ description: "Status of the opportunity", example: "APPLIED" })
+  @ApiPropertyOptional({
+    description: "Status of the opportunity",
+    example: "APPLIED",
+  })
   @IsString()
   @IsOptional()
   status?: string;

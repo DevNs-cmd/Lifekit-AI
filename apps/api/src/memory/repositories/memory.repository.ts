@@ -155,7 +155,8 @@ export class MemoryRepository implements IMemoryRepository {
         if (text === undefined) text = parsed.text;
         if (metadata === undefined) metadata = parsed.metadata;
         if (contextInfo === undefined) contextInfo = parsed.contextInfo;
-        if (relatedMissionId === undefined) relatedMissionId = parsed.relatedMissionId;
+        if (relatedMissionId === undefined)
+          relatedMissionId = parsed.relatedMissionId;
       } catch {
         // legacy
       }
@@ -173,7 +174,8 @@ export class MemoryRepository implements IMemoryRepository {
 
       const memoryType = data.type || data.memoryType;
       if (memoryType !== undefined) updatePayload.memory_type = memoryType;
-      if (data.importanceScore !== undefined) updatePayload.importance_score = data.importanceScore;
+      if (data.importanceScore !== undefined)
+        updatePayload.importance_score = data.importanceScore;
       if (contextInfo !== undefined)
         updatePayload.title = contextInfo
           ? contextInfo.substring(0, 255)

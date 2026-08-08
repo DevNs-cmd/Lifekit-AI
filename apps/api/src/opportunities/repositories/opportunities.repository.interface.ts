@@ -15,6 +15,10 @@ export interface IOpportunitiesRepository {
     filters: OpportunityQueryDto,
     pagination?: PaginationParams,
   ): Promise<PaginatedResult<Opportunity>>;
-  update(id: number, userId: number, data: UpdateOpportunityDto): Promise<Opportunity>;
+  update(
+    id: number,
+    userId: number,
+    data: UpdateOpportunityDto,
+  ): Promise<Opportunity>;
   delete(id: number, userId: number): Promise<Opportunity>;
 }

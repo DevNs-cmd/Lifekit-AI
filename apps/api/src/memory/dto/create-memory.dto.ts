@@ -82,4 +82,3 @@ export class CreateMemoryDto {
   @IsOptional()
   contextInfo?: string;
 }
-

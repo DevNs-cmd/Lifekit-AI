@@ -50,14 +50,14 @@ export class AiOpportunitiesService {
 
     const body = {
       user_context: {
-        user_id:    userContext.user_id,
-        full_name:  userContext.full_name  ?? "",
+        user_id: userContext.user_id,
+        full_name: userContext.full_name ?? "",
         profession: userContext.profession ?? "",
-        missions:   userContext.missions   ?? [],
+        missions: userContext.missions ?? [],
         categories: userContext.categories ?? [],
-        goals:      userContext.goals      ?? [],
-        skills:     userContext.skills     ?? [],
-        interests:  userContext.interests  ?? [],
+        goals: userContext.goals ?? [],
+        skills: userContext.skills ?? [],
+        interests: userContext.interests ?? [],
       },
       count,
     };
@@ -68,9 +68,9 @@ export class AiOpportunitiesService {
       );
 
       const res = await fetch(url, {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(body),
+        body: JSON.stringify(body),
         // 30-second timeout — LLM calls can be slow
         signal: AbortSignal.timeout(30_000),
       });
@@ -115,10 +115,10 @@ interface AiListingsResponse {
   generated_for_user_id: number;
 }
 
-  /* NOTE: This method is defined outside the class intentionally — it will be
-   * used by MarketplaceService via a separate AiMarketplaceService that
-   * extends / re-uses AiOpportunitiesService. For simplicity we export a
-   * standalone function that any service can call. */
+/* NOTE: This method is defined outside the class intentionally — it will be
+ * used by MarketplaceService via a separate AiMarketplaceService that
+ * extends / re-uses AiOpportunitiesService. For simplicity we export a
+ * standalone function that any service can call. */
 
 /**
  * Calls POST /api/v1/recommendations/listings on the AI service.

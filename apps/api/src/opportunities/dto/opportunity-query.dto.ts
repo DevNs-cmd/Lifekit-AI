@@ -3,7 +3,10 @@ import { Type } from "class-transformer";
 import { IsInt, IsOptional, IsString, Min } from "class-validator";
 
 export class OpportunityQueryDto {
-  @ApiPropertyOptional({ description: "Text search across title and description", example: "Engineer" })
+  @ApiPropertyOptional({
+    description: "Text search across title and description",
+    example: "Engineer",
+  })
   @IsString()
   @IsOptional()
   search?: string;

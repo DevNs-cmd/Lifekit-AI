@@ -1,8 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString, IsNumber, Min, Max, MinLength } from "class-validator";
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+  MinLength,
+} from "class-validator";
 
 export class CreateOpportunityDto {
-  @ApiProperty({ description: "Title of the opportunity", example: "Google SWE Internship 2026" })
+  @ApiProperty({
+    description: "Title of the opportunity",
+    example: "Google SWE Internship 2026",
+  })
   @IsString()
   @IsNotEmpty({ message: "Title is required" })
   @MinLength(3, { message: "Title must be at least 3 characters" })
@@ -18,7 +29,10 @@ export class CreateOpportunityDto {
   @IsOptional()
   category?: string;
 
-  @ApiPropertyOptional({ description: "External URL", example: "https://careers.google.com" })
+  @ApiPropertyOptional({
+    description: "External URL",
+    example: "https://careers.google.com",
+  })
   @IsString()
   @IsOptional()
   source_url?: string;

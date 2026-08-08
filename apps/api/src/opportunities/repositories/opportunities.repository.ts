@@ -15,7 +15,10 @@ import { handlePrismaError } from "../../common/utils/prisma-error.util";
 export class OpportunitiesRepository implements IOpportunitiesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(userId: number, data: CreateOpportunityDto): Promise<Opportunity> {
+  async create(
+    userId: number,
+    data: CreateOpportunityDto,
+  ): Promise<Opportunity> {
     try {
       const record = await this.prisma.opportunities.create({
         data: {
@@ -78,10 +81,7 @@ export class OpportunitiesRepository implements IOpportunitiesRepository {
           where,
           skip,
           take: limit,
-          orderBy: [
-            { match_score: "desc" },
-            { created_at: "desc" },
-          ],
+          orderBy: [{ match_score: "desc" }, { created_at: "desc" }],
         }),
         this.prisma.opportunities.count({ where }),
       ]);
@@ -100,19 +100,24 @@ export class OpportunitiesRepository implements IOpportunitiesRepository {
 
   async update(
     id: number,
-    _userId: number,
+    userId: number,
     data: UpdateOpportunityDto,
   ): Promise<Opportunity> {
+    void userId;
     try {
       const record = await this.prisma.opportunities.update({
         where: { opportunity_id: id },
         data: {
           ...(data.title !== undefined && { title: data.title }),
-          ...(data.description !== undefined && { description: data.description }),
+          ...(data.description !== undefined && {
+            description: data.description,
+          }),
           ...(data.category !== undefined && { category: data.category }),
           ...(data.source_url !== undefined && { source_url: data.source_url }),
           ...(data.status !== undefined && { status: data.status }),
-          ...(data.match_score !== undefined && { match_score: data.match_score }),
+          ...(data.match_score !== undefined && {
+            match_score: data.match_score,
+          }),
           updated_at: new Date(),
         },
       });
@@ -122,7 +127,8 @@ export class OpportunitiesRepository implements IOpportunitiesRepository {
     }
   }
 
-  async delete(id: number, _userId: number): Promise<Opportunity> {
+  async delete(id: number, userId: number): Promise<Opportunity> {
+    void userId;
     try {
       const record = await this.prisma.opportunities.delete({
         where: { opportunity_id: id },
@@ -143,9 +149,10 @@ function mapToEntity(record: any): Opportunity {
   entity.category = record.category ?? null;
   entity.source_url = record.source_url ?? null;
   entity.status = record.status ?? "OPEN";
-  entity.match_score = record.match_score != null
-    ? parseFloat(record.match_score.toString())
-    : null;
+  entity.match_score =
+    record.match_score != null
+      ? parseFloat(record.match_score.toString())
+      : null;
   entity.created_at = record.created_at;
   entity.updated_at = record.updated_at;
   return entity;

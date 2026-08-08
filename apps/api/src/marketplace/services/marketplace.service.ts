@@ -101,7 +101,10 @@ export class MarketplaceService {
 
   // ── Private helpers ─────────────────────────────────────────────────────────
 
-  private async _callAiService(userContext: object, count: number): Promise<any[]> {
+  private async _callAiService(
+    userContext: object,
+    count: number,
+  ): Promise<any[]> {
     const url = `${this.config.aiServiceUrl}/api/v1/recommendations/listings`;
     this.logger.log(`Calling AI service at ${url}`);
 
@@ -117,7 +120,10 @@ export class MarketplaceService {
         setTimeout(() => reject(new Error("AI service timeout (30s)")), 30_000),
       );
 
-      const res = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+      const res = (await Promise.race([
+        fetchPromise,
+        timeoutPromise,
+      ])) as Response;
 
       if (!res.ok) {
         const text = await res.text().catch(() => "(no body)");
@@ -125,8 +131,10 @@ export class MarketplaceService {
         return [];
       }
 
-      const data = await res.json() as { listings?: any[] };
-      this.logger.log(`AI service returned ${data.listings?.length ?? 0} listings`);
+      const data = (await res.json()) as { listings?: any[] };
+      this.logger.log(
+        `AI service returned ${data.listings?.length ?? 0} listings`,
+      );
       return data.listings ?? [];
     } catch (err: any) {
       this.logger.warn(`AI service call failed: ${err?.message ?? err}`);
@@ -163,14 +171,20 @@ export class MarketplaceService {
       ]);
 
       const userContext = {
-        user_id:    userId,
-        full_name:  user?.full_name  ?? "",
+        user_id: userId,
+        full_name: user?.full_name ?? "",
         profession: user?.profession ?? "",
-        missions:   missions.map((m) => m.title),
-        categories: [...new Set(missions.map((m) => m.category).filter(Boolean) as string[])],
-        goals:      goals.map((g) => g.title),
-        skills:     skills.map((s) => s.skill_name).filter(Boolean) as string[],
-        interests:  interests.map((i) => i.interest_name).filter(Boolean) as string[],
+        missions: missions.map((m) => m.title),
+        categories: [
+          ...new Set(
+            missions.map((m) => m.category).filter(Boolean) as string[],
+          ),
+        ],
+        goals: goals.map((g) => g.title),
+        skills: skills.map((s) => s.skill_name).filter(Boolean) as string[],
+        interests: interests
+          .map((i) => i.interest_name)
+          .filter(Boolean) as string[],
       };
 
       const aiListings = await this._callAiService(userContext, 10);
@@ -185,13 +199,16 @@ export class MarketplaceService {
         aiListings.map((l: any) =>
           this.prisma.marketplace.create({
             data: {
-              service_name:  String(l.title ?? "Service").slice(0, 255),
-              provider_name: String(l.provider_name ?? "Provider").slice(0, 255),
-              category:      String(l.category ?? "Education").slice(0, 100),
-              description:   String(l.description ?? "").slice(0, 2000),
-              price:         Math.max(0, Number(l.price ?? 0)),
-              rating:        Math.min(5.0, Math.max(4.0, Number(l.rating ?? 4.5))),
-              image_url:     null,
+              service_name: String(l.title ?? "Service").slice(0, 255),
+              provider_name: String(l.provider_name ?? "Provider").slice(
+                0,
+                255,
+              ),
+              category: String(l.category ?? "Education").slice(0, 100),
+              description: String(l.description ?? "").slice(0, 2000),
+              price: Math.max(0, Number(l.price ?? 0)),
+              rating: Math.min(5.0, Math.max(4.0, Number(l.rating ?? 4.5))),
+              image_url: null,
             },
           }),
         ),

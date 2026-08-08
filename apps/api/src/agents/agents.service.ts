@@ -145,7 +145,9 @@ export class AgentsService {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error(`AI service returned status ${response.status}: ${await response.text()}`);
+          throw new Error(
+            `AI service returned status ${response.status}: ${await response.text()}`,
+          );
         }
 
         const resJson: any = await response.json();

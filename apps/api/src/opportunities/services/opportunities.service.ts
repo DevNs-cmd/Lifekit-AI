@@ -1,17 +1,11 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { OpportunitiesRepository } from "../repositories/opportunities.repository";
 import { AiOpportunitiesService } from "./ai-opportunities.service";
 import { CreateOpportunityDto } from "../dto/create-opportunity.dto";
 import { UpdateOpportunityDto } from "../dto/update-opportunity.dto";
 import { OpportunityQueryDto } from "../dto/opportunity-query.dto";
 import { Opportunity } from "../entities/opportunity.entity";
-import {
-  PaginatedResult,
-} from "../../common/interfaces/pagination.interface";
+import { PaginatedResult } from "../../common/interfaces/pagination.interface";
 import { PrismaService } from "../../prisma/prisma.service";
 
 @Injectable()
@@ -24,7 +18,10 @@ export class OpportunitiesService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(userId: number, dto: CreateOpportunityDto): Promise<Opportunity> {
+  async create(
+    userId: number,
+    dto: CreateOpportunityDto,
+  ): Promise<Opportunity> {
     return this.opportunitiesRepository.create(userId, dto);
   }
 
@@ -126,14 +123,16 @@ export class OpportunitiesService {
       ];
 
       const userContext = {
-        user_id:    userId,
-        full_name:  user?.full_name  ?? "",
+        user_id: userId,
+        full_name: user?.full_name ?? "",
         profession: user?.profession ?? "",
-        missions:   missions.map((m) => m.title),
+        missions: missions.map((m) => m.title),
         categories: uniqueCategories,
-        goals:      goals.map((g) => g.title),
-        skills:     skills.map((s) => s.skill_name).filter(Boolean) as string[],
-        interests:  interests.map((i) => i.interest_name).filter(Boolean) as string[],
+        goals: goals.map((g) => g.title),
+        skills: skills.map((s) => s.skill_name).filter(Boolean) as string[],
+        interests: interests
+          .map((i) => i.interest_name)
+          .filter(Boolean) as string[],
       };
 
       const aiOpps = await this.aiOpportunitiesService.generateForUser(
@@ -152,17 +151,17 @@ export class OpportunitiesService {
       await Promise.allSettled(
         aiOpps.map((opp) =>
           this.opportunitiesRepository.create(userId, {
-            title:       opp.title,
+            title: opp.title,
             // Encode organisation + match_reason into description JSON so the
             // frontend mapper can extract them from the stored text
             description: JSON.stringify({
-              text:         `${opp.description}\n\n✦ ${opp.match_reason}`,
+              text: `${opp.description}\n\n✦ ${opp.match_reason}`,
               organisation: opp.organisation,
-              type:         opp.type,
-              matchReason:  opp.match_reason,
+              type: opp.type,
+              matchReason: opp.match_reason,
             }),
-            category:    opp.category,
-            source_url:  opp.source_url ?? undefined,
+            category: opp.category,
+            source_url: opp.source_url ?? undefined,
             match_score: opp.match_score,
           }),
         ),
