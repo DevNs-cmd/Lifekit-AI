@@ -6,9 +6,13 @@ into a single pipeline, matching the architecture diagram:
 memory_read -> intent -> mission -> planner -> domain_agent
             -> opportunity -> recommendation -> execution -> memory_write
 
-Every node catches ALL exceptions so a single LLM/network failure
-never crashes the entire graph — the pipeline always completes and
-returns whatever partial results were gathered.
+The memory read/write nodes are side-effects and stay non-fatal (a
+memory hiccup shouldn't block a reply). The LLM-reasoning nodes
+(intent/mission/planner/domain_agent/opportunity/recommendation/
+execution) do NOT swallow errors — a real LLM/network failure (e.g.
+missing API key) propagates up to run_orchestration -> the FastAPI
+router, which turns it into a proper error response, instead of
+silently returning the same generic canned reply every time.
 """
 
 import logging
@@ -38,16 +42,7 @@ async def node_memory_read(state: AgentState) -> AgentState:
 
 
 async def node_intent(state: AgentState) -> AgentState:
-    try:
-        result = await understand_intent(state["message"], state.get("relevant_memory", []))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("node_intent failed (non-fatal): %s", exc)
-        result = {
-            "intent": "general_help",
-            "domain": "general",
-            "confidence": 0.0,
-            "goal_summary": state["message"],
-        }
+    result = await understand_intent(state["message"], state.get("relevant_memory", []))
     return {
         "intent": result.get("intent", "unknown"),
         "intent_confidence": result.get("confidence", 0.0),
@@ -60,75 +55,43 @@ async def node_intent(state: AgentState) -> AgentState:
 
 
 async def node_mission(state: AgentState) -> AgentState:
-    try:
-        goal_summary = state["context"].get("goal_summary", state["message"])
-        life_mission = state["context"].get("life_mission")
-        result = await align_with_mission(goal_summary, life_mission)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("node_mission failed (non-fatal): %s", exc)
-        result = {"aligned": True, "alignment_score": 0.5, "note": ""}
+    goal_summary = state["context"].get("goal_summary", state["message"])
+    life_mission = state["context"].get("life_mission")
+    result = await align_with_mission(goal_summary, life_mission)
     return {"mission_alignment": result}
 
 
 async def node_planner(state: AgentState) -> AgentState:
-    try:
-        goal_summary = state["context"].get("goal_summary", state["message"])
-        mission_note = state.get("mission_alignment", {}).get("note", "")
-        plan = await generate_plan(goal_summary, state.get("domain", "general"), mission_note)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("node_planner failed (non-fatal): %s", exc)
-        plan = {"title": state["message"], "steps": [], "total_estimated_days": 0}
+    goal_summary = state["context"].get("goal_summary", state["message"])
+    mission_note = state.get("mission_alignment", {}).get("note", "")
+    plan = await generate_plan(goal_summary, state.get("domain", "general"), mission_note)
     return {"plan": plan}
 
 
 async def node_domain_agent(state: AgentState) -> AgentState:
-    try:
-        goal_summary = state["context"].get("goal_summary", state["message"])
-        agent = get_agent(state.get("domain", "general"))
-        result = await agent.run(goal_summary, state.get("plan", {}))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("node_domain_agent failed (non-fatal): %s", exc)
-        result = {
-            "advice": (
-                "I'm here to help with your goals! To get started, tell me more about "
-                "what you'd like to achieve and I'll guide you step by step."
-            ),
-            "risks": [],
-            "resources": [],
-            "domain": state.get("domain", "general"),
-        }
+    goal_summary = state["context"].get("goal_summary", state["message"])
+    agent = get_agent(state.get("domain", "general"))
+    result = await agent.run(goal_summary, state.get("plan", {}))
     return {"domain_result": result}
 
 
 async def node_opportunity(state: AgentState) -> AgentState:
-    try:
-        goal_summary = state["context"].get("goal_summary", state["message"])
-        opportunities = await discover_opportunities(state.get("domain", "general"), goal_summary)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("node_opportunity failed (non-fatal): %s", exc)
-        opportunities = []
+    goal_summary = state["context"].get("goal_summary", state["message"])
+    opportunities = await discover_opportunities(state.get("domain", "general"), goal_summary)
     return {"opportunities": opportunities}
 
 
 async def node_recommendation(state: AgentState) -> AgentState:
-    try:
-        recs = await build_recommendations(
-            state.get("domain_result", {}),
-            state.get("opportunities", []),
-            state.get("relevant_memory", []),
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("node_recommendation failed (non-fatal): %s", exc)
-        recs = []
+    recs = await build_recommendations(
+        state.get("domain_result", {}),
+        state.get("opportunities", []),
+        state.get("relevant_memory", []),
+    )
     return {"recommendations": recs}
 
 
 async def node_execution(state: AgentState) -> AgentState:
-    try:
-        guidance = await guide_execution(state.get("plan", {}), state.get("recommendations", []))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("node_execution failed (non-fatal): %s", exc)
-        guidance = {"next_action": "", "check_in_frequency_days": 3, "motivation_note": ""}
+    guidance = await guide_execution(state.get("plan", {}), state.get("recommendations", []))
     return {"execution_guidance": guidance}
 
 
