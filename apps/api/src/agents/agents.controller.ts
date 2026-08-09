@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -68,7 +68,7 @@ export class AgentsController {
   @Post("run")
   @HttpCode(HttpStatus.CREATED)
   // Orchestrator makes 6+ sequential LLM calls and is allowed up to 90s
-  // internally (see agents.service.ts) — override the global 60s
+  // internally (see agents.service.ts) - override the global 60s
   // TimeoutInterceptor default so Nest doesn't kill the request early.
   @SetTimeout(95_000)
   @ApiOperation({ summary: "Run an AI agent task execution" })
@@ -81,4 +81,6 @@ export class AgentsController {
     @CurrentUser("user_id") userId: number,
     @Body() dto: AgentRequestDto,
   ): Promise<AgentResponseDto> {
-    return
+    return this.agentsService.run(userId, dto);
+  }
+}
