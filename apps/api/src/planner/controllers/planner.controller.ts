@@ -29,6 +29,7 @@ import { CreatePlanDto } from "../dto/create-plan.dto";
 import { UpdatePlanDto } from "../dto/update-plan.dto";
 import { PlannerQueryDto } from "../dto/planner-query.dto";
 import { GeneratePlanRequestDto } from "../dto/generate-plan-request.dto";
+import { PlannerActionRequestDto } from "../dto/planner-action-request.dto";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { IntValidationPipe } from "../../common/decorators/int-validation.decorator";
@@ -98,6 +99,29 @@ export class PlannerController {
     @Body() generateDto: GeneratePlanRequestDto,
   ) {
     return this.plannerService.generate(userId, generateDto);
+  }
+
+  @Post("action")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Run an AI planner action (generate/optimise/reduce/accelerate) against an existing mission",
+    description:
+      "Calls the AI service to produce a concrete list of plan changes for the given mission. Powers the AI Planner page's action buttons.",
+  })
+  @ApiBody({ type: PlannerActionRequestDto })
+  @ApiOkResponse({ description: "List of proposed plan changes" })
+  @ApiBadRequestResponse({ description: "Invalid action payload" })
+  @ApiUnauthorizedResponse({ description: "Invalid or expired access token" })
+  @ApiNotFoundResponse({ description: "Life mission not found" })
+  @ApiForbiddenResponse({
+    description: "You do not have permission to plan for this mission",
+  })
+  async runAction(
+    @CurrentUser("user_id") userId: number,
+    @Body() actionDto: PlannerActionRequestDto,
+  ) {
+    return this.plannerService.runAction(userId, actionDto);
   }
 
   @Get()
