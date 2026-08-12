@@ -55,7 +55,7 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
   const aiCoachOpen = useUIStore((s) => s.aiCoachPanelOpen);
 
   // These routes manage their own scroll/height internally (chat UIs)
-  const isFullHeightPage = pathname.startsWith("/agents/");
+  const isFullHeightPage = pathname.startsWith("/agents/") || pathname.startsWith("/ai-coach");
 
   return (
     <TooltipProvider delayDuration={300}>

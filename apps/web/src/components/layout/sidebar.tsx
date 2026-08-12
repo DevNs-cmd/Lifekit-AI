@@ -19,6 +19,7 @@ import { getInitials } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
+import { useNotifications } from "@/hooks/use-notifications";
 
 const NAV_SECTIONS = [
   { label: "Workspace", items: [
@@ -103,11 +104,17 @@ function NavItem({ href, icon: Icon, label, collapsed, active, badge }: NavItemP
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { sidebarCollapsed, toggleSidebarCollapsed, setQuickCreateOpen } = useUIStore();
+  const { sidebarCollapsed, toggleSidebarCollapsed, setQuickCreateOpen, setUnreadNotificationCount } = useUIStore();
   const { user, logout } = useAuthStore();
   const unreadCount = useUIStore((s) => s.unreadNotificationCount);
   const router = useRouter();
   const { t } = useI18n();
+
+  // Fetch live unread count from the API and keep the store in sync
+  const { unreadCount: liveUnreadCount } = useNotifications();
+  React.useEffect(() => {
+    setUnreadNotificationCount(liveUnreadCount);
+  }, [liveUnreadCount, setUnreadNotificationCount]);
 
   const NAV_SECTIONS = [
     { label: "Workspace", items: [

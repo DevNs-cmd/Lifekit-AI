@@ -3,8 +3,9 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import { Target, CheckSquare, ShoppingBag, Compass, Brain, Bot, Home, User, Settings, Plus, LayoutGrid, ListFilter, Sparkles } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Target, CheckSquare, ShoppingBag, Compass, Brain, Bot, Home, User, Settings, Plus, LayoutGrid, ListFilter, Sparkles, X } from "lucide-react";
+import { Dialog, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useUIStore } from "@/stores/ui-store";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
@@ -65,17 +66,26 @@ export function CommandMenu() {
 
   return (
     <Dialog open={commandMenuOpen} onOpenChange={(v) => { setCommandMenuOpen(v); if (!v) setSearch(""); }}>
-      <DialogContent className="p-0 max-w-lg overflow-hidden top-[20%] translate-y-0">
-        <Command className="rounded-xl" shouldFilter>
-          <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
-            <Command.Input
-              value={search}
-              onValueChange={setSearch}
-              placeholder="Search or jump to…"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))] text-[hsl(var(--text-primary))]"
-              aria-label="Command search"
-            />
-          </div>
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Content className="fixed left-[50%] top-[20%] z-50 w-full max-w-lg -translate-x-1/2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-lg overflow-hidden data-[state=open]:animate-scale-in focus:outline-none">
+          <Command className="rounded-xl" shouldFilter>
+            <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-4 py-3">
+              <Command.Input
+                value={search}
+                onValueChange={setSearch}
+                placeholder="Search or jump to…"
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))] text-[hsl(var(--text-primary))]"
+                aria-label="Command search"
+              />
+              <button
+                onClick={() => { setCommandMenuOpen(false); setSearch(""); }}
+                className="flex items-center justify-center rounded-md p-1 mb-1 text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--secondary))] transition-colors shrink-0"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           <Command.List className="max-h-80 overflow-y-auto p-2">
             <Command.Empty className="py-8 text-center text-sm text-[hsl(var(--text-secondary))]">
               No results found
@@ -103,8 +113,9 @@ export function CommandMenu() {
               </Command.Group>
             ))}
           </Command.List>
-        </Command>
-      </DialogContent>
+          </Command>
+        </DialogPrimitive.Content>
+      </DialogPortal>
     </Dialog>
   );
 }

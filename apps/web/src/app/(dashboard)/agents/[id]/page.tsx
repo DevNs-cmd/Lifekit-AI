@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft, Send, Bot, RefreshCw, CheckCircle,
   Briefcase, TrendingUp, Heart, Globe, Building2,
-  Brain, ChevronRight,
+  Brain,
 } from "lucide-react";
 import { LucideProps } from "lucide-react";
 import * as React from "react";
@@ -13,15 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RecentChatsSidebar, type ChatSession } from "@/components/shared/recent-chats-sidebar";
 import { MOCK_AGENTS, sendCoachMessage } from "@/lib/api/ai";
 import { ROUTES } from "@/constants/routes";
-import { useMissionStore } from "@/stores";
-import { missionsApi } from "@/lib/api";
 import { generateId, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ConversationMessage } from "@/types/ai";
@@ -93,20 +90,6 @@ export default function AgentDetailPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { cachedMissions, setCachedMissions } = useMissionStore();
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await missionsApi.getMissions();
-        setCachedMissions(data);
-      } catch {
-        // ignore — missions are optional context
-      }
-    }
-    load();
-  }, [setCachedMissions]);
-
   // Recent chats state — initialised per-agent so tabs feel independent
   const [recentChats, setRecentChats] = useState<ChatSession[]>([
     { id: "rc1", title: "First session", preview: "Start a new conversation…", timestamp: "Today", agentName: agent?.name },
@@ -151,10 +134,6 @@ export default function AgentDetailPage() {
 
   const cfg = DOMAIN_CONFIG[agent.domain] ?? FALLBACK_CFG;
   const DomainIcon = cfg.icon;
-
-  const relatedMissions = cachedMissions.filter(m =>
-    agent.relatedCategories.includes(m.category) && m.status === "active"
-  );
 
   async function handleSend(text?: string) {
     const msg = (text ?? input).trim();
@@ -257,39 +236,6 @@ export default function AgentDetailPage() {
                 ))}
               </ul>
             </div>
-
-            {relatedMissions.length > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-xs font-semibold text-[hsl(var(--text-secondary))] uppercase tracking-wider mb-2">
-                    Active missions in context
-                  </p>
-                  <div className="space-y-2">
-                    {relatedMissions.map(m => (
-                      <button
-                        key={m.id}
-                        onClick={() => router.push(ROUTES.MISSION_DETAIL(m.id))}
-                        className="w-full rounded-lg border border-[hsl(var(--border))] p-2.5 text-left hover:border-[hsl(var(--primary))]/50 hover:bg-[hsl(var(--secondary))] transition-colors group"
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-xs font-medium text-[hsl(var(--text-primary))] line-clamp-1 flex-1 mr-2">
-                            {m.title}
-                          </p>
-                          <ChevronRight className="h-3 w-3 text-[hsl(var(--text-secondary))] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Progress value={m.progress} className="flex-1 h-1" />
-                          <span className="text-[10px] text-[hsl(var(--text-secondary))] shrink-0">
-                            {m.progress}%
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
 
             <Separator />
 

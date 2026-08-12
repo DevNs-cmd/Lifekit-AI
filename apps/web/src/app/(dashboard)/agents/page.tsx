@@ -7,8 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_AGENTS } from "@/lib/api/ai";
 import { ROUTES } from "@/constants/routes";
-import { useMissionStore } from "@/stores";
-import { missionsApi } from "@/lib/api";
 
 const DOMAIN_CONFIG: Record<string, { color: string; hex: string; bg: string; icon: React.ComponentType<LucideProps>; tagline: string }> = {
   career:   { color: "dark:text-blue-200",    hex: "#315a9b", bg: "bg-[#edf3ff] dark:bg-blue-900/30",    icon: Briefcase,  tagline: "Career growth · Job search · Interview prep" },
@@ -20,19 +18,6 @@ const DOMAIN_CONFIG: Record<string, { color: string; hex: string; bg: string; ic
 
 export default function AgentsPage() {
   const router = useRouter();
-  const { cachedMissions, setCachedMissions } = useMissionStore();
-
-  React.useEffect(() => {
-    async function load() {
-      try {
-        const data = await missionsApi.getMissions();
-        setCachedMissions(data);
-      } catch {
-        // ignore
-      }
-    }
-    load();
-  }, [setCachedMissions]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -49,7 +34,6 @@ export default function AgentsPage() {
         {MOCK_AGENTS.map((agent, index) => {
           const config = DOMAIN_CONFIG[agent.domain] ?? DOMAIN_CONFIG.career;
           const DomainIcon = config.icon;
-          const relatedMissions = cachedMissions.filter(mission => agent.relatedCategories.includes(mission.category) && mission.status === "active");
 
           return (
             <Card

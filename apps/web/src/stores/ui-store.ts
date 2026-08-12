@@ -67,7 +67,7 @@ export const useUIStore = create<UIState>()(
       quickCreateOpen: false,
       setQuickCreateOpen: (v) => set({ quickCreateOpen: v }),
 
-      unreadNotificationCount: 2,
+      unreadNotificationCount: 0,
       setUnreadNotificationCount: (n) => set({ unreadNotificationCount: n }),
       incrementUnreadCount: () =>
         set((s) => ({ unreadNotificationCount: s.unreadNotificationCount + 1 })),

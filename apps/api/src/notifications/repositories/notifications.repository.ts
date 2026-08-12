@@ -69,4 +69,17 @@ export class NotificationsRepository {
       handlePrismaError(error);
     }
   }
+
+  async getUnreadCount(userId: number) {
+    try {
+      return await this.prisma.notifications.count({
+        where: {
+          user_id: userId,
+          is_read: false,
+        },
+      });
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
 }

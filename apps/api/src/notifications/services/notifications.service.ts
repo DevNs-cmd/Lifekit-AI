@@ -46,4 +46,8 @@ export class NotificationsService {
     }
     return this.notificationsRepository.delete(id);
   }
+
+  async getUnreadCount(userId: number) {
+    return this.notificationsRepository.getUnreadCount(userId);
+  }
 }

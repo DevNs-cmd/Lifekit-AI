@@ -43,13 +43,32 @@ export default function NewMissionPage() {
   const category = watch("category");
 
   const genSteps = ["Understanding goal…", "Identifying milestones…", "Calculating timeline…", "Finding resources…", "Preparing execution plan…"];
-  const genStep = genSteps.length - 1;
+  const [genStep, setGenStep] = React.useState(-1);
+  const genStepRef = React.useRef(-1);
+
+  // Drive the step-by-step reveal — one new step every 4 seconds
+  React.useEffect(() => {
+    if (step !== 2) return;
+    if (genStep >= genSteps.length - 1) return;
+    const timer = setTimeout(() => {
+      const next = genStep + 1;
+      genStepRef.current = next;
+      setGenStep(next);
+    }, genStep === -1 ? 400 : 4000);
+    return () => clearTimeout(timer);
+  }, [step, genStep, genSteps.length]);
 
   async function handleGenerate(data: CreateMissionFormData) {
+    setGenStep(-1);
+    genStepRef.current = -1;
     setStep(2);
     try {
       const plan = await generateMissionPlan({ ...data, category: data.category as Category });
       setGeneratedPlan(plan);
+      // Wait until all steps have been shown before advancing to step 3
+      const stepsRemaining = genSteps.length - 1 - genStepRef.current;
+      const waitMs = stepsRemaining > 0 ? stepsRemaining * 4000 + 600 : 600;
+      await new Promise(resolve => setTimeout(resolve, waitMs));
       setStep(3);
     } catch {
       toast.error("Plan generation failed.");
@@ -173,7 +192,7 @@ export default function NewMissionPage() {
                         <div
                           key={s}
                           className={`animate-slide-down-fade flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition-colors ${i === genStep ? "bg-[hsl(var(--secondary))] text-[hsl(var(--primary))]" : "text-[hsl(var(--success))]"}`}
-                          style={{ animationDelay: `0ms` }}
+                          style={{ animationDelay: `${i * 50}ms` }}
                         >
                           {i < genStep
                             ? <Check className="h-4 w-4 shrink-0" />
