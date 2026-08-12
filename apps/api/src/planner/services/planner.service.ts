@@ -9,6 +9,7 @@ import { LifeMissionRepository } from "../../life-mission/repositories/life-miss
 import { CreatePlanDto } from "../dto/create-plan.dto";
 import { UpdatePlanDto } from "../dto/update-plan.dto";
 import { GeneratePlanRequestDto } from "../dto/generate-plan-request.dto";
+import { PlannerActionRequestDto } from "../dto/planner-action-request.dto";
 import { Plan } from "../entities/plan.entity";
 import {
   PaginationParams,
@@ -111,6 +112,61 @@ export class PlannerService {
           type: "link",
         })),
       };
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      throw new Error(`AI Service connection failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Runs one of the four AI Planner actions (generate/optimise/reduce/
+   * accelerate) against an existing mission, by calling the FastAPI
+   * AI service's standalone /api/v1/planner/action endpoint. Returns a
+   * list of concrete changes for the "AI Planner" page to render — this
+   * replaces the frontend's previous hardcoded/fake comparison.
+   */
+  async runAction(
+    userId: number,
+    dto: PlannerActionRequestDto,
+  ): Promise<{ changes: any[] }> {
+    const mission = await this.missionRepository.findMissionById(dto.missionId);
+    if (!mission) {
+      throw new NotFoundException("Life mission not found");
+    }
+    if (mission.user_id !== userId) {
+      throw new ForbiddenException(
+        "You do not have permission to plan for this mission",
+      );
+    }
+
+    const aiServiceUrl = this.config.aiServiceUrl || "http://localhost:8000";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    try {
+      const response = await fetch(`${aiServiceUrl}/api/v1/planner/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: dto.action,
+          mission_title: mission.title,
+          mission_goal: mission.description || mission.title,
+          progress: mission.progress ?? 0,
+          domain: mission.category || "general",
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(
+          `AI service returned status ${response.status}: ${await response.text()}`,
+        );
+      }
+
+      const resJson: any = await response.json();
+      return { changes: resJson.changes || [] };
     } catch (err: any) {
       clearTimeout(timeoutId);
       throw new Error(`AI Service connection failed: ${err.message}`);

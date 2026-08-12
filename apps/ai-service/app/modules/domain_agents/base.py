@@ -2,10 +2,7 @@
 adds domain-specific enrichment (advice, risks, resources)."""
 
 import json
-import logging
 from app.core.llm import get_llm
-
-logger = logging.getLogger(__name__)
 
 # Shown when the LLM is unavailable — gives users a real response
 # instead of a blank/error message.
@@ -22,27 +19,28 @@ class DomainAgent:
     expertise_prompt: str = "You give balanced, practical general life advice."
 
     async def run(self, goal_summary: str, plan: dict) -> dict:
+        llm = get_llm(temperature=0.4)
+        system = (
+            f"You are the {self.domain.title()} Domain Agent of LifeKit. "
+            f"{self.expertise_prompt}\n"
+            'Respond ONLY with JSON: {"advice": "...", "risks": ["..."], "resources": ["..."]}'
+        )
+        prompt = f"{system}\n\nGoal: {goal_summary}\nPlan: {json.dumps(plan)}"
+        # LLM/network errors (e.g. missing API key) are NOT caught here —
+        # they propagate up to the orchestrator so the real failure reaches
+        # the user instead of a fake generic reply. Only malformed JSON
+        # output from a working LLM call falls back.
+        response = await llm.ainvoke(prompt)
+        raw = response.content.strip()
+        # Strip markdown fences if present
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
         try:
-            llm = get_llm(temperature=0.4)
-            system = (
-                f"You are the {self.domain.title()} Domain Agent of LifeKit. "
-                f"{self.expertise_prompt}\n"
-                'Respond ONLY with JSON: {"advice": "...", "risks": ["..."], "resources": ["..."]}'
-            )
-            prompt = f"{system}\n\nGoal: {goal_summary}\nPlan: {json.dumps(plan)}"
-            response = await llm.ainvoke(prompt)
-            raw = response.content.strip()
-            # Strip markdown fences if present
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-                raw = raw.strip()
             result = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
-            result = {"advice": FALLBACK_ADVICE, "risks": [], "resources": []}
-        except Exception as exc:  # noqa: BLE001 — LLM/network errors
-            logger.warning("DomainAgent(%s).run failed: %s", self.domain, exc)
             result = {"advice": FALLBACK_ADVICE, "risks": [], "resources": []}
 
         result["domain"] = self.domain

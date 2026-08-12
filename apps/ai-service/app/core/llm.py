@@ -27,4 +27,10 @@ def get_llm(temperature: float = 0.3) -> ChatOpenAI:
         api_key=settings.openai_api_key,
         base_url=settings.openai_api_base,
         temperature=temperature,
+        # Every orchestrator node's output is short JSON/1-3 sentences —
+        # capping tokens and retries cuts per-call latency across the
+        # 4-7 LLM calls a single chat message can trigger.
+        max_tokens=400,
+        max_retries=1,
+        timeout=20,
     )

@@ -13,17 +13,11 @@ import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useMissionStore } from "@/stores";
-import { missionsApi } from "@/lib/api";
+import { missionsApi, plannerApi } from "@/lib/api";
+import type { PlanChange } from "@/lib/api/planner";
 import { useEffect } from "react";
 
 type PlanAction = "generate" | "optimise" | "reduce" | "accelerate";
-
-const PLAN_CHANGES = [
-  { type: "added" as const, description: "Added daily 30-minute coding practice task", field: "task" },
-  { type: "changed" as const, description: "Moved ML milestone from Month 3 to Month 2", field: "timeline", before: "Month 3", after: "Month 2" },
-  { type: "removed" as const, description: "Removed redundant 'Read documentation' tasks (replaced by project-based learning)", field: "task" },
-  { type: "changed" as const, description: "Increased weekly focus from 15h to 18h to hit deadline", field: "hours", before: "15h/week", after: "18h/week" },
-];
 
 export default function AIPlannerPage() {
   const router = useRouter();
@@ -32,6 +26,7 @@ export default function AIPlannerPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
+  const [planChanges, setPlanChanges] = useState<PlanChange[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -51,12 +46,19 @@ export default function AIPlannerPage() {
   const mission = cachedMissions.find(m => m.id === selectedMission);
 
   async function runAction(action: PlanAction) {
+    if (!selectedMission) return;
     setIsGenerating(true);
     setShowComparison(false);
-    await new Promise(r => setTimeout(r, 2000));
-    setIsGenerating(false);
-    setShowComparison(true);
-    toast.success("New plan generated. Review the changes below.");
+    try {
+      const changes = await plannerApi.runPlannerAction(selectedMission, action);
+      setPlanChanges(changes);
+      setShowComparison(true);
+      toast.success("New plan generated. Review the changes below.");
+    } catch (err: any) {
+      toast.error(err?.message || "Planner action failed. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   return (
@@ -154,7 +156,7 @@ export default function AIPlannerPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {PLAN_CHANGES.map((change, i) => (
+                {planChanges.map((change, i) => (
                   <div key={i} className={cn(
                     "flex items-start gap-3 rounded-lg p-3 text-sm",
                     change.type === "added" ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800" :
