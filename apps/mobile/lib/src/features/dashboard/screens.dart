@@ -2732,31 +2732,35 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                               return true;
                             }
                             // startToEnd: mark task as completed
-                            final currentTasks = ref.read(tasksProvider);
-                            ref.read(tasksProvider.notifier).state = currentTasks.map((t) {
-                              if (t.id == task.id) {
-                                t.done = true;
-                                t.status = 'Done';
-                              }
-                              return t;
-                            }).toList();
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final currentTasks = ref.read(tasksProvider);
+                              ref.read(tasksProvider.notifier).state = currentTasks.map((t) {
+                                if (t.id == task.id) {
+                                  t.done = true;
+                                  t.status = 'Done';
+                                }
+                                return t;
+                              }).toList();
 
-                            ref.read(repositoryProvider)
-                                .setTaskStatus(task.id, 'COMPLETED')
-                                .then((_) => _loadTasks())
-                                .catchError((_) => _loadTasks());
+                              ref.read(repositoryProvider)
+                                  .setTaskStatus(task.id, 'COMPLETED')
+                                  .then((_) => _loadTasks())
+                                  .catchError((_) => _loadTasks());
+                            });
                             return false;
                           },
                           onDismissed: (dir) {
                             if (dir == DismissDirection.endToStart) {
-                              final currentTasks = ref.read(tasksProvider);
-                              ref.read(tasksProvider.notifier).state =
-                                  currentTasks.where((t) => t.id != task.id).toList();
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                final currentTasks = ref.read(tasksProvider);
+                                ref.read(tasksProvider.notifier).state =
+                                    currentTasks.where((t) => t.id != task.id).toList();
 
-                              ref.read(repositoryProvider)
-                                  .deleteTask(task.id)
-                                  .then((_) => _loadTasks())
-                                  .catchError((_) => _loadTasks());
+                                ref.read(repositoryProvider)
+                                    .deleteTask(task.id)
+                                    .then((_) => _loadTasks())
+                                    .catchError((_) => _loadTasks());
+                              });
                             }
                           },
                           child: _PremiumTaskRow(
