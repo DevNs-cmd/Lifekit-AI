@@ -5,6 +5,8 @@ import { MarketplaceRepository } from "../repositories/marketplace.repository";
 import { CreateListingDto } from "../dto/create-listing.dto";
 import { SearchListingDto } from "../dto/search-listing.dto";
 import { MarketplaceListing } from "../entities/marketplace-listing.entity";
+import { AppConfigService } from "../../config/app-config.service";
+import { PrismaService } from "../../prisma/prisma.service";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -50,6 +52,20 @@ describe("MarketplaceService", () => {
         {
           provide: MarketplaceRepository,
           useValue: mockMarketplaceRepository,
+        },
+        {
+          provide: AppConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            missions: {
+              findMany: jest.fn(),
+            },
+          },
         },
       ],
     }).compile();
