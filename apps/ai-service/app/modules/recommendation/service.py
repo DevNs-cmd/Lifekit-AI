@@ -19,9 +19,16 @@ async def build_recommendations(
         f"Opportunities: {json.dumps(opportunities)}\n"
         f"User history/memory:\n{memory_snippet}"
     )
+    # LLM/network errors propagate up instead of being swallowed here.
     response = await llm.ainvoke(prompt)
+    raw = response.content.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
     try:
-        parsed = json.loads(response.content)
+        parsed = json.loads(raw)
         return parsed if isinstance(parsed, list) else []
     except (json.JSONDecodeError, TypeError):
         return []

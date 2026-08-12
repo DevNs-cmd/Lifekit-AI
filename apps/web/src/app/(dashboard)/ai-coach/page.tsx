@@ -44,8 +44,9 @@ export default function AICoachPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-5 max-w-6xl mx-auto">
-      <div>
+    <div className="flex flex-col h-full overflow-hidden p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="shrink-0 mb-5">
         <h1 className="text-3xl font-black tracking-[-0.035em] text-[hsl(var(--text-primary))] flex items-center gap-2">
           <Bot className="h-7 w-7 text-[hsl(var(--primary))]" /> AI Coach
         </h1>
@@ -54,9 +55,9 @@ export default function AICoachPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4 items-start">
+      <div className="flex flex-1 min-h-0 gap-4 items-stretch">
         {/* Chat panel with recent chats sidebar */}
-        <div className="flex h-[520px] rounded-2xl border border-[hsl(var(--border))]/80 overflow-hidden shadow-[var(--shadow-md)] bg-[hsl(var(--card))]">
+        <div className="flex flex-1 min-h-0 min-w-0 rounded-2xl border border-[hsl(var(--border))]/80 overflow-hidden shadow-[var(--shadow-md)] bg-[hsl(var(--card))]">
           <RecentChatsSidebar
             chats={chats}
             activeId={activeChatId}
@@ -64,13 +65,13 @@ export default function AICoachPage() {
             onNew={handleNewChat}
             onDelete={handleDeleteChat}
           />
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 min-h-0">
             <AICoachPanel />
           </div>
         </div>
 
         {/* Right sidebar */}
-        <div className="space-y-4">
+        <div className="hidden lg:flex flex-col w-[260px] shrink-0 gap-4">
           <Card className="border-[hsl(var(--primary))]/30 bg-[hsl(var(--background-subtle))]">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">

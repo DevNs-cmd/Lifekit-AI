@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
 import { MarketplaceRepository } from "../repositories/marketplace.repository";
 import { CreateListingDto } from "../dto/create-listing.dto";
 import { SearchListingDto } from "../dto/search-listing.dto";
@@ -15,8 +16,13 @@ import {
 } from "../../common/interfaces/pagination.interface";
 import { AppConfigService } from "../../config/app-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import {
+  MISSION_EVENTS,
+  MissionCreatedEvent,
+  MissionUpdatedEvent,
+} from "../../common/events/mission-events";
 
-// Minimum listings before we consider the catalogue seeded for everyone
+// Minimum listings before we consider the catalogue seeded for a given user
 const MIN_LISTING_COUNT = 5;
 
 @Injectable()
@@ -56,9 +62,10 @@ export class MarketplaceService {
     );
 
     if (!hasFilters) {
-      const count = await this.prisma.marketplace.count();
-      this.logger.log(`Marketplace count check: ${count}`);
-      if (count < MIN_LISTING_COUNT) {
+      // Count only listings that belong to this user (stored in description JSON)
+      const userListings = await this._countUserListings(userId);
+      this.logger.log(`Marketplace count for user_id=${userId}: ${userListings}`);
+      if (userListings < MIN_LISTING_COUNT) {
         this.logger.log(`Seeding marketplace for user_id=${userId}...`);
         await this._seedFromAi(userId);
       }
@@ -99,7 +106,77 @@ export class MarketplaceService {
     return this.marketplaceRepository.deleteListing(id);
   }
 
+  // ── Event listeners ─────────────────────────────────────────────────────────
+
+  /**
+   * Fires when a user creates a new mission.
+   * Clears that user's AI-seeded marketplace listings and regenerates them
+   * with the updated mission context. Other users' listings are untouched.
+   */
+  @OnEvent(MISSION_EVENTS.CREATED, { async: true })
+  async handleMissionCreated(event: MissionCreatedEvent): Promise<void> {
+    this.logger.log(
+      `mission.created for user_id=${event.userId} — refreshing marketplace`,
+    );
+    await this._refreshForUser(event.userId);
+  }
+
+  /**
+   * Fires when a user updates an existing mission.
+   * Re-seeds marketplace listings so they reflect the changed mission details.
+   */
+  @OnEvent(MISSION_EVENTS.UPDATED, { async: true })
+  async handleMissionUpdated(event: MissionUpdatedEvent): Promise<void> {
+    this.logger.log(
+      `mission.updated for user_id=${event.userId} — refreshing marketplace`,
+    );
+    await this._refreshForUser(event.userId);
+  }
+
   // ── Private helpers ─────────────────────────────────────────────────────────
+
+  /** Delete and reseed listings for a single user. Catches all errors. */
+  private async _refreshForUser(userId: number): Promise<void> {
+    try {
+      await this._deleteUserListings(userId);
+      this.logger.log(`Cleared marketplace listings for user_id=${userId}`);
+      await this._seedFromAi(userId);
+    } catch (err: any) {
+      this.logger.warn(
+        `_refreshForUser (marketplace) failed for user_id=${userId}: ${err?.message ?? err}`,
+      );
+    }
+  }
+
+  /**
+   * Count how many marketplace listings belong to this user.
+   * The marketplace table has no user_id column, so ownership is stored
+   * inside the description JSON field (key: "userId") — the same convention
+   * used by createListing() and the repository mapper.
+   */
+  private async _countUserListings(userId: number): Promise<number> {
+    return this.prisma.marketplace.count({
+      where: {
+        description: { contains: `"userId":${userId}` },
+      },
+    });
+  }
+
+  /**
+   * Delete all marketplace listings that belong to this user.
+   * Fetches matching rows first, then deletes by primary key to avoid a
+   * full-table scan on the JSON field in a single DELETE statement.
+   */
+  private async _deleteUserListings(userId: number): Promise<void> {
+    const rows = await this.prisma.marketplace.findMany({
+      where: { description: { contains: `"userId":${userId}` } },
+      select: { service_id: true },
+    });
+    if (rows.length === 0) return;
+    await this.prisma.marketplace.deleteMany({
+      where: { service_id: { in: rows.map((r) => r.service_id) } },
+    });
+  }
 
   private async _callAiService(userContext: object, count: number): Promise<any[]> {
     const url = `${this.config.aiServiceUrl}/api/v1/recommendations/listings`;
@@ -188,7 +265,16 @@ export class MarketplaceService {
               service_name:  String(l.title ?? "Service").slice(0, 255),
               provider_name: String(l.provider_name ?? "Provider").slice(0, 255),
               category:      String(l.category ?? "Education").slice(0, 100),
-              description:   String(l.description ?? "").slice(0, 2000),
+              // Store userId + extra fields in the description JSON so the
+              // repository mapper and per-user queries can use it.
+              description: JSON.stringify({
+                text:      String(l.description ?? "").slice(0, 2000),
+                userId,
+                tags:      [],
+                isFree:    Number(l.price ?? 0) === 0,
+                isAvailable: true,
+                stock:     null,
+              }),
               price:         Math.max(0, Number(l.price ?? 0)),
               rating:        Math.min(5.0, Math.max(4.0, Number(l.rating ?? 4.5))),
               image_url:     null,

@@ -1,5 +1,6 @@
 export * from "./client";
 export * as missionsApi from "./missions";
+export * as plannerApi from "./planner";
 export * as tasksApi from "./tasks";
 export * as aiApi from "./ai";
 export * as authApi from "./auth";

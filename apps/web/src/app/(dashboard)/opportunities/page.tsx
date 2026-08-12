@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Compass, Search, Bookmark, X, ExternalLink, Sparkles } from "lucide-react";
+import { Compass, Search, Bookmark, X, ExternalLink, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { ROUTES } from "@/constants/routes";
 import { formatDeadline, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { opportunitiesApi } from "@/lib/api";
+import { useMissionStore } from "@/stores";
 import type { Opportunity, OpportunityType } from "@/types/opportunity";
 
 // ─── Fallback data shown while the API loads or if it errors ─────────────────
@@ -120,28 +121,47 @@ export default function OpportunitiesPage() {
 
   const [opportunities, setOpportunities] = React.useState<Opportunity[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [regenerating, setRegenerating] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [typeFilter, setTypeFilter] = React.useState<OpportunityType | "all">("all");
   const [savedOnly, setSavedOnly] = React.useState(false);
   const [previewOpportunity, setPreviewOpportunity] = React.useState<Opportunity | null>(null);
 
-  // ─── Load from API; gracefully fall back to local data on failure ────────────
-  React.useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const data = await opportunitiesApi.getOpportunities();
-        // If the user has no opportunities yet, show the curated fallback set
-        setOpportunities(data.length > 0 ? data : FALLBACK_OPPORTUNITIES);
-      } catch {
-        // API unreachable or unauthenticated — show fallback silently
-        setOpportunities(FALLBACK_OPPORTUNITIES);
-      } finally {
-        setLoading(false);
-      }
+  const { missionCreatedAt, clearMissionCreatedFlag } = useMissionStore();
+  const lastHandledMissionTs = React.useRef<number | null>(null);
+
+  const load = React.useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const data = await opportunitiesApi.getOpportunities();
+      setOpportunities(data.length > 0 ? data : FALLBACK_OPPORTUNITIES);
+      setRegenerating(false);
+    } catch {
+      if (!silent) setOpportunities(FALLBACK_OPPORTUNITIES);
+    } finally {
+      if (!silent) setLoading(false);
     }
-    load();
   }, []);
+
+  // Initial load
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  // Re-fetch when a new mission was just created
+  React.useEffect(() => {
+    if (!missionCreatedAt) return;
+    if (lastHandledMissionTs.current === missionCreatedAt) return;
+    lastHandledMissionTs.current = missionCreatedAt;
+
+    clearMissionCreatedFlag();
+    setRegenerating(true);
+
+    // Poll at 3s and 8s to pick up freshly regenerated opportunities
+    const t1 = setTimeout(() => load(true), 3000);
+    const t2 = setTimeout(() => load(true), 8000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [missionCreatedAt, clearMissionCreatedFlag, load]);
 
   // ─── Client-side filter + sort ───────────────────────────────────────────────
   const filtered = opportunities
@@ -218,9 +238,21 @@ export default function OpportunitiesPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
       {/* ── Header ── */}
       <div>
-        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
-          <Sparkles className="h-3.5 w-3.5" />
-          Matched for your goals
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[hsl(var(--primary))]">
+            <Sparkles className="h-3.5 w-3.5" />
+            Matched for your goals
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+            onClick={() => load()}
+            disabled={loading}
+            aria-label="Refresh opportunities"
+          >
+            Refresh
+          </Button>
         </div>
         <h1 className="text-3xl font-black tracking-[-0.035em] text-[hsl(var(--text-primary))]">
           Opportunities
@@ -229,6 +261,16 @@ export default function OpportunitiesPage() {
           AI-matched jobs, internships, scholarships, grants and more — based on your active missions.
         </p>
       </div>
+
+      {/* Regenerating banner */}
+      {regenerating && (
+        <div className="flex items-center gap-3 rounded-xl border border-[hsl(var(--primary))]/30 bg-[hsl(var(--secondary))] px-4 py-3 text-sm">
+          <RefreshCw className="h-4 w-4 text-[hsl(var(--primary))] animate-spin shrink-0" />
+          <span className="text-[hsl(var(--text-secondary))]">
+            Finding new opportunities based on your new mission — updating in a moment…
+          </span>
+        </div>
+      )}
 
       {/* ── Filters ── */}
       <div className="premium-surface flex flex-wrap items-center gap-3 rounded-2xl p-3">

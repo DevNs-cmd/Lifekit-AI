@@ -70,4 +70,21 @@ export class NotificationsController {
   ) {
     return this.notificationsService.remove(id, userId);
   }
+
+  @Get("unread-count")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Get unread notifications count" })
+  @ApiOkResponse({
+    description: "Unread count retrieved successfully",
+    schema: {
+      type: "object",
+      properties: {
+        count: { type: "number", example: 5 },
+      },
+    },
+  })
+  async getUnreadCount(@CurrentUser("user_id") userId: number) {
+    const count = await this.notificationsService.getUnreadCount(userId);
+    return { count };
+  }
 }

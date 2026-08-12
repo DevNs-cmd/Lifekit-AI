@@ -33,6 +33,16 @@ interface MissionStore {
   setCachedMissions: (missions: Mission[]) => void;
   updateCachedMission: (id: string, patch: Partial<Mission>) => void;
   removeCachedMission: (id: string) => void;
+
+  /**
+   * Timestamp (ms) set whenever a mission is successfully created.
+   * Marketplace and Opportunities pages watch this to know they must
+   * re-fetch because the backend is regenerating their AI content.
+   * Consumers call clearMissionCreatedFlag() after they start a refresh.
+   */
+  missionCreatedAt: number | null;
+  markMissionCreated: () => void;
+  clearMissionCreatedFlag: () => void;
 }
 
 export const useMissionStore = create<MissionStore>((set) => ({
@@ -77,4 +87,8 @@ export const useMissionStore = create<MissionStore>((set) => ({
     set((s) => ({
       cachedMissions: s.cachedMissions.filter((m) => m.id !== id),
     })),
+
+  missionCreatedAt: null,
+  markMissionCreated: () => set({ missionCreatedAt: Date.now() }),
+  clearMissionCreatedFlag: () => set({ missionCreatedAt: null }),
 }));

@@ -114,69 +114,124 @@ export class AgentsService {
 
   async run(userId: number, dto: AgentRequestDto): Promise<AgentResponseDto> {
     const aiServiceUrl = this.config.aiServiceUrl;
-    let output = "";
-    let success = false;
-    let metadata: Record<string, any> = {
+
+    const baseMeta: Record<string, any> = {
       processedAt: new Date().toISOString(),
       userId: String(userId),
-      engine: "gemini-3.5-flash",
+      engine: "gpt-4o-mini",
     };
 
-    if (aiServiceUrl) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-
-      try {
-        const response = await fetch(`${aiServiceUrl}/api/v1/orchestrate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: String(userId),
-            message: dto.userInput,
-            session_id:
-              dto.contextData?.sessionId || `sess-${userId}-${Date.now()}`,
-            context: dto.contextData || {},
-          }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`AI service returned status ${response.status}: ${await response.text()}`);
-        }
-
-        const resJson: any = await response.json();
-        if (resJson && resJson.domain_result) {
-          output =
-            resJson.domain_result.advice ||
-            resJson.domain_result.output ||
-            JSON.stringify(resJson.domain_result);
-          success = true;
-          metadata = {
-            ...metadata,
-            intent: resJson.intent,
-            memoryWritten: resJson.memory_written,
-            fastapiResponse: true,
-          };
-        } else {
-          throw new Error("AI service returned an invalid response structure");
-        }
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        throw new Error(`AI Service connection failed: ${err.message}`);
-      }
-    } else {
-      throw new Error("AI Service URL is not configured");
+    // ── AI service not configured ────────────────────────────────────────────
+    if (!aiServiceUrl) {
+      return {
+        agentType: dto.agentType,
+        success: false,
+        output:
+          "AI Service is not configured. Please set the AI_SERVICE_URL environment variable.",
+        metadata: { ...baseMeta, fallback: true },
+      };
     }
 
-    return {
-      agentType: dto.agentType,
-      success,
-      output,
-      metadata,
-    };
+    // ── Call the AI service orchestrator ────────────────────────────────────
+    const controller = new AbortController();
+    // The orchestrator runs 6+ sequential LLM calls. Allow up to 90s so slow
+    // or cold-start LLM providers don't get prematurely aborted.
+    const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
+    try {
+      const response = await fetch(`${aiServiceUrl}/api/v1/orchestrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id:    String(userId),
+          message:    dto.userInput,
+          session_id: dto.contextData?.sessionId || `sess-${userId}-${Date.now()}`,
+          context:    dto.contextData || {},
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => "");
+        throw new Error(`AI service HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+      }
+
+      const resJson: any = await response.json();
+
+      // ── Extract the best available output from the response ─────────────
+      // The graph always returns domain_result (with fallback advice when the
+      // LLM is unavailable), so we can safely read from it.
+      const domainResult = resJson?.domain_result ?? {};
+      const advice = domainResult.advice || domainResult.output || "";
+
+      // Build a richer reply when we have plan steps
+      const planTitle: string   = resJson?.plan?.title || "";
+      const planSteps: any[]    = resJson?.plan?.steps || [];
+      const nextAction: string  = resJson?.execution_guidance?.next_action || "";
+      const intent: string      = resJson?.intent || "";
+
+      let output = advice;
+
+      // Append an execution nudge if the LLM produced a concrete next step
+      // and it isn't already included in the advice text
+      if (
+        nextAction &&
+        nextAction.length > 0 &&
+        !advice.toLowerCase().includes(nextAction.toLowerCase().slice(0, 20))
+      ) {
+        output += `\n\n**Next step:** ${nextAction}`;
+      }
+
+      // Append a short plan summary when steps are available
+      if (planSteps.length > 0 && planTitle) {
+        const stepLines = planSteps
+          .slice(0, 3)
+          .map((s: any, i: number) => `${i + 1}. ${s.task}`)
+          .join("\n");
+        output += `\n\n**Plan: ${planTitle}**\n${stepLines}`;
+        if (planSteps.length > 3) {
+          output += `\n…and ${planSteps.length - 3} more steps.`;
+        }
+      }
+
+      // Final guard — if everything above produced an empty string, use a
+      // safe catch-all so the user always sees something meaningful.
+      if (!output.trim()) {
+        output =
+          "I'm here to help you reach your goals! Could you tell me a bit more about what you'd like to work on today?";
+      }
+
+      return {
+        agentType: dto.agentType,
+        success: true,
+        output,
+        metadata: {
+          ...baseMeta,
+          intent,
+          memoryWritten: resJson?.memory_written ?? false,
+          fastapiResponse: true,
+        },
+      };
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+
+      const isTimeout = err?.name === "AbortError";
+      const output = isTimeout
+        ? "The AI service is taking longer than expected. Please try again in a moment."
+        : "I'm having trouble connecting right now. Please make sure the AI service is running and try again.";
+
+      return {
+        agentType: dto.agentType,
+        success: false,
+        output,
+        metadata: {
+          ...baseMeta,
+          fallback: true,
+          error: err?.message || "unknown",
+        },
+      };
+    }
   }
 }

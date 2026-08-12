@@ -23,6 +23,7 @@ import { BillingModule } from "./billing/billing.module";
 
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { ScheduleModule } from "@nestjs/schedule";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 
 // Infrastructure Modules
 import { CacheModule } from "./common/cache";
@@ -43,6 +44,7 @@ import { RequestLoggingMiddleware } from "./common/middleware/request-logging.mi
     }),
 
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot({ wildcard: false, maxListeners: 20 }),
 
     AppConfigModule,
     ThrottlerModule.forRootAsync({

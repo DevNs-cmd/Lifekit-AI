@@ -1,7 +1,5 @@
 """Execution Intelligence — last AI reasoning node. Turns the plan +
-recommendations into an immediate next action + check-in cadence, and is
-also the module the background Worker calls on a schedule to nudge
-progress (via apps/worker -> Redis -> this same endpoint)."""
+recommendations into an immediate next action + check-in cadence."""
 
 import json
 from app.core.llm import get_llm
@@ -15,8 +13,15 @@ async def guide_execution(plan: dict, recommendations: list[dict]) -> dict:
         '{"next_action": "...", "check_in_frequency_days": <int>, "motivation_note": "..."}\n\n'
         f"Plan: {json.dumps(plan)}\nRecommendations: {json.dumps(recommendations)}"
     )
+    # LLM/network errors propagate up instead of being swallowed here.
     response = await llm.ainvoke(prompt)
+    raw = response.content.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
     try:
-        return json.loads(response.content)
+        return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
         return {"next_action": "", "check_in_frequency_days": 3, "motivation_note": ""}

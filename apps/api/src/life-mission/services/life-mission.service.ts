@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { LifeMissionRepository } from "../repositories/life-mission.repository";
 import { CreateLifeMissionDto } from "../dto/create-life-mission.dto";
 import { UpdateLifeMissionDto } from "../dto/update-life-mission.dto";
@@ -11,16 +12,37 @@ import {
   PaginationParams,
   PaginatedResult,
 } from "../../common/interfaces/pagination.interface";
+import {
+  MISSION_EVENTS,
+  MissionCreatedEvent,
+  MissionUpdatedEvent,
+} from "../../common/events/mission-events";
 
 @Injectable()
 export class LifeMissionService {
-  constructor(private readonly missionRepository: LifeMissionRepository) {}
+  constructor(
+    private readonly missionRepository: LifeMissionRepository,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async create(
     userId: number,
     dto: CreateLifeMissionDto,
   ): Promise<LifeMission> {
-    return this.missionRepository.createMission(userId, dto);
+    const mission = await this.missionRepository.createMission(userId, dto);
+
+    // Fire-and-forget — listeners refresh AI content in the background
+    this.eventEmitter.emit(
+      MISSION_EVENTS.CREATED,
+      new MissionCreatedEvent(
+        userId,
+        mission.id ?? (mission as any).mission_id,
+        mission.title,
+        (mission as any).category ?? null,
+      ),
+    );
+
+    return mission;
   }
 
   async findAll(
@@ -56,7 +78,20 @@ export class LifeMissionService {
     dto: UpdateLifeMissionDto,
   ): Promise<LifeMission> {
     await this.findOne(id, userId); // verify ownership and existence
-    return this.missionRepository.updateMission(id, dto);
+    const mission = await this.missionRepository.updateMission(id, dto);
+
+    // Refresh AI content so marketplace/opportunities reflect the updated mission
+    this.eventEmitter.emit(
+      MISSION_EVENTS.UPDATED,
+      new MissionUpdatedEvent(
+        userId,
+        mission.id ?? (mission as any).mission_id,
+        mission.title,
+        (mission as any).category ?? null,
+      ),
+    );
+
+    return mission;
   }
 
   async remove(id: number, userId: number): Promise<LifeMission> {

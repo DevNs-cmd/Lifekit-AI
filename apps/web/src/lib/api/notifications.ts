@@ -20,6 +20,11 @@ export async function getNotifications(): Promise<Notification[]> {
   return list.map(mapBackendNotificationToFrontend);
 }
 
+export async function getUnreadCount(): Promise<number> {
+  const res = await get<{ count: number }>("/notifications/unread-count");
+  return res?.count ?? 0;
+}
+
 export async function markAsRead(id: string | number): Promise<void> {
   await patch<void>(`/notifications/${id}/read`);
 }

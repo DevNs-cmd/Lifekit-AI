@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Grid3X3, List, Target } from "lucide-react";
+import { Plus, Search, Grid3X3, List, Target, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,13 +14,12 @@ import { CategoryBadge } from "@/components/shared/category-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { MissionCardSkeleton } from "@/components/shared/loading-skeleton";
 import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
-import { SideSheet } from "@/components/ui/side-sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { FormField } from "@/components/shared/form-field";
 import { ROUTES } from "@/constants/routes";
 import { formatDeadline, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Mission, MissionStatus } from "@/types/mission";
-import { MoreHorizontal, Pause, Play, Copy, Archive, Trash2 } from "lucide-react";
 import { missionsApi } from "@/lib/api";
 import { useMissionStore } from "@/stores";
 
@@ -31,10 +30,12 @@ export default function MissionsPage() {
   const [statusFilter, setStatusFilter] = React.useState<MissionStatus | "all">("all");
   const [sortBy, setSortBy] = React.useState("updated");
   const [deleteTarget, setDeleteTarget] = React.useState<Mission | null>(null);
-  const [previewMission, setPreviewMission] = React.useState<Mission | null>(null);
+  const [editTarget, setEditTarget] = React.useState<Mission | null>(null);
+  const [editFields, setEditFields] = React.useState({ title: "", goal: "", targetDate: "" });
+  const [isSavingEdit, setIsSavingEdit] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
-  const { cachedMissions, setCachedMissions, removeCachedMission } = useMissionStore();
+  const { cachedMissions, setCachedMissions, removeCachedMission, updateCachedMission } = useMissionStore();
 
   React.useEffect(() => {
     async function load() {
@@ -72,6 +73,34 @@ export default function MissionsPage() {
       toast.error("Failed to delete mission.");
     }
     setDeleteTarget(null);
+  }
+
+  function openEdit(mission: Mission) {
+    setEditFields({ title: mission.title, goal: mission.goal, targetDate: mission.targetDate ?? "" });
+    setEditTarget(mission);
+  }
+
+  async function handleSaveEdit() {
+    if (!editTarget) return;
+    setIsSavingEdit(true);
+    try {
+      await missionsApi.updateMission(editTarget.id, {
+        title: editFields.title,
+        goal: editFields.goal,
+        targetDate: editFields.targetDate || undefined,
+      });
+      updateCachedMission(editTarget.id, {
+        title: editFields.title,
+        goal: editFields.goal,
+        targetDate: editFields.targetDate || undefined,
+      });
+      toast.success("Mission updated.");
+      setEditTarget(null);
+    } catch {
+      toast.error("Failed to save changes.");
+    } finally {
+      setIsSavingEdit(false);
+    }
   }
 
   return (
@@ -128,27 +157,10 @@ export default function MissionsPage() {
           <AnimatePresence mode="popLayout">
           {filtered.map(mission => (
             <motion.div key={mission.id} layout layoutId={`mission-${mission.id}`} initial={{ opacity: 0, scale: .97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .96 }} transition={{ duration: .22 }}>
-            <Card className="hover:border-[hsl(var(--primary))]/30 hover:shadow-md transition-all group cursor-pointer overflow-hidden" onClick={() => setPreviewMission(mission)}>
+            <Card className="hover:border-[hsl(var(--primary))]/30 hover:shadow-md transition-all group overflow-hidden">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <CategoryBadge category={mission.category} size="sm" />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100" aria-label="Mission actions"><MoreHorizontal className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                      <DropdownMenuItem onClick={() => router.push(ROUTES.MISSION_DETAIL(mission.id))}>Open</DropdownMenuItem>
-                      {mission.status === "active" ? (
-                        <DropdownMenuItem onClick={() => toast.success("Mission paused.")}><Pause className="h-4 w-4 mr-2" />Pause</DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem onClick={() => toast.success("Mission resumed.")}><Play className="h-4 w-4 mr-2" />Resume</DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => toast.success("Mission duplicated.")}><Copy className="h-4 w-4 mr-2" />Duplicate</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toast.success("Mission archived.")}><Archive className="h-4 w-4 mr-2" />Archive</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem destructive onClick={() => setDeleteTarget(mission)}><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
                 <h3 className="font-semibold text-[hsl(var(--text-primary))] mb-1 leading-tight">{mission.title}</h3>
                 <p className="text-xs text-[hsl(var(--text-secondary))] mb-3 line-clamp-2">{mission.goal}</p>
@@ -156,11 +168,22 @@ export default function MissionsPage() {
                   <div className="flex justify-between mb-1"><span className="text-xs text-[hsl(var(--text-secondary))]">Progress</span><span className="text-xs font-semibold">{mission.progress}%</span></div>
                   <Progress value={mission.progress} className="h-1.5" />
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <StatusBadge status={mission.status} />
                   {mission.targetDate && <span className="text-xs text-[hsl(var(--text-secondary))]">{formatDeadline(mission.targetDate)}</span>}
                 </div>
-                <p className="mt-3 translate-y-1 text-[10px] font-semibold text-[hsl(var(--primary))] opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">Quick preview · press Enter to open</p>
+                {/* 3-button action row */}
+                <div className="flex items-center gap-2 pt-3 border-t border-[hsl(var(--border))] opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                  <Button size="sm" className="flex-1 gap-1.5" onClick={() => router.push(ROUTES.MISSION_DETAIL(mission.id))}>
+                    <ExternalLink className="h-3.5 w-3.5" />Open
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => openEdit(mission)}>
+                    <Pencil className="h-3.5 w-3.5" />Edit
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-red-500 border-red-200 hover:bg-red-50 hover:border-red-400 dark:border-red-900 dark:hover:bg-red-950/40" onClick={() => setDeleteTarget(mission)}>
+                    <Trash2 className="h-3.5 w-3.5" />Delete
+                  </Button>
+                </div>
               </CardContent>
             </Card>
             </motion.div>
@@ -187,20 +210,47 @@ export default function MissionsPage() {
       )}
 
       <ConfirmationDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)} title="Delete mission?" description={`This will permanently delete "${deleteTarget?.title}" and all its tasks, milestones and progress. This cannot be undone.`} confirmLabel="Delete mission" onConfirm={handleDelete} />
-      <SideSheet
-        open={!!previewMission}
-        onOpenChange={open => !open && setPreviewMission(null)}
-        title={previewMission?.title ?? "Mission"}
-        description={previewMission?.goal}
-        footer={previewMission && <><Button variant="outline" onClick={() => setPreviewMission(null)}>Close</Button><Button onClick={() => router.push(ROUTES.MISSION_DETAIL(previewMission.id))}>Open full mission</Button></>}
-      >
-        {previewMission && <div className="space-y-6">
-          <div className="flex items-center justify-between"><CategoryBadge category={previewMission.category} /><StatusBadge status={previewMission.status} /></div>
-          <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background-subtle))] p-4"><div className="mb-2 flex justify-between text-sm"><span>Mission progress</span><strong>{previewMission.progress}%</strong></div><Progress value={previewMission.progress} /></div>
-          <div><p className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--text-secondary))]">Next best action</p><p className="mt-2 rounded-xl bg-[hsl(var(--secondary))] p-4 text-sm font-medium text-[hsl(var(--primary))]">Continue the next incomplete milestone to keep this mission on track.</p></div>
-          {previewMission.targetDate && <p className="text-sm text-[hsl(var(--text-secondary))]">Target: {formatDeadline(previewMission.targetDate)}</p>}
-        </div>}
-      </SideSheet>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editTarget} onOpenChange={v => !v && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Mission</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <FormField label="Title" htmlFor="edit-title" required>
+              <input
+                id="edit-title"
+                value={editFields.title}
+                onChange={e => setEditFields(f => ({ ...f, title: e.target.value }))}
+                className="flex h-9 w-full rounded-lg border border-[hsl(var(--border))] bg-transparent px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+              />
+            </FormField>
+            <FormField label="Goal" htmlFor="edit-goal" required>
+              <textarea
+                id="edit-goal"
+                rows={3}
+                value={editFields.goal}
+                onChange={e => setEditFields(f => ({ ...f, goal: e.target.value }))}
+                className="flex w-full rounded-lg border border-[hsl(var(--border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] resize-none"
+              />
+            </FormField>
+            <FormField label="Target date" htmlFor="edit-date">
+              <input
+                id="edit-date"
+                type="date"
+                value={editFields.targetDate}
+                onChange={e => setEditFields(f => ({ ...f, targetDate: e.target.value }))}
+                className="flex h-9 w-full rounded-lg border border-[hsl(var(--border))] bg-transparent px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+              />
+            </FormField>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} loading={isSavingEdit} disabled={!editFields.title.trim()}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

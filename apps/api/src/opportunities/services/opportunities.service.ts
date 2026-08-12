@@ -3,16 +3,20 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
 import { OpportunitiesRepository } from "../repositories/opportunities.repository";
 import { AiOpportunitiesService } from "./ai-opportunities.service";
 import { CreateOpportunityDto } from "../dto/create-opportunity.dto";
 import { UpdateOpportunityDto } from "../dto/update-opportunity.dto";
 import { OpportunityQueryDto } from "../dto/opportunity-query.dto";
 import { Opportunity } from "../entities/opportunity.entity";
-import {
-  PaginatedResult,
-} from "../../common/interfaces/pagination.interface";
+import { PaginatedResult } from "../../common/interfaces/pagination.interface";
 import { PrismaService } from "../../prisma/prisma.service";
+import {
+  MISSION_EVENTS,
+  MissionCreatedEvent,
+  MissionUpdatedEvent,
+} from "../../common/events/mission-events";
 
 @Injectable()
 export class OpportunitiesService {
@@ -87,7 +91,47 @@ export class OpportunitiesService {
     return this.opportunitiesRepository.delete(id, userId);
   }
 
+  // ── Event listeners ─────────────────────────────────────────────────────────
+
+  /**
+   * Fires when a user creates a new mission.
+   * Deletes all AI-generated opportunities for that user and regenerates
+   * them in the background so the new mission is reflected immediately.
+   */
+  @OnEvent(MISSION_EVENTS.CREATED, { async: true })
+  async handleMissionCreated(event: MissionCreatedEvent): Promise<void> {
+    this.logger.log(
+      `mission.created for user_id=${event.userId} — refreshing opportunities`,
+    );
+    await this._refreshForUser(event.userId);
+  }
+
+  /**
+   * Fires when a user updates an existing mission.
+   * Regenerates opportunities so they reflect the changed mission details.
+   */
+  @OnEvent(MISSION_EVENTS.UPDATED, { async: true })
+  async handleMissionUpdated(event: MissionUpdatedEvent): Promise<void> {
+    this.logger.log(
+      `mission.updated for user_id=${event.userId} — refreshing opportunities`,
+    );
+    await this._refreshForUser(event.userId);
+  }
+
   // ── Private helpers ─────────────────────────────────────────────────────────
+
+  /** Delete and reseed opportunities for a single user. Catches all errors. */
+  private async _refreshForUser(userId: number): Promise<void> {
+    try {
+      await this.prisma.opportunities.deleteMany({ where: { user_id: userId } });
+      this.logger.log(`Cleared old opportunities for user_id=${userId}`);
+      await this._seedFromAi(userId);
+    } catch (err: any) {
+      this.logger.warn(
+        `_refreshForUser (opportunities) failed for user_id=${userId}: ${err?.message ?? err}`,
+      );
+    }
+  }
 
   /**
    * Builds user context from DB (profile + missions + goals + skills + interests)
