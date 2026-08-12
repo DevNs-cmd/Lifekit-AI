@@ -63,6 +63,85 @@ abstract final class AppShadows {
       spreadRadius: 0,
     ),
   ];
+
+  // ── Elevation tiers (primary-tinted) ────────
+  // Level 0 — flat: no shadow, border only (use [] or omit)
+  static const List<BoxShadow> elevation0 = [];
+
+  // Level 1 — card: soft primary-tinted shadow
+  // Uses the light-mode primary green (0xFF217C45) at 6% opacity
+  static const List<BoxShadow> elevation1Light = [
+    BoxShadow(
+      color:      Color(0x0F217C45), // primary.withOpacity(0.06)
+      blurRadius: 16,
+      offset:     Offset(0, 4),
+    ),
+    BoxShadow(color: Color(0x06000000), blurRadius: 2, offset: Offset(0, 1)),
+  ];
+  // Dark-mode variant uses dark primary (0xFF66BB6A)
+  static const List<BoxShadow> elevation1Dark = [
+    BoxShadow(
+      color:      Color(0x0F66BB6A), // primary.withOpacity(0.06)
+      blurRadius: 16,
+      offset:     Offset(0, 4),
+    ),
+    BoxShadow(color: Color(0x08000000), blurRadius: 2, offset: Offset(0, 1)),
+  ];
+
+  // Level 2 — raised/interactive: stronger primary-tinted shadow
+  static const List<BoxShadow> elevation2Light = [
+    BoxShadow(
+      color:      Color(0x1F217C45), // primary.withOpacity(0.12)
+      blurRadius: 32,
+      offset:     Offset(0, 8),
+    ),
+    BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2)),
+  ];
+  static const List<BoxShadow> elevation2Dark = [
+    BoxShadow(
+      color:      Color(0x1F66BB6A), // primary.withOpacity(0.12)
+      blurRadius: 32,
+      offset:     Offset(0, 8),
+    ),
+    BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2)),
+  ];
+
+  // ── Progress ring glow (around circular indicators) ──
+  static const List<BoxShadow> ringGlowLight = [
+    BoxShadow(
+      color:        Color(0x59217C45), // primary.withOpacity(0.35)
+      blurRadius:   20,
+      spreadRadius: 2,
+    ),
+  ];
+  static const List<BoxShadow> ringGlowDark = [
+    BoxShadow(
+      color:        Color(0x5966BB6A),
+      blurRadius:   20,
+      spreadRadius: 2,
+    ),
+  ];
+}
+
+// ─────────────────────────────────────────────
+//  ELEVATION HELPER — picks light or dark shadow
+//  based on the current Brightness.
+// ─────────────────────────────────────────────
+abstract final class AppElevation {
+  /// Returns the correct Level-1 shadow list for the given brightness.
+  static List<BoxShadow> level1(Brightness b) => b == Brightness.light
+      ? AppShadows.elevation1Light
+      : AppShadows.elevation1Dark;
+
+  /// Returns the correct Level-2 shadow list for the given brightness.
+  static List<BoxShadow> level2(Brightness b) => b == Brightness.light
+      ? AppShadows.elevation2Light
+      : AppShadows.elevation2Dark;
+
+  /// Returns the progress-ring glow for the given brightness.
+  static List<BoxShadow> ringGlow(Brightness b) => b == Brightness.light
+      ? AppShadows.ringGlowLight
+      : AppShadows.ringGlowDark;
 }
 
 // ─────────────────────────────────────────────

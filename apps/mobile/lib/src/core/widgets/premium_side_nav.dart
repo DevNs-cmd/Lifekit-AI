@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -74,20 +74,7 @@ class PremiumSideNav extends StatefulWidget {
   State<PremiumSideNav> createState() => _PremiumSideNavState();
 }
 
-class _PremiumSideNavState extends State<PremiumSideNav>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _highlightCtrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 120),
-    lowerBound: 0.0,
-    upperBound: 1.0,
-  );
-
-  @override
-  void dispose() {
-    _highlightCtrl.dispose();
-    super.dispose();
-  }
+class _PremiumSideNavState extends State<PremiumSideNav> {
 
   @override
   Widget build(BuildContext context) {

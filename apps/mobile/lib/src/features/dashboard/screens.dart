@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+﻿// ignore_for_file: use_build_context_synchronously
 import 'dart:ui';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -15,9 +15,9 @@ import '../../core/design/animations.dart';
 import '../../core/widgets/premium_card.dart';
 import '../../core/widgets/premium_input.dart';
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // DATA MODELS
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class MissionData {
   const MissionData({
@@ -102,14 +102,28 @@ class TaskData {
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // STATE PROVIDERS
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 final missionsProvider   = StateProvider<List<MissionData>>((ref) => const []);
 final tasksProvider      = StateProvider<List<TaskData>>((ref) => const []);
 final profileProvider    = StateProvider<Map<String, dynamic>>((ref) => const {});
 final notifCountProvider = StateProvider<int>((ref) => 0);
+
+// â”€â”€ UX feature providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/// Search query string for Missions screen.
+final missionsSearchProvider = StateProvider<String>((ref) => '');
+
+/// Search query string for Tasks screen.
+final tasksSearchProvider = StateProvider<String>((ref) => '');
+
+/// Whether the completed tasks section is expanded on Tasks screen.
+final completedTasksExpandedProvider = StateProvider<bool>((ref) => false);
+
+/// Tracks which one-time feature-discovery tooltips have been shown.
+/// Keys: 'mission_menu', 'ai_insights_tab'
+final tooltipSeenProvider = StateProvider<Map<String, bool>>((ref) => const {});
 
 final dashboardProvider = FutureProvider<void>((ref) async {
   final repo = ref.watch(repositoryProvider);
@@ -138,9 +152,9 @@ final dashboardProvider = FutureProvider<void>((ref) async {
   }
 });
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SHARED WIDGETS
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _PageHeading extends StatelessWidget {
   const _PageHeading(this.title, {this.subtitle, this.actions = const []});
@@ -155,16 +169,28 @@ class _PageHeading extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(56, 18, 12, 12),
       child: Row(children: [
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                style: Theme.of(context)
-                    .textTheme
-                    .displaySmall
-                    ?.copyWith(color: t.textPrimary)),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color:         t.textPrimary,
+                fontWeight:    FontWeight.w900,
+                letterSpacing: -1.0,
+              ),
+            ),
             if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(subtitle!,
-                  style: TextStyle(color: t.textMuted, fontSize: 13)),
+              const SizedBox(height: 3),
+              Text(
+                subtitle!,
+                style: TextStyle(
+                  color:    t.textMuted,
+                  fontSize: 13,
+                  height:   1.4,
+                ),
+              ),
             ],
           ]),
         ),
@@ -195,7 +221,7 @@ class _ApiErrorBanner extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            msg.length > 120 ? '${msg.substring(0, 120)}…' : msg,
+            msg.length > 120 ? '${msg.substring(0, 120)}â€¦' : msg,
             style: TextStyle(color: t.destructive, fontSize: 12),
           ),
         ),
@@ -239,7 +265,9 @@ class _PremiumTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
+    final t          = context.tokens;
+    final brightness = Theme.of(context).brightness;
+
     return GestureDetector(
       onTap: onToggle,
       child: Container(
@@ -249,68 +277,719 @@ class _PremiumTaskRow extends StatelessWidget {
           color:        t.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border:       Border.all(color: t.border),
-          boxShadow:    AppShadows.xs,
+          boxShadow:    AppElevation.level1(brightness),
         ),
         child: Row(children: [
-          Container(width: 3, height: 36,
-              decoration: BoxDecoration(
-                color:        _priorityColor(t),
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              )),
+          // Priority left strip
+          Container(
+            width: 3, height: 36,
+            decoration: BoxDecoration(
+              color:        _priorityColor(t),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+          ),
           const SizedBox(width: 12),
+          // Checkbox â€” bounces on completion
           GestureDetector(
             onTap: onToggle,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 20, height: 20,
               decoration: BoxDecoration(
-                color:        task.done ? t.primary : Colors.transparent,
+                color: task.done ? t.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
-                border:       Border.all(
-                    color: task.done ? t.primary : t.border, width: 1.5),
+                border: Border.all(
+                  color: task.done ? t.primary : t.border,
+                  width: 1.5,
+                ),
               ),
               child: task.done
                   ? const Icon(LucideIcons.check,
                       size: 12, color: Colors.white)
+                      .animate()
+                      .scale(
+                        begin: const Offset(0.8, 0.8),
+                        end:   const Offset(1.0, 1.0),
+                        duration: 200.ms,
+                        curve:    Curves.elasticOut,
+                      )
                   : null,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 300),
                 style: TextStyle(
-                  fontWeight:  FontWeight.w600,
-                  fontSize:    14,
-                  color:       task.done ? t.textMuted : t.textPrimary,
-                  decoration:  task.done
-                      ? TextDecoration.lineThrough : TextDecoration.none,
+                  fontWeight:      FontWeight.w600,
+                  fontSize:        14,
+                  color:           task.done ? t.textMuted : t.textPrimary,
+                  decoration:      task.done
+                      ? TextDecoration.lineThrough
+                      : TextDecoration.none,
                   decorationColor: t.textMuted,
+                  letterSpacing:   -0.2,
                 ),
-                child: Text(task.title, maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                child: Text(
+                  task.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              Text(task.missionTitle,
-                  style: TextStyle(color: t.textMuted, fontSize: 11)),
+              const SizedBox(height: 1),
+              Text(
+                task.missionTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: t.textMuted, fontSize: 11),
+              ),
             ]),
           ),
           const SizedBox(width: 8),
-          Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(LucideIcons.clock3, size: 12, color: t.textMuted),
-            const SizedBox(width: 3),
-            Text('${task.minutes}m',
-                style: TextStyle(color: t.textMuted, fontSize: 11)),
-          ]),
+          // Duration chip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color:        t.backgroundSubtle,
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(LucideIcons.clock3, size: 10, color: t.textMuted),
+              const SizedBox(width: 3),
+              Text(
+                '${task.minutes}m',
+                style: TextStyle(
+                  color:      t.textMuted,
+                  fontSize:   10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ]),
+          ),
         ]),
+      ),
+    ).staggered(index);
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// UX SHARED WIDGETS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  INLINE ERROR STATE  (replaces full-screen red banner)
+//  Icon in muted circle + title + subtitle.
+//  Pull-to-refresh is the recovery gesture â€” no button.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _InlineErrorState extends StatelessWidget {
+  const _InlineErrorState({this.title = 'Something went wrong', this.subtitle});
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: t.backgroundSubtle,
+              border: Border.all(color: t.border),
+            ),
+            child: Icon(LucideIcons.wifiOff, size: 26, color: t.textMuted),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: t.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle ?? 'Check your connection and pull down to refresh',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.6),
+          ),
+        ]).animate().fadeIn(duration: 300.ms),
       ),
     );
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  GROUPED SECTION HEADER
+//  UPPERCASE label + count + optional thin divider above.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _GroupedSectionHeader extends StatelessWidget {
+  const _GroupedSectionHeader(this.label, {this.count, this.topPadding = 20});
+  final String label;
+  final int? count;
+  final double topPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Padding(
+      padding: EdgeInsets.only(
+        top: topPadding, left: 0, right: 0, bottom: 8),
+      child: Row(children: [
+        Text(
+          count != null
+              ? '${label.toUpperCase()} ($count)'
+              : label.toUpperCase(),
+          style: TextStyle(
+            color:         t.textSecondary,
+            fontSize:      11,
+            fontWeight:    FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(child: Divider(color: t.border, height: 1, thickness: 1)),
+      ]),
+    );
+  }
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  SEARCH BAR  (animated height 0 â†’ 52)
+//  Caller controls visibility with [visible].
+//  [onChanged] fires on every keystroke.
+//  [onDismiss] is called when the X is tapped.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _SearchBar extends StatefulWidget {
+  const _SearchBar({
+    required this.visible,
+    required this.onChanged,
+    required this.onDismiss,
+    this.hint = 'Searchâ€¦',
+  });
+  final bool visible;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onDismiss;
+  final String hint;
+
+  @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void didUpdateWidget(_SearchBar old) {
+    super.didUpdateWidget(old);
+    // Auto-focus when becoming visible
+    if (widget.visible && !old.visible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) FocusScope.of(context).requestFocus(_focusNode);
+      });
+    }
+    // Clear on hide
+    if (!widget.visible && old.visible) {
+      _ctrl.clear();
+      widget.onChanged('');
+    }
+  }
+
+  final _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      child: widget.visible
+          ? Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color:        t.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border:       Border.all(color: t.primary, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: t.primary.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Row(children: [
+                  const SizedBox(width: 12),
+                  Icon(LucideIcons.search, size: 16, color: t.textMuted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller:  _ctrl,
+                      focusNode:   _focusNode,
+                      onChanged:   widget.onChanged,
+                      textInputAction: TextInputAction.search,
+                      style: TextStyle(
+                        fontSize: 14, color: t.textPrimary),
+                      decoration: InputDecoration(
+                        hintText:       widget.hint,
+                        border:         InputBorder.none,
+                        enabledBorder:  InputBorder.none,
+                        focusedBorder:  InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                        isDense:        true,
+                        hintStyle: TextStyle(
+                            color: t.textMuted, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                  if (_ctrl.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _ctrl.clear();
+                        widget.onChanged('');
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Icon(LucideIcons.x,
+                            size: 16, color: t.textMuted),
+                      ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: widget.onDismiss,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: t.primary, fontSize: 12,
+                            fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                ]),
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  SHIMMER SKELETON WIDGETS
+//  Animate a gradient sweep leftâ†’right using
+// Skeleton shimmer box — uses an explicit AnimationController so the repeating
+// animation is safely stopped in dispose() and never fires on a dead element.
+// DO NOT use .animate(onPlay:) here: flutter_animate creates an internal
+// GlobalKey for the onPlay callback which causes "Duplicate GlobalKey" crashes
+// when the widget rebuilds (e.g. list scroll, parent setState).
+class _SkeletonBox extends StatefulWidget {
+  const _SkeletonBox({
+    this.width, this.height = 14,
+    this.radius = AppRadius.sm,
+  });
+  final double? width;
+  final double height;
+  final double radius;
+
+  @override
+  State<_SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<_SkeletonBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  late final Animation<double> _anim = Tween<double>(
+    begin: -1.5,
+    end:    1.5,
+  ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.linear));
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base   = isDark ? const Color(0xFF252525) : const Color(0xFFEEEEEE);
+    final shine  = isDark ? const Color(0xFF333333) : const Color(0xFFF8F8F8);
+
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Container(
+        width:  widget.width,
+        height: widget.height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(widget.radius),
+          gradient: LinearGradient(
+            begin: Alignment(_anim.value - 1, 0),
+            end:   Alignment(_anim.value,     0),
+            colors: [base, shine, base],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Skeleton for a single mission card
+class _SkeletonMissionCard extends StatelessWidget {
+  const _SkeletonMissionCard();
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color:        t.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.x2l),
+        border:       Border.all(color: t.cardBorder),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _SkeletonBox(width: 64, height: 22, radius: AppRadius.full),
+          const SizedBox(width: 8),
+          _SkeletonBox(width: 56, height: 22, radius: AppRadius.full),
+        ]),
+        const SizedBox(height: 14),
+        _SkeletonBox(height: 16, radius: AppRadius.sm),
+        const SizedBox(height: 6),
+        _SkeletonBox(width: 200, height: 13),
+        const SizedBox(height: 16),
+        _SkeletonBox(height: 6, radius: AppRadius.full),
+        const SizedBox(height: 12),
+        _SkeletonBox(width: 100, height: 13),
+      ]),
+    );
+  }
+}
+
+/// Skeleton for a single task row
+class _SkeletonTaskRow extends StatelessWidget {
+  const _SkeletonTaskRow();
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color:        t.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border:       Border.all(color: t.border),
+      ),
+      child: Row(children: [
+        _SkeletonBox(width: 3, height: 36, radius: AppRadius.full),
+        const SizedBox(width: 12),
+        _SkeletonBox(width: 20, height: 20, radius: 6),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            _SkeletonBox(height: 14),
+            const SizedBox(height: 4),
+            _SkeletonBox(width: 100, height: 11),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        _SkeletonBox(width: 36, height: 24, radius: AppRadius.full),
+      ]),
+    );
+  }
+}
+
+/// Skeleton for the Home hero card
+class _SkeletonHeroCard extends StatelessWidget {
+  const _SkeletonHeroCard();
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color:        t.primarySurface,
+        borderRadius: BorderRadius.circular(AppRadius.x3l),
+        border:       Border.all(color: t.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _SkeletonBox(width: 80, height: 14),
+            const SizedBox(height: 6),
+            _SkeletonBox(width: 160, height: 30, radius: AppRadius.sm),
+          ]),
+          const Spacer(),
+          _SkeletonBox(width: 48, height: 48, radius: 24),
+        ]),
+        const SizedBox(height: 12),
+        _SkeletonBox(height: 14),
+        const SizedBox(height: 4),
+        _SkeletonBox(width: 220, height: 14),
+        const SizedBox(height: 18),
+        Row(children: [
+          _SkeletonBox(width: 110, height: 36, radius: AppRadius.full),
+          const SizedBox(width: 10),
+          _SkeletonBox(width: 90, height: 36, radius: AppRadius.full),
+        ]),
+      ]),
+    );
+  }
+}
+
+/// Skeleton for a metric card
+class _SkeletonMetricCard extends StatelessWidget {
+  const _SkeletonMetricCard();
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color:        t.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border:       Border.all(color: t.cardBorder),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _SkeletonBox(width: 48, height: 48, radius: 18),
+        const SizedBox(height: 14),
+        _SkeletonBox(width: 56, height: 28, radius: AppRadius.sm),
+        const SizedBox(height: 4),
+        _SkeletonBox(width: 70, height: 10),
+        const SizedBox(height: 2),
+        _SkeletonBox(width: 90, height: 10),
+      ]),
+    );
+  }
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  QUICK ACTION BAR
+//  Floating pill with 3 shortcut buttons,
+//  pinned above the system nav bar.
+//  Rendered inside a Stack so it floats over the list.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _QuickActionBar extends StatelessWidget {
+  const _QuickActionBar({
+    required this.onAddTask,
+    required this.onNewMission,
+    required this.onAskAI,
+  });
+  final VoidCallback onAddTask;
+  final VoidCallback onNewMission;
+  final VoidCallback onAskAI;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Positioned(
+      left: 24, right: 24,
+      bottom: 16 + MediaQuery.of(context).padding.bottom,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color:        t.surface.withValues(alpha: 0.90),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              border:       Border.all(color: t.border),
+              boxShadow:    AppElevation.level2(
+                  Theme.of(context).brightness),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _QuickBtn(
+                  icon:    LucideIcons.plus,
+                  label:   'Task',
+                  color:   t.primary,
+                  onTap:   onAddTask,
+                ),
+                Container(width: 1, height: 24, color: t.border),
+                _QuickBtn(
+                  icon:    LucideIcons.target,
+                  label:   'Mission',
+                  color:   t.info,
+                  onTap:   onNewMission,
+                ),
+                Container(width: 1, height: 24, color: t.border),
+                _QuickBtn(
+                  icon:    LucideIcons.sparkles,
+                  label:   'Ask AI',
+                  color:   t.warning,
+                  onTap:   onAskAI,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickBtn extends StatefulWidget {
+  const _QuickBtn({
+    required this.icon, required this.label,
+    required this.color, required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  State<_QuickBtn> createState() => _QuickBtnState();
+}
+
+class _QuickBtnState extends State<_QuickBtn> {
+  bool _pressed = false;
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return GestureDetector(
+      onTapDown:   (_) => setState(() => _pressed = true),
+      onTapUp:     (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: ()  => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale:    _pressed ? 0.90 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(widget.icon, size: 18, color: widget.color),
+            const SizedBox(height: 2),
+            Text(
+              widget.label,
+              style: TextStyle(
+                color:      t.textSecondary,
+                fontSize:   9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  "HOW LIFEKIT WORKS" 3-STEP GUIDE
+//  Shown on Home when there are no missions yet.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _HowItWorksGuide extends StatelessWidget {
+  const _HowItWorksGuide();
+
+  static const _steps = [
+    (LucideIcons.target,       'Create a Mission',      'Define your goal and let AI build the plan.'),
+    (LucideIcons.wandSparkles, 'AI Builds Your Plan',   'Get milestones, tasks, and timelines instantly.'),
+    (LucideIcons.squareCheck,  'Execute Daily',         'Track progress and stay focused every day.'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Text(
+          'HOW LIFEKIT WORKS',
+          style: TextStyle(
+            color:         t.textMuted,
+            fontSize:      10,
+            fontWeight:    FontWeight.w800,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ),
+      Row(children: _steps.indexed.map((item) {
+        final (icon, title, desc) = item.$2;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: item.$1 < 2 ? 8 : 0),
+            child: GestureDetector(
+              onTap: () {
+                if (item.$1 == 0) context.go('/missions');
+                if (item.$1 == 2) context.go('/tasks');
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color:        t.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
+                  border:       Border.all(color: t.cardBorder),
+                ),
+                child: Column(children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color:        t.primarySurface,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, size: 16, color: t.primary),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color:      t.textPrimary,
+                      fontSize:   11,
+                      fontWeight: FontWeight.w700,
+                      height:     1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    desc,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color:    t.textMuted,
+                      fontSize: 10,
+                      height:   1.4,
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          ).animate(delay: (item.$1 * 80).ms)
+            .fadeIn(duration: 280.ms)
+            .slideY(begin: 0.06, end: 0, duration: 280.ms),
+        );
+      }).toList()),
+    ]);
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // HOME SCREEN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -338,123 +1017,168 @@ class HomeScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-          child: CustomScrollView(slivers: [
-            // ── App bar ───────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(60, 8, 12, 4),
-                child: Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      gradient:     AppGradients.lifekit,
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: Stack(children: [
+            // â”€â”€ Main scrollable content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            CustomScrollView(slivers: [
+              // â”€â”€ App bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(60, 8, 12, 4),
+                  child: Row(children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        gradient:     AppGradients.lifekit,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: const Icon(LucideIcons.leaf,
+                          size: 16, color: Colors.white),
                     ),
-                    child: const Icon(LucideIcons.leaf,
-                        size: 16, color: Colors.white),
-                  ),
-                  const SizedBox(width: 9),
-                  Text('LifeKit',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w900,
-                          color: t.textPrimary, letterSpacing: -0.5)),
-                  const Spacer(),
-                  if (boot.isLoading)
-                    SizedBox(
-                      width: 16, height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: t.primary),
+                    const SizedBox(width: 9),
+                    Text('LifeKit',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w900,
+                            color: t.textPrimary, letterSpacing: -0.5)),
+                    const Spacer(),
+                    if (boot.isLoading)
+                      SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: t.primary),
+                      ),
+                    IconButton(
+                      onPressed: () => context.push('/notifications'),
+                      icon: notifCount > 0
+                          ? Badge(
+                              label: Text('$notifCount'),
+                              child: Icon(LucideIcons.bell,
+                                  size: 20, color: t.textSecondary))
+                          : Icon(LucideIcons.bell,
+                              size: 20, color: t.textSecondary),
                     ),
-                  IconButton(
-                    onPressed: () => context.push('/notifications'),
-                    icon: notifCount > 0
-                        ? Badge(
-                            label: Text('$notifCount'),
-                            child: Icon(LucideIcons.bell,
-                                size: 20, color: t.textSecondary))
-                        : Icon(LucideIcons.bell,
-                            size: 20, color: t.textSecondary),
-                  ),
-                ]).pageEntrance(),
-              ),
-            ),
-
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              sliver: SliverList.list(children: [
-                if (boot.hasError)
-                  _ApiErrorBanner(
-                    error:   boot.error!,
-                    onRetry: () => ref.invalidate(dashboardProvider),
-                  ).pageEntrance(),
-
-                // ── Hero card ───────────────────
-                _HomeHeroCard(
-                  greeting:  _greeting(),
-                  firstName: firstName,
-                  tasks:     tasks,
-                ).heroEntrance(),
-                const SizedBox(height: 16),
-
-                // ── Metric grid ─────────────────
-                GridView.count(
-                  shrinkWrap: true,
-                  physics:    const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  mainAxisSpacing:  10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 1.05,
-                  children: [
-                    _MetricCard(
-                      value: tasks.isEmpty ? 0 :
-                          (tasks.where((t) => t.done).length * 100 /
-                           tasks.length),
-                      suffix:  '%',
-                      label:   'Productivity',
-                      detail:  'Task completion',
-                      icon:    LucideIcons.chartNoAxesCombined,
-                      index:   0,
-                    ),
-                    _MetricCard(
-                      value: tasks.where((t) => !t.done).length.toDouble(),
-                      label:  'Remaining',
-                      detail: 'tasks today',
-                      icon:   LucideIcons.listChecks,
-                      index:  1,
-                    ),
-                    _MetricCard(
-                      value: missions.where((m) => m.status == 'Active')
-                          .length.toDouble(),
-                      label:  'Missions',
-                      detail: 'active now',
-                      icon:   LucideIcons.target,
-                      index:  2,
-                    ),
-                    _MetricCard(
-                      value: tasks.length.toDouble(),
-                      label:  'Total tasks',
-                      detail: 'across missions',
-                      icon:   LucideIcons.squareCheck,
-                      index:  3,
-                    ),
-                  ],
+                  ]).pageEntrance(),
                 ),
-                const SizedBox(height: 16),
+              ),
 
-                // ── Today's plan ────────────────
-                if (tasks.isNotEmpty) ...[
-                  _TodaysPlan(tasks: tasks).staggered(4),
-                  const SizedBox(height: 16),
-                ],
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                sliver: SliverList.list(children: [
+                  if (boot.hasError)
+                    _InlineErrorState(title: "Couldn't load dashboard")
+                        .pageEntrance(),
 
-                // ── AI Insight card ─────────────
-                _AiInsightCard(tasks: tasks, missions: missions).staggered(5),
-                const SizedBox(height: 16),
+                  // â”€â”€ Skeleton while loading â”€â”€â”€â”€â”€â”€â”€
+                  if (boot.isLoading && missions.isEmpty) ...[
+                    const _SkeletonHeroCard(),
+                    const SizedBox(height: 16),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics:    const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      mainAxisSpacing:  10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.9,
+                      children: const [
+                        _SkeletonMetricCard(), _SkeletonMetricCard(),
+                        _SkeletonMetricCard(), _SkeletonMetricCard(),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const _SkeletonTaskRow(),
+                    const _SkeletonTaskRow(),
+                  ] else ...[
+                    // â”€â”€ Hero card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    _HomeHeroCard(
+                      greeting:  _greeting(),
+                      firstName: firstName,
+                      tasks:     tasks,
+                    ).heroEntrance(),
+                    const SizedBox(height: 16),
 
-                // ── Primary mission ─────────────
-                if (missions.isNotEmpty)
-                  _PrimaryMissionCard(mission: missions.first).staggered(6),
-              ]),
+                    // â”€â”€ How it works (no missions) â”€
+                    if (missions.isEmpty && !boot.isLoading) ...[
+                      const _HowItWorksGuide().staggered(1),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // â”€â”€ Metric grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics:    const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      mainAxisSpacing:  10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 0.9,
+                      children: [
+                        _MetricCard(
+                          value: tasks.isEmpty ? 0 :
+                              (tasks.where((t) => t.done).length * 100 /
+                               tasks.length),
+                          suffix:  '%',
+                          label:   'Productivity',
+                          detail:  'Task completion',
+                          icon:    LucideIcons.chartNoAxesCombined,
+                          index:   0,
+                        ),
+                        _MetricCard(
+                          value: tasks.where((t) => !t.done).length.toDouble(),
+                          label:  'Remaining',
+                          detail: 'tasks today',
+                          icon:   LucideIcons.listChecks,
+                          index:  1,
+                        ),
+                        _MetricCard(
+                          value: missions.where((m) => m.status == 'Active')
+                              .length.toDouble(),
+                          label:  'Missions',
+                          detail: 'active now',
+                          icon:   LucideIcons.target,
+                          index:  2,
+                        ),
+                        _MetricCard(
+                          value: tasks.length.toDouble(),
+                          label:  'Total tasks',
+                          detail: 'across missions',
+                          icon:   LucideIcons.squareCheck,
+                          index:  3,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // â”€â”€ Today's plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    if (tasks.isNotEmpty) ...[
+                      _TodaysPlan(tasks: tasks).staggered(4),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // â”€â”€ AI Insight card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    _AiInsightCard(tasks: tasks, missions: missions).staggered(5),
+                    const SizedBox(height: 16),
+
+                    // â”€â”€ Primary mission â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    if (missions.isNotEmpty)
+                      _PrimaryMissionCard(mission: missions.first).staggered(6),
+                  ],
+                ]),
+              ),
+            ]),
+
+            // â”€â”€ Floating quick-action bar â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            _QuickActionBar(
+              onAddTask: () {
+                final ms = ref.read(missionsProvider);
+                if (ms.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Create a mission first'),
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                  return;
+                }
+                context.go('/tasks');
+              },
+              onNewMission: () => context.go('/missions'),
+              onAskAI:      () => context.go('/ai-coach'),
             ),
           ]),
         ),
@@ -463,9 +1187,9 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  HOME HERO CARD
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _HomeHeroCard extends StatelessWidget {
   const _HomeHeroCard({
     required this.greeting,
@@ -477,20 +1201,64 @@ class _HomeHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t      = context.tokens;
-    final nextTask = tasks.firstWhere((t) => !t.done, orElse: () =>
-        tasks.isNotEmpty ? tasks.first : TaskData(
-          id: 0, missionId: 0, title: 'Create your first mission',
-          missionTitle: '', priority: 'medium', minutes: 5, status: 'To Do'));
+    final t = context.tokens;
+    final nextTask = tasks.firstWhere(
+      (tk) => !tk.done,
+      orElse: () => tasks.isNotEmpty
+          ? tasks.first
+          : TaskData(
+              id: 0, missionId: 0,
+              title: 'Create your first mission',
+              missionTitle: '', priority: 'medium',
+              minutes: 5, status: 'To Do'),
+    );
+
+    final doneTasks  = tasks.where((tk) => tk.done).length;
+    final totalTasks = tasks.length;
+    final completion = totalTasks > 0 ? doneTasks / totalTasks : 0.0;
 
     return GradientCard(
-      radius: AppRadius.x3l,
+      radius:  AppRadius.x3l,
+      // Extra padding â€” 24 all around as spec'd
+      padding: const EdgeInsets.all(24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Date chip + greeting row
+        // â”€â”€ Top row: greeting + date chip + completion ring â”€â”€
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(
+                '$greeting,',
+                style: const TextStyle(
+                  color: Colors.white70, fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Display-level name â€” 30px / w900 / tight tracking
+              Text(
+                '$firstName.',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color:         Colors.white,
+                  fontSize:      30,
+                  fontWeight:    FontWeight.w900,
+                  letterSpacing: -1.0,
+                  height:        1.1,
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          // â”€â”€ Completion ring (48 Ã— 48) â”€â”€
+          _HeroCompletionRing(value: completion),
+        ]),
+
+        const SizedBox(height: 10),
+        // Date chip
         Row(children: [
-          Text('$greeting,',
-              style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          const Spacer(),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.full),
             child: BackdropFilter(
@@ -507,24 +1275,20 @@ class _HomeHeroCard extends StatelessWidget {
                 child: Text(
                   _todayLabel(),
                   style: const TextStyle(
-                    color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600,
+                    color: Colors.white, fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ),
           ),
         ]),
-        const SizedBox(height: 6),
-        Text('$firstName.',
-            style: const TextStyle(
-              color: Colors.white, fontSize: 28,
-              fontWeight: FontWeight.w900, letterSpacing: -1.0,
-            )),
-        const SizedBox(height: 8),
+
+        const SizedBox(height: 12),
         Text(
           tasks.isEmpty
               ? 'Set up your first mission to get started.'
-              : '${tasks.where((t) => !t.done).length} tasks remaining. AI has prioritised your best next move.',
+              : '${tasks.where((tk) => !tk.done).length} tasks remaining. AI has prioritised your best next move.',
           style: const TextStyle(
               color: Colors.white70, height: 1.5, fontSize: 14),
         ),
@@ -533,13 +1297,13 @@ class _HomeHeroCard extends StatelessWidget {
         // Action buttons
         Row(children: [
           _HeroOutlineButton(
-            icon: LucideIcons.wandSparkles,
+            icon:  LucideIcons.wandSparkles,
             label: 'Plan with AI',
             onTap: () => context.go('/ai-coach'),
           ),
           const SizedBox(width: 10),
           _HeroOutlineButton(
-            icon: LucideIcons.plus,
+            icon:  LucideIcons.plus,
             label: 'Add task',
             onTap: () => context.go('/tasks'),
           ),
@@ -547,115 +1311,167 @@ class _HomeHeroCard extends StatelessWidget {
 
         if (tasks.isNotEmpty) ...[
           const SizedBox(height: 20),
-          // Next best action card
+          // â”€â”€ Next best action card â”€â”€
+          // 2px accent left border + primarySurface tinted background
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.x2l),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color:        Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.x2l),
-                  border:       Border.all(
-                      color: Colors.white.withValues(alpha: 0.2)),
-                ),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Icon(LucideIcons.sparkles,
-                        size: 14, color: Colors.amber.shade300),
-                    const SizedBox(width: 6),
-                    Text('NEXT BEST ACTION',
-                        style: TextStyle(
-                          color: Colors.amber.shade300, fontSize: 10,
-                          fontWeight: FontWeight.w700, letterSpacing: 0.8,
-                        )),
-                  ]),
-                  const SizedBox(height: 10),
-                  Text(nextTask.title,
-                      style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w700,
-                        fontSize: 16, height: 1.3,
-                      )),
-                  const SizedBox(height: 4),
-                  Text(nextTask.missionTitle,
-                      style: const TextStyle(
-                          color: Colors.white60, fontSize: 12)),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Icon(LucideIcons.clock3,
-                        size: 12, color: Colors.white60),
-                    const SizedBox(width: 4),
-                    Text('${nextTask.minutes} min',
-                        style: const TextStyle(
-                            color: Colors.white60, fontSize: 12)),
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: const Text('Highest impact',
-                          style: TextStyle(
-                            color: Colors.white, fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          )),
-                    ),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => context.go('/tasks'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color:        Colors.white,
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                          boxShadow:    AppShadows.greenSm,
+              child: IntrinsicHeight(
+                child: Row(children: [
+                  // 2px glowing left border in primary/accent green
+                  Container(
+                    width: 2,
+                    decoration: BoxDecoration(
+                      color: t.primary,
+                      borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(AppRadius.x2l)),
+                      boxShadow: [
+                        BoxShadow(
+                          color:      t.primary.withValues(alpha: 0.6),
+                          blurRadius: 6,
                         ),
-                        child: Text('Start →',
-                            style: TextStyle(
-                              color: t.primary, fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            )),
-                      ),
+                      ],
                     ),
-                  ]),
+                  ),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color:        Colors.white.withValues(alpha: 0.10),
+                        borderRadius: const BorderRadius.horizontal(
+                            right: Radius.circular(AppRadius.x2l)),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18)),
+                      ),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Row(children: [
+                          Icon(LucideIcons.sparkles,
+                              size: 14,
+                              color: Colors.amber.shade300),
+                          const SizedBox(width: 6),
+                          Text(
+                            'NEXT BEST ACTION',
+                            style: TextStyle(
+                              color:         Colors.amber.shade300,
+                              fontSize:      10,
+                              fontWeight:    FontWeight.w700,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 10),
+                        Text(
+                          nextTask.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color:      Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize:   16,
+                            height:     1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          nextTask.missionTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white60, fontSize: 12),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(children: [
+                          Icon(LucideIcons.clock3,
+                              size: 12, color: Colors.white60),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${nextTask.minutes} min',
+                            style: const TextStyle(
+                                color: Colors.white60, fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.full),
+                            ),
+                            child: const Text(
+                              'Highest impact',
+                              style: TextStyle(
+                                color:      Colors.white,
+                                fontSize:   10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => context.go('/tasks'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color:        Colors.white,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full),
+                                boxShadow: AppShadows.greenSm,
+                              ),
+                              child: Text(
+                                'Start â†’',
+                                style: TextStyle(
+                                  color:      t.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize:   12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ]),
+                      ]),
+                    ),
+                  ),
                 ]),
               ),
             ),
           ),
         ],
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Divider(color: Colors.white.withValues(alpha: 0.15)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
-        // Goal input
+        // Goal input â€” taller 52px, inner glow on focus delegated to
+        // the BackdropFilter + border approach (no FocusNode needed here)
         ClipRRect(
           borderRadius: BorderRadius.circular(AppRadius.full),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
             child: Container(
-              height: 46,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              height: 52,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               decoration: BoxDecoration(
-                color:        Colors.white.withValues(alpha: 0.1),
+                color:        Colors.white.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(AppRadius.full),
                 border:       Border.all(
-                    color: Colors.white.withValues(alpha: 0.2)),
+                    color: Colors.white.withValues(alpha: 0.22)),
               ),
               child: Row(children: [
                 Icon(LucideIcons.sparkles,
                     size: 16, color: t.primary),
                 const SizedBox(width: 10),
-                Text('What do you want to achieve today?',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 13,
-                    )),
+                Text(
+                  'What do you want to achieve today?',
+                  style: TextStyle(
+                    color:    Colors.white.withValues(alpha: 0.50),
+                    fontSize: 13,
+                  ),
+                ),
               ]),
             ),
           ),
@@ -666,9 +1482,64 @@ class _HomeHeroCard extends StatelessWidget {
 
   String _todayLabel() {
     final now = DateTime.now();
-    const months = ['Jan','Feb','Mar','Apr','May','Jun',
-                    'Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = [
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec',
+    ];
     return '${months[now.month - 1]} ${now.day}';
+  }
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  HERO COMPLETION RING  (48Ã—48)
+//  Shows today's task completion % as a circular
+//  progress indicator on the hero card.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _HeroCompletionRing extends StatelessWidget {
+  const _HeroCompletionRing({required this.value});
+  final double value; // 0.0 â€“ 1.0
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (value * 100).round();
+    return SizedBox(
+      width: 48, height: 48,
+      child: Stack(alignment: Alignment.center, children: [
+        // Track
+        SizedBox(
+          width: 48, height: 48,
+          child: CircularProgressIndicator(
+            value:           1.0,
+            strokeWidth:     3.5,
+            color:           Colors.white.withValues(alpha: 0.18),
+          ),
+        ),
+        // Fill
+        TweenAnimationBuilder<double>(
+          tween:    Tween(begin: 0, end: value),
+          duration: const Duration(milliseconds: 900),
+          curve:    Curves.easeOutCubic,
+          builder: (_, v, __) => SizedBox(
+            width: 48, height: 48,
+            child: CircularProgressIndicator(
+              value:       v,
+              strokeWidth: 3.5,
+              color:       Colors.white,
+              strokeCap:   StrokeCap.round,
+            ),
+          ),
+        ),
+        // Label
+        Text(
+          '$pct%',
+          style: const TextStyle(
+            color:      Colors.white,
+            fontSize:   11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ]),
+    );
   }
 }
 
@@ -704,9 +1575,15 @@ class _HeroOutlineButton extends StatelessWidget {
       );
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  METRIC CARD
-// ─────────────────────────────────────────────
+//  â€¢ Squircle icon container (48Ã—48)
+//  â€¢ Large value display (28px / w900)
+//  â€¢ UPPERCASE label with tight tracking
+//  â€¢ 2px top accent border (opacity varies by index)
+//  â€¢ Subtle topâ†’transparent gradient inside card
+//  â€¢ Staggered CountUp with 80ms inter-card delay
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _MetricCard extends StatelessWidget {
   const _MetricCard({
     required this.value, required this.label, required this.detail,
@@ -718,54 +1595,94 @@ class _MetricCard extends StatelessWidget {
   final IconData icon;
   final int index;
 
+  // Accent opacity decreases for lower-priority cards
+  static const _accentOpacities = [1.0, 0.7, 0.5, 0.35];
+
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
+    final t           = context.tokens;
+    final accentAlpha = _accentOpacities[index.clamp(0, 3)];
+    final accentColor = t.primary.withValues(alpha: accentAlpha);
+    // Stagger delay: 0ms, 80ms, 160ms, 240ms
+    final delay       = Duration(milliseconds: index * 80);
+
     return PremiumCard(
-      radius:  AppRadius.lg,
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            color:        t.primarySurface,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Icon(icon, color: t.primary, size: 20),
-        ),
-        const SizedBox(height: 12),
-        AnimatedMetric(
-          value:          value,
-          suffix:         suffix,
-          fractionDigits: 0,
-          style: TextStyle(
-            fontSize:    22,
-            fontWeight:  FontWeight.w800,
-            color:       t.textPrimary,
-            letterSpacing: -0.8,
+      radius:          AppRadius.lg,
+      padding:         const EdgeInsets.all(16),
+      topAccentColor:  accentColor,
+      child: Stack(children: [
+        // Subtle inner gradient: primarySurface top â†’ transparent bottom
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end:   Alignment.bottomCenter,
+                colors: [
+                  t.primarySurface.withValues(alpha: 0.55),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.6],
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 2),
-        Text(label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+        // Content
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Squircle icon container (48Ã—48)
+          SquircleIcon(
+            icon:       icon,
+            color:      t.primary,
+            background: t.primarySurface,
+            size:       48,
+            iconSize:   22,
+          ),
+          const SizedBox(height: 14),
+          // Large animated metric value (28px / w900)
+          AnimatedMetric(
+            value:          value,
+            suffix:         suffix,
+            fractionDigits: 0,
             style: TextStyle(
-              fontWeight:  FontWeight.w700,
-              fontSize:    11,
-              color:       t.textPrimary,
-            )),
-        Text(detail,
+              fontSize:      28,
+              fontWeight:    FontWeight.w900,
+              color:         t.textPrimary,
+              letterSpacing: -1.0,
+            ),
+          ),
+          const SizedBox(height: 3),
+          // UPPERCASE label
+          Text(
+            label.toUpperCase(),
+            maxLines:  1,
+            overflow:  TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight:    FontWeight.w700,
+              fontSize:      10,
+              color:         t.textPrimary,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            detail,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: t.textMuted, fontSize: 10)),
+            style: TextStyle(color: t.textMuted, fontSize: 10),
+          ),
+        ]),
       ]),
-    ).staggered(index);
+    )
+        .animate(delay: delay)
+        .fadeIn(duration: 280.ms)
+        .slideY(begin: 0.06, end: 0, duration: 280.ms);
   }
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  TODAY'S PLAN CARD
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _TodaysPlan extends ConsumerWidget {
   const _TodaysPlan({required this.tasks});
   final List<TaskData> tasks;
@@ -774,48 +1691,99 @@ class _TodaysPlan extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     return PremiumCard(
+      topAccentColor: t.primary.withValues(alpha: 0.5),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Text("Today's execution plan",
-                  style: Theme.of(context).textTheme.headlineSmall),
-              Text('AI-prioritized to protect your momentum',
-                  style: TextStyle(color: t.textMuted, fontSize: 12)),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                "Today's execution plan",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight:    FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'AI-prioritized to protect your momentum',
+                style: TextStyle(
+                  color: t.textMuted, fontSize: 12, height: 1.4),
+              ),
             ]),
           ),
           TextButton(
             onPressed: () => context.go('/tasks'),
-            child: Text('See all',
-                style: TextStyle(color: t.primary, fontSize: 12,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              'See all',
+              style: TextStyle(
+                color: t.primary, fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ]),
         const SizedBox(height: 12),
-        ...tasks.take(4).indexed.map((item) => _PremiumTaskRow(
-              task:     item.$2,
-              index:    item.$1,
-              onToggle: () {
-                final copy = [...tasks];
-                copy[item.$1].done = !copy[item.$1].done;
-                ref.read(tasksProvider.notifier).state = copy;
-                ref.read(repositoryProvider)
-                    .setTaskStatus(
-                      item.$2.id,
-                      copy[item.$1].done ? 'COMPLETED' : 'PENDING',
-                    )
-                    .ignore();
-              },
-            )),
+        ...tasks.take(4).indexed.map((item) {
+          final taskNum = item.$1 + 1;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Circled task number
+              Container(
+                width: 20, height: 20,
+                margin: const EdgeInsets.only(top: 11, right: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: item.$2.done
+                      ? t.primarySurface
+                      : t.backgroundSubtle,
+                  border: Border.all(
+                    color: item.$2.done ? t.primary : t.border,
+                    width: 1.5,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '$taskNum',
+                    style: TextStyle(
+                      color:      item.$2.done ? t.primary : t.textMuted,
+                      fontSize:   9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _PremiumTaskRow(
+                  task:     item.$2,
+                  index:    item.$1,
+                  onToggle: () {
+                    final copy = [...tasks];
+                    copy[item.$1].done = !copy[item.$1].done;
+                    ref.read(tasksProvider.notifier).state = copy;
+                    ref.read(repositoryProvider)
+                        .setTaskStatus(
+                          item.$2.id,
+                          copy[item.$1].done ? 'COMPLETED' : 'PENDING',
+                        )
+                        .ignore();
+                  },
+                ),
+              ),
+            ],
+          );
+        }),
       ]),
     );
   }
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  AI INSIGHT CARD
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _AiInsightCard extends StatelessWidget {
   const _AiInsightCard({required this.tasks, required this.missions});
   final List<TaskData> tasks;
@@ -823,7 +1791,8 @@ class _AiInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
+    final t          = context.tokens;
+    final brightness = Theme.of(context).brightness;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -832,24 +1801,33 @@ class _AiInsightCard extends StatelessWidget {
           colors: [t.primarySurface, t.surface],
         ),
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: t.cardBorder),
-        boxShadow: AppShadows.card,
+        border:    Border.all(color: t.cardBorder),
+        boxShadow: AppElevation.level1(brightness),
       ),
       child: IntrinsicHeight(
-        child: Row(children: [
-          // Left accent bar
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+          // Glowing left accent bar
           Container(
             width: 3,
             decoration: BoxDecoration(
-              color:        t.primary,
+              color: t.primary,
               borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(AppRadius.xl)),
+              boxShadow: [
+                BoxShadow(
+                  color:      t.primary.withValues(alpha: 0.45),
+                  blurRadius: 8,
+                  offset:     Offset.zero,
+                ),
+              ],
             ),
           ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(18),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 // Pulsing AI icon
                 PulseGlow(
@@ -870,21 +1848,27 @@ class _AiInsightCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                     Row(children: [
-                      Text('AI INSIGHT',
-                          style: TextStyle(
-                            color: t.primary, fontSize: 10,
-                            fontWeight: FontWeight.w800, letterSpacing: 1.0,
-                          )),
+                      Text(
+                        'AI INSIGHT',
+                        style: TextStyle(
+                          color:         t.primary,
+                          fontSize:      10,
+                          fontWeight:    FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      // Green pulse dot
                       _PulseDot(color: t.primary),
                     ]),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 8),
                     Text(
                       tasks.isNotEmpty
                           ? 'Your most impactful task is "${tasks.first.title}".'
                           : 'Start by creating your first mission.',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                     const SizedBox(height: 5),
                     Text(
@@ -892,18 +1876,27 @@ class _AiInsightCard extends StatelessWidget {
                           ? 'LifeKit turns goals into structured missions with AI guidance.'
                           : 'You have ${missions.where((m) => m.status == 'Active').length} active mission${missions.length == 1 ? '' : 's'} in progress.',
                       style: TextStyle(
-                          color: t.textMuted, height: 1.5, fontSize: 13),
+                        color:  t.textMuted,
+                        height: 1.6,
+                        fontSize: 13,
+                      ),
                     ),
-                    TextButton(
-                      onPressed: () => context.go('/ai-coach'),
-                      style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                      child: Text('Explore with AI →',
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () => context.go('/ai-coach'),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(
+                          'Explore with AI',
                           style: TextStyle(
-                              color: t.primary, fontSize: 13,
-                              fontWeight: FontWeight.w600)),
+                            color:      t.primary,
+                            fontSize:   13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(LucideIcons.arrowRight,
+                            size: 13, color: t.primary),
+                      ]),
                     ),
                   ]),
                 ),
@@ -964,9 +1957,9 @@ class _PulseDotState extends State<_PulseDot>
       );
 }
 
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  PRIMARY MISSION CARD
-// ─────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _PrimaryMissionCard extends StatelessWidget {
   const _PrimaryMissionCard({required this.mission});
   final MissionData mission;
@@ -975,50 +1968,129 @@ class _PrimaryMissionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return PremiumCard(
+      topAccentColor: t.primary,
       onTap: () => context.push('/missions/${mission.id}'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const SectionLabel('PRIMARY MISSION'),
           const Spacer(),
           StatusBadge(mission.status),
+          const SizedBox(width: 6),
+          _DaysRemainingChip(deadline: mission.deadline, tokens: t),
         ]),
         const SizedBox(height: 12),
-        Text(mission.title, style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          mission.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight:    FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(mission.goal,
-            maxLines: 2, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: t.textMuted, height: 1.5, fontSize: 13)),
+        Text(
+          mission.goal,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: t.textMuted, height: 1.6, fontSize: 13),
+        ),
         const SizedBox(height: 16),
-        Row(children: [
-          Text('${(mission.progress * 100).round()}%',
-              style: TextStyle(
-                fontSize:    24,
-                fontWeight:  FontWeight.w800,
-                color:       t.primary,
-                letterSpacing: -0.8,
-              )),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(
+            '${(mission.progress * 100).round()}%',
+            style: TextStyle(
+              fontSize:      28,
+              fontWeight:    FontWeight.w900,
+              color:         t.primary,
+              letterSpacing: -1.0,
+            ),
+          ),
           const SizedBox(width: 8),
-          Text('mission progress',
-              style: TextStyle(color: t.textMuted, fontSize: 12)),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'mission progress',
+              style: TextStyle(color: t.textMuted, fontSize: 12),
+            ),
+          ),
         ]),
         const SizedBox(height: 8),
-        PremiumProgressBar(value: mission.progress),
+        PremiumProgressBar(value: mission.progress, height: 6),
         const SizedBox(height: 14),
         Row(children: [
           Icon(LucideIcons.arrowRight, size: 16, color: t.primary),
           const SizedBox(width: 6),
-          Text('View mission details',
-              style: TextStyle(color: t.primary, fontWeight: FontWeight.w600,
-                  fontSize: 13)),
+          Text(
+            'View mission details',
+            style: TextStyle(
+              color:      t.primary,
+              fontWeight: FontWeight.w600,
+              fontSize:   13,
+            ),
+          ),
         ]),
       ]),
     );
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  DAYS REMAINING CHIP
+//  Shows days until deadline with color-coding:
+//  >30 days = success, 8-30 = warning, <7 = destructive
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _DaysRemainingChip extends StatelessWidget {
+  const _DaysRemainingChip({required this.deadline, required this.tokens});
+  final String deadline;
+  final AppTokens tokens;
+
+  @override
+  Widget build(BuildContext context) {
+    if (deadline == 'No deadline') return const SizedBox.shrink();
+    final parts = deadline.split('/');
+    if (parts.length != 3) return const SizedBox.shrink();
+    final d = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final y = int.tryParse(parts[2]);
+    if (d == null || m == null || y == null) return const SizedBox.shrink();
+    final target = DateTime(y, m, d);
+    final days   = target.difference(DateTime.now()).inDays;
+
+    final (color, bg) = days > 30
+        ? (tokens.success,     tokens.successSurface)
+        : days >= 7
+            ? (tokens.warning,     tokens.warningSurface)
+            : (tokens.destructive, tokens.destructiveSurface);
+
+    final label = days < 0
+        ? 'Overdue'
+        : days == 0
+            ? 'Due today'
+            : '${days}d left';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color:        bg,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color:      color,
+          fontSize:   10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MISSIONS SCREEN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class MissionsScreen extends ConsumerStatefulWidget {
   const MissionsScreen({super.key});
@@ -1027,10 +2099,16 @@ class MissionsScreen extends ConsumerStatefulWidget {
 }
 
 class _MissionsScreenState extends ConsumerState<MissionsScreen> {
-  String _filter = 'All';
-  bool _loading  = false;
-  bool _scrolled = false;
-  final _scrollCtrl = ScrollController();
+  String  _filter  = 'All';
+  bool    _loading = false;
+  String? _error;
+  bool    _scrolled    = false;
+  bool    _searchOpen  = false;
+  final   _scrollCtrl  = ScrollController();
+
+  // â”€â”€ Undo-delete state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  MissionData? _deletedMission;
+  int?         _deletedIndex;
 
   @override
   void initState() {
@@ -1047,107 +2125,269 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _error = null; });
     try {
       final repo = ref.read(repositoryProvider);
       final raw  = await repo.missions();
       ref.read(missionsProvider.notifier).state =
           raw.map(MissionData.fromJson).toList();
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
     if (mounted) setState(() => _loading = false);
+  }
+
+  // Optimistic delete â€” removes card immediately, shows undo snackbar.
+  // Commits the API call after 4 s unless the user taps Undo.
+  void _deleteMission(MissionData m) {
+    final all = List<MissionData>.from(ref.read(missionsProvider));
+    final idx = all.indexWhere((x) => x.id == m.id);
+    if (idx < 0) return;
+
+    // Remove from UI immediately
+    all.removeAt(idx);
+    ref.read(missionsProvider.notifier).state = all;
+    setState(() { _deletedMission = m; _deletedIndex = idx; });
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '"${m.title.length > 30 ? '${m.title.substring(0, 30)}â€¦' : m.title}" deleted',
+        ),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            if (_deletedMission == null) return;
+            final current = List<MissionData>.from(
+                ref.read(missionsProvider));
+            final insertAt =
+                (_deletedIndex ?? current.length).clamp(0, current.length);
+            current.insert(insertAt, _deletedMission!);
+            ref.read(missionsProvider.notifier).state = current;
+            setState(() { _deletedMission = null; _deletedIndex = null; });
+          },
+        ),
+      ),
+    ).closed.then((reason) {
+      // If closed for any reason other than action (undo), commit delete
+      if (reason != SnackBarClosedReason.action &&
+          _deletedMission != null) {
+        ref.read(repositoryProvider)
+            .deleteMission(_deletedMission!.id)
+            .catchError((_) => _load());
+        setState(() { _deletedMission = null; _deletedIndex = null; });
+      }
+    });
+  }
+
+  // Build grouped list for "All" filter
+  List<Widget> _buildGroupedList(List<MissionData> all, AppTokens t) {
+    final groups = <String, List<MissionData>>{};
+    const order  = ['Active', 'Paused', 'At Risk', 'Draft', 'Completed'];
+    for (final status in order) {
+      final items = all.where((m) => m.status == status).toList();
+      if (items.isNotEmpty) groups[status] = items;
+    }
+    // Catch any unlisted status
+    for (final m in all) {
+      if (!order.contains(m.status)) {
+        groups.putIfAbsent('Other', () => []).add(m);
+      }
+    }
+
+    final widgets = <Widget>[];
+    var globalIdx = 0;
+    for (final entry in groups.entries) {
+      widgets.add(_GroupedSectionHeader(
+        entry.key,
+        count:      entry.value.length,
+        topPadding: globalIdx == 0 ? 4 : 20,
+      ));
+      for (final m in entry.value) {
+        widgets.add(_MissionCard(
+          m,
+          index:    globalIdx,
+          onDelete: () => _deleteMission(m),
+          onEdit:   _load,
+        ));
+        widgets.add(const SizedBox(height: 12));
+        globalIdx++;
+      }
+    }
+    return widgets;
   }
 
   @override
   Widget build(BuildContext context) {
-    final all   = ref.watch(missionsProvider);
-    final shown = _filter == 'All'
+    final all    = ref.watch(missionsProvider);
+    final query  = ref.watch(missionsSearchProvider).toLowerCase().trim();
+    final t      = context.tokens;
+
+    // Apply search filter first, then status filter
+    final searched = query.isEmpty
         ? all
-        : all.where((m) => m.status == _filter).toList();
-    final t = context.tokens;
+        : all.where((m) =>
+            m.title.toLowerCase().contains(query) ||
+            m.goal.toLowerCase().contains(query) ||
+            m.category.toLowerCase().contains(query)).toList();
+
+    final shown = _filter == 'All'
+        ? searched
+        : searched.where((m) => m.status == _filter).toList();
+
+    final useGrouped = _filter == 'All' && query.isEmpty;
 
     return Scaffold(
       backgroundColor: t.background,
-      floatingActionButton: AnimatedSize(
-        duration: const Duration(milliseconds: 300),
-        child: _scrolled
-            ? FloatingActionButton(
-                onPressed: () => _createSheet(context),
-                backgroundColor: t.primary,
-                child: const Icon(Icons.add, color: Colors.white),
-              )
-            : FloatingActionButton.extended(
-                onPressed:   () => _createSheet(context),
-                icon:        const Icon(LucideIcons.target, size: 18),
-                label:       const Text('New Mission'),
-                backgroundColor: t.primary,
-                foregroundColor: Colors.white,
-              ),
-      ),
+      // Remove FAB â€” QuickActionBar handles creation
       body: SafeArea(
-        child: Column(children: [
-          _PageHeading(
-            'Missions',
-            subtitle: '${all.where((m) => m.status == 'Active').length} active',
-            actions: [
-              IconButton(
-                onPressed: _load,
-                icon: Icon(LucideIcons.refreshCw, size: 18,
-                    color: t.textSecondary),
-              ),
-            ],
-          ).pageEntrance(),
-
-          // Filter chips
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                for (final f in ['All','Active','Paused','Draft',
-                                  'Completed','At Risk'])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _PremiumFilterChip(
-                      label:    f,
-                      selected: _filter == f,
-                      onTap:    () => setState(() => _filter = f),
-                    ),
-                  ),
+        child: Stack(children: [
+          Column(children: [
+            _PageHeading(
+              'Missions',
+              subtitle:
+                  '${all.where((m) => m.status == 'Active').length} active',
+              actions: [
+                // Search toggle
+                IconButton(
+                  onPressed: () {
+                    setState(() => _searchOpen = !_searchOpen);
+                    if (!_searchOpen) {
+                      ref.read(missionsSearchProvider.notifier).state = '';
+                    }
+                  },
+                  icon: Icon(
+                    _searchOpen ? LucideIcons.x : LucideIcons.search,
+                    size: 18, color: t.textSecondary),
+                ),
+                IconButton(
+                  onPressed: _load,
+                  icon: Icon(LucideIcons.refreshCw,
+                      size: 18, color: t.textSecondary),
+                ),
               ],
-            ),
-          ).animate(delay: 80.ms).fadeIn(duration: 250.ms),
-          const SizedBox(height: 8),
+            ).pageEntrance(),
 
-          if (_loading)
-            LinearProgressIndicator(
+            // Animated search bar
+            _SearchBar(
+              visible:   _searchOpen,
+              hint:      'Search missionsâ€¦',
+              onChanged: (v) =>
+                  ref.read(missionsSearchProvider.notifier).state = v,
+              onDismiss: () {
+                setState(() => _searchOpen = false);
+                ref.read(missionsSearchProvider.notifier).state = '';
+              },
+            ),
+
+            // Filter chips â€” hidden while searching
+            if (!_searchOpen)
+              SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    for (final f in [
+                      'All', 'Active', 'Paused', 'Draft',
+                      'Completed', 'At Risk'
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _PremiumFilterChip(
+                          label:    f,
+                          selected: _filter == f,
+                          onTap: () => setState(() => _filter = f),
+                        ),
+                      ),
+                  ],
+                ),
+              ).animate(delay: 80.ms).fadeIn(duration: 250.ms),
+
+            const SizedBox(height: 8),
+
+            if (_loading)
+              LinearProgressIndicator(
                 color: t.primary, minHeight: 2,
                 backgroundColor: t.backgroundSubtle),
 
-          Expanded(
-            child: shown.isEmpty
-                ? _MissionsEmptyState(onCreateTap: () => _createSheet(context))
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    color:     t.primary,
-                    child: ListView.separated(
-                      controller:  _scrollCtrl,
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
-                      itemCount:   shown.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (_, i) => _MissionCard(
-                        shown[i],
-                        index:    i,
-                        onDelete: () async {
-                          await ref.read(repositoryProvider)
-                              .deleteMission(shown[i].id)
-                              .catchError((_) {});
-                          _load();
-                        },
-                      ),
-                    ),
-                  ),
+            Expanded(
+              child: _error != null && all.isEmpty
+                  ? _InlineErrorState(
+                      title: "Couldn't load missions",
+                    )
+                  : _loading && all.isEmpty
+                      // Skeleton loading state â€” 3 cards
+                      ? ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                          children: const [
+                            _SkeletonMissionCard(),
+                            _SkeletonMissionCard(),
+                            _SkeletonMissionCard(),
+                          ],
+                        )
+                      : shown.isEmpty && query.isNotEmpty
+                      // Search no-results
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                              Icon(LucideIcons.searchX,
+                                  size: 32, color: t.textMuted),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No results for "$query"',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color:      t.textMuted,
+                                  fontSize:   14,
+                                  fontWeight: FontWeight.w500),
+                              ),
+                            ]),
+                          ),
+                        )
+                      : shown.isEmpty
+                          ? _MissionsEmptyState(
+                              onCreateTap: () => _createSheet(context))
+                          : RefreshIndicator(
+                              onRefresh: _load,
+                              color:     t.primary,
+                              child: ListView(
+                                controller: _scrollCtrl,
+                                padding: const EdgeInsets.fromLTRB(
+                                    16, 4, 16, 120),
+                                children: useGrouped
+                                    ? _buildGroupedList(shown, t)
+                                    : shown.indexed.map((item) {
+                                        final m = item.$2;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 12),
+                                          child: _MissionCard(
+                                            m,
+                                            index:    item.$1,
+                                            onDelete: () =>
+                                                _deleteMission(m),
+                                            onEdit: _load,
+                                          ),
+                                        );
+                                      }).toList(),
+                              ),
+                            ),
+            ),
+          ]),
+
+          // Floating quick-action bar
+          _QuickActionBar(
+            onAddTask:    () => _showAddTaskSheet(context),
+            onNewMission: () => _createSheet(context),
+            onAskAI:      () => context.go('/ai-coach'),
           ),
         ]),
       ),
@@ -1165,11 +2405,98 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
       ),
     );
   }
+
+  // Quick add-task sheet (minimal, picks first mission)
+  void _showAddTaskSheet(BuildContext ctx) {
+    final missions = ref.read(missionsProvider);
+    if (missions.isEmpty) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(
+          content: Text('Create a mission first before adding tasks'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final titleCtrl = TextEditingController();
+    final t = ctx.tokens;
+    int? selectedMissionId = missions.first.id;
+
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: t.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppRadius.x2l))),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx2, setModal) {
+          final kb = MediaQuery.viewInsetsOf(ctx2).bottom;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(24, 16, 24, kb + 24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const SheetHandle(),
+              const SizedBox(height: 16),
+              Text('Quick Add Task',
+                  style: Theme.of(ctx2).textTheme.headlineLarge
+                      ?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 16),
+              // Mission selector
+              DropdownButtonFormField<int>(
+                value: selectedMissionId,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: t.backgroundSubtle,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    borderSide: BorderSide(color: t.border)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    borderSide: BorderSide(color: t.border)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    borderSide: BorderSide(color: t.primary, width: 1.5)),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 14),
+                ),
+                items: missions.map((m) => DropdownMenuItem(
+                      value: m.id,
+                      child: Text(m.title,
+                          overflow: TextOverflow.ellipsis))).toList(),
+                onChanged: (v) => setModal(() => selectedMissionId = v),
+              ),
+              const SizedBox(height: 12),
+              PremiumInputField(
+                controller: titleCtrl,
+                hint:       'Task titleâ€¦',
+                autofocus:  true,
+                textInputAction: TextInputAction.done,
+              ),
+              const SizedBox(height: 16),
+              PremiumButton(
+                label: 'Add Task',
+                onPressed: () async {
+                  final title = titleCtrl.text.trim();
+                  if (title.isEmpty || selectedMissionId == null) return;
+                  Navigator.of(sheetCtx).pop();
+                  await ref.read(repositoryProvider)
+                      .createTask(
+                        missionId: selectedMissionId!,
+                        title:     title)
+                      .catchError((_) => <String, dynamic>{});
+                },
+              ),
+            ]),
+          );
+        },
+      ),
+    );
+  }
 }
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // 4-STEP MISSION CREATION FLOW  (matches web app)
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _MissionCreateFlow extends StatefulWidget {
   const _MissionCreateFlow({
@@ -1184,7 +2511,7 @@ class _MissionCreateFlow extends StatefulWidget {
 }
 
 class _MissionCreateFlowState extends State<_MissionCreateFlow> {
-  // ── step 1 form state ───────────────────────
+  // â”€â”€ step 1 form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   final _goalCtrl        = TextEditingController();
   final _weeklyHrsCtrl   = TextEditingController();
   final _budgetCtrl      = TextEditingController();
@@ -1193,19 +2520,27 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
   String  _budgetCurrency = 'INR';
   DateTime? _targetDate;
 
-  // ── step / plan state ───────────────────────
+  // â”€â”€ progressive disclosure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  bool _advancedOpen = false;
+
+  // â”€â”€ inline validation state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  bool _goalTouched      = false;
+  bool _categoryTouched  = false;
+  bool _pastDateWarning  = false;
+
+  // â”€â”€ step / plan state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   int _step = 1; // 1 = form, 2 = generating, 3 = review, 4 = done
   String? _genError;
   Map<String, dynamic> _plan = {};  // result from AI
 
-  // ── generation animation ────────────────────
+  // â”€â”€ generation animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   int _genAnimStep = 0;
   static const _genMessages = [
-    'Understanding goal…',
-    'Identifying milestones…',
-    'Calculating timeline…',
-    'Finding resources…',
-    'Preparing execution plan…',
+    'Understanding goalâ€¦',
+    'Identifying milestonesâ€¦',
+    'Calculating timelineâ€¦',
+    'Finding resourcesâ€¦',
+    'Preparing execution planâ€¦',
   ];
 
   @override
@@ -1217,7 +2552,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
     super.dispose();
   }
 
-  // ── generate plan via AI agent ──────────────
+  // â”€â”€ generate plan via AI agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _generate() async {
     if (_goalCtrl.text.trim().isEmpty || _category == null) return;
     setState(() {
@@ -1252,16 +2587,16 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
       // Parse whatever the agent returns
       final raw = result['output']?.toString() ?? '';
       final title = result['title']?.toString() ??
-          (goal.length > 50 ? '${goal.substring(0, 50)}…' : goal);
+          (goal.length > 50 ? '${goal.substring(0, 50)}â€¦' : goal);
 
       // Extract milestone lines from the output (lines starting with numbered bullets)
       final milestones = <String>[];
       for (final line in raw.split('\n')) {
         final trimmed = line.trim();
-        if (RegExp(r'^(\d+[\.\):]|[-•*])').hasMatch(trimmed) &&
+        if (RegExp(r'^(\d+[\.\):]|[-â€¢*])').hasMatch(trimmed) &&
             trimmed.length > 5) {
           milestones.add(trimmed.replaceFirst(
-              RegExp(r'^(\d+[\.\):\s]+|[-•*]\s*)'), ''));
+              RegExp(r'^(\d+[\.\):\s]+|[-â€¢*]\s*)'), ''));
         }
       }
       if (milestones.isEmpty && raw.isNotEmpty) {
@@ -1302,7 +2637,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
     }
   }
 
-  // ── activate / save draft ───────────────────
+  // â”€â”€ activate / save draft â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _activate({bool draft = false}) async {
     setState(() => _step = 4);
     try {
@@ -1407,8 +2742,11 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
     );
   }
 
-  // ── STEP 1: Goal form ─────────────────────────
+  // â”€â”€ STEP 1: Goal form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildStep1(AppTokens t) {
+    final goalLen  = _goalCtrl.text.length;
+    final goalOver = goalLen >= 180;
+
     return SizedBox.expand(
       child: SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -1453,114 +2791,270 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
         ]),
         const SizedBox(height: 4),
         Text(
-          'Be specific — include your desired outcome, timeframe and any constraints.',
+          'Be specific â€” include your desired outcome, timeframe and any constraints.',
           style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.5),
         ),
         const SizedBox(height: 20),
 
+        // â”€â”€ Goal field with inline char count â”€â”€
         _SheetLabel('What do you want to achieve? *'),
         const SizedBox(height: 6),
-        PremiumInputField(
-          controller: _goalCtrl,
-          hint: 'e.g. I want to become a machine learning engineer '
-              'within 6 months and land a job…',
-          maxLines: 4, minLines: 3,
-        ),
-        const SizedBox(height: 16),
-
-        _SheetLabel('Category *'),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: _category,
-          decoration: _dropDecoration(t, hint: 'Select a category'),
-          items: _categories.map((c) => DropdownMenuItem(
-            value: c.$1, child: Text(c.$2),
-          )).toList(),
-          onChanged: (v) => setState(() => _category = v),
-        ),
-        const SizedBox(height: 16),
-
-        Row(children: [
-          Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _SheetLabel('Target date'),
-            const SizedBox(height: 6),
-            _DateButton(
-              date: _targetDate,
-              onTap: () async {
-                final p = await showDatePicker(
-                  context: context,
-                  initialDate: _targetDate ??
-                      DateTime.now().add(const Duration(days: 30)),
-                  firstDate: DateTime.now(),
-                  lastDate:  DateTime.now()
-                      .add(const Duration(days: 3650)),
-                );
-                if (p != null) setState(() => _targetDate = p);
-              },
-              tokens: t,
-            ),
-          ])),
-          const SizedBox(width: 12),
-          Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _SheetLabel('Weekly hours'),
-            const SizedBox(height: 6),
-            PremiumInputField(
-              controller:   _weeklyHrsCtrl,
-              hint:         'e.g. 10',
-              keyboardType: TextInputType.number,
-            ),
-          ])),
-        ]),
-        const SizedBox(height: 16),
-
-        _SheetLabel('Budget (optional)'),
-        const SizedBox(height: 6),
-        Row(children: [
-          SizedBox(
-            width: 110,
-            child: DropdownButtonFormField<String>(
-              initialValue: _budgetCurrency,
-              isDense: true,
-              decoration: _dropDecoration(t),
-              items: const [
-                DropdownMenuItem(value: 'INR', child: Text('₹ INR')),
-                DropdownMenuItem(value: 'USD', child: Text('\$ USD')),
-                DropdownMenuItem(value: 'EUR', child: Text('€ EUR')),
-              ],
-              onChanged: (v) =>
-                  setState(() => _budgetCurrency = v ?? 'INR'),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border(
+              left: BorderSide(
+                color: _goalTouched && goalLen == 0
+                    ? t.destructive
+                    : Colors.transparent,
+                width: 3,
+              ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(child: PremiumInputField(
-            controller:   _budgetCtrl,
-            hint:         'Amount',
-            keyboardType: TextInputType.number,
-          )),
-        ]),
-        const SizedBox(height: 16),
+          child: PremiumInputField(
+            controller: _goalCtrl,
+            hint: 'e.g. I want to become a machine learning engineer '
+                'within 6 months and land a jobâ€¦',
+            maxLines: 4, minLines: 3,
+            onChanged: (_) => setState(() => _goalTouched = true),
+          ),
+        ),
+        // Char count + error hint
+        Padding(
+          padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
+          child: Row(children: [
+            if (_goalTouched && goalLen == 0)
+              Text('Goal is required',
+                  style: TextStyle(
+                      color: t.destructive, fontSize: 11,
+                      fontWeight: FontWeight.w500)),
+            const Spacer(),
+            Text(
+              '$goalLen / 200',
+              style: TextStyle(
+                color: goalLen >= 200
+                    ? t.destructive
+                    : goalOver
+                        ? t.warning
+                        : t.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 14),
 
-        _SheetLabel('Constraints (optional)'),
+        // â”€â”€ Category with touched validation â”€â”€
+        _SheetLabel('Category *'),
         const SizedBox(height: 6),
-        PremiumInputField(
-          controller: _constraintsCtrl,
-          hint:     'e.g. Can only work on this on weekends…',
-          maxLines: 2, minLines: 2,
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border(
+              left: BorderSide(
+                color: _categoryTouched && _category == null
+                    ? t.destructive
+                    : Colors.transparent,
+                width: 3,
+              ),
+            ),
+          ),
+          child: DropdownButtonFormField<String>(
+            initialValue: _category,
+            decoration: _dropDecoration(t, hint: 'Select a category'),
+            items: _categories.map((c) => DropdownMenuItem(
+              value: c.$1, child: Text(c.$2),
+            )).toList(),
+            onChanged: (v) => setState(() {
+              _category = v;
+              _categoryTouched = true;
+            }),
+          ),
+        ),
+        if (_categoryTouched && _category == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text('Category is required',
+                style: TextStyle(
+                    color: t.destructive, fontSize: 11,
+                    fontWeight: FontWeight.w500)),
+          ),
+        const SizedBox(height: 20),
+
+        // â”€â”€ Advanced options â€” progressive disclosure â”€â”€
+        GestureDetector(
+          onTap: () => setState(() => _advancedOpen = !_advancedOpen),
+          child: Row(children: [
+            Text(
+              'Advanced options',
+              style: TextStyle(
+                color:      t.primary,
+                fontSize:   13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            AnimatedRotation(
+              turns:    _advancedOpen ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(LucideIcons.chevronDown,
+                  size: 16, color: t.primary),
+            ),
+          ]),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve:    Curves.easeOutCubic,
+          child: _advancedOpen
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                    Row(children: [
+                      Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        _SheetLabel('Target date'),
+                        const SizedBox(height: 6),
+                        _DateButton(
+                          date:   _targetDate,
+                          onTap: () async {
+                            final p = await showDatePicker(
+                              context: context,
+                              initialDate: _targetDate ??
+                                  DateTime.now()
+                                      .add(const Duration(days: 30)),
+                              firstDate: DateTime.now(),
+                              lastDate:  DateTime.now()
+                                  .add(const Duration(days: 3650)),
+                            );
+                            if (p != null) {
+                              final isPast =
+                                  p.isBefore(DateTime.now());
+                              setState(() {
+                                _targetDate     = p;
+                                _pastDateWarning = isPast;
+                              });
+                            }
+                          },
+                          tokens: t,
+                        ),
+                        if (_pastDateWarning)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'That date has already passed',
+                              style: TextStyle(
+                                color:      t.warning,
+                                fontSize:   11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                      ])),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        _SheetLabel('Weekly hours'),
+                        const SizedBox(height: 6),
+                        PremiumInputField(
+                          controller:   _weeklyHrsCtrl,
+                          hint:         'e.g. 10',
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ])),
+                    ]),
+                    const SizedBox(height: 16),
+
+                    _SheetLabel('Budget (optional)'),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      SizedBox(
+                        width: 110,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _budgetCurrency,
+                          isDense: true,
+                          decoration: _dropDecoration(t),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'INR', child: Text('â‚¹ INR')),
+                            DropdownMenuItem(
+                                value: 'USD', child: Text('\$ USD')),
+                            DropdownMenuItem(
+                                value: 'EUR', child: Text('â‚¬ EUR')),
+                          ],
+                          onChanged: (v) => setState(
+                              () => _budgetCurrency = v ?? 'INR'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: PremiumInputField(
+                        controller:      _budgetCtrl,
+                        hint:            'Amount',
+                        keyboardType:    TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                      )),
+                    ]),
+                    const SizedBox(height: 16),
+
+                    _SheetLabel('Constraints (optional)'),
+                    const SizedBox(height: 6),
+                    PremiumInputField(
+                      controller: _constraintsCtrl,
+                      hint:     'e.g. Can only work on this on weekendsâ€¦',
+                      maxLines: 2, minLines: 2,
+                      textInputAction: TextInputAction.done,
+                    ),
+                  ]),
+                )
+              : const SizedBox.shrink(),
         ),
         const SizedBox(height: 28),
 
-        // Generate button — only enabled when required fields filled
+        // Generate button â€” shows inline hint when not ready
         ListenableBuilder(
           listenable: _goalCtrl,
           builder: (_, __) {
-            final ready = _goalCtrl.text.trim().isNotEmpty
-                && _category != null;
-            return PremiumButton(
-              label: 'Generate AI Mission Plan',
-              onPressed: ready ? _generate : null,
-            );
+            final goalFilled = _goalCtrl.text.trim().isNotEmpty;
+            final catFilled  = _category != null;
+            final ready      = goalFilled && catFilled;
+            final hint       = !goalFilled
+                ? 'Enter your goal to continue'
+                : !catFilled
+                    ? 'Select a category to continue'
+                    : null;
+            return Column(children: [
+              PremiumButton(
+                label: 'Generate AI Mission Plan',
+                onPressed: ready
+                    ? _generate
+                    : () {
+                        setState(() {
+                          _goalTouched     = true;
+                          _categoryTouched = true;
+                        });
+                      },
+              ),
+              if (hint != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    hint,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color:      t.textMuted,
+                      fontSize:   12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+            ]);
           },
         ),
         const SizedBox(height: 20),
@@ -1569,7 +3063,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
   );
   }
 
-  // ── STEP 2: Building animation ────────────────
+  // â”€â”€ STEP 2: Building animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildStep2(AppTokens t) {
     return SizedBox.expand(
       child: SingleChildScrollView(
@@ -1586,7 +3080,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
               child: const _SpinningIcon(),
             ),
             const SizedBox(height: 28),
-            Text('Building your mission plan…',
+            Text('Building your mission planâ€¦',
                 style: Theme.of(context).textTheme.headlineLarge,
                 textAlign: TextAlign.center),
             const SizedBox(height: 24),
@@ -1638,7 +3132,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
     );
   }
 
-  // ── STEP 3: Review plan ───────────────────────
+  // â”€â”€ STEP 3: Review plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildStep3(AppTokens t) {
     final milestones =
         (_plan['milestones'] as List<String>?) ?? [];
@@ -1837,7 +3331,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
     );
   }
 
-  // ── STEP 4: Saving spinner ────────────────────
+  // â”€â”€ STEP 4: Saving spinner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildStep4(AppTokens t) {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1854,7 +3348,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
           ),
         ),
         const SizedBox(height: 20),
-        Text('Activating your mission…',
+        Text('Activating your missionâ€¦',
             style: Theme.of(context).textTheme.headlineLarge),
       ]),
     );
@@ -1996,122 +3490,445 @@ class _MissionsEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 72, height: 72,
-          decoration: BoxDecoration(
-            color:        t.primarySurface,
-            borderRadius: BorderRadius.circular(AppRadius.x2l),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Pulsing orb â€” uses EmptyStateOrb from premium_card.dart
+          EmptyStateOrb(icon: LucideIcons.target, size: 72, iconSize: 32),
+          const SizedBox(height: 20),
+          Text(
+            'No missions yet',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize:   17,
+            ),
           ),
-          child: Icon(LucideIcons.target, size: 32, color: t.primary),
-        ),
-        const SizedBox(height: 16),
-        Text('No missions yet',
-            style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 8),
-        Text('Create your first mission to get started',
-            style: TextStyle(color: t.textMuted, fontSize: 13)),
-        const SizedBox(height: 24),
-        PremiumButton(
-          label:     'Create a mission',
-          onPressed: onCreateTap,
-          minWidth:  200,
-        ),
-      ]).animate().fadeIn(duration: 300.ms).scale(
-            begin: const Offset(0.97, 0.97), duration: 300.ms),
+          const SizedBox(height: 8),
+          Text(
+            'Create your first mission to get started',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color:    t.textMuted,
+              fontSize: 13,
+              height:   1.6,
+            ),
+          ),
+          const SizedBox(height: 28),
+          PremiumButton(
+            label:     'Create a mission',
+            onPressed: onCreateTap,
+            minWidth:  200,
+          ),
+        ]).animate().fadeIn(duration: 300.ms).scale(
+              begin: const Offset(0.97, 0.97), duration: 300.ms),
+      ),
     );
   }
 }
 
-class _MissionCard extends StatelessWidget {
+class _MissionCard extends StatefulWidget {
   const _MissionCard(this.mission,
-      {required this.index, required this.onDelete});
+      {required this.index, required this.onDelete, required this.onEdit});
   final MissionData mission;
   final int index;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
+
+  @override
+  State<_MissionCard> createState() => _MissionCardState();
+}
+
+class _MissionCardState extends State<_MissionCard> {
+  void _editSheet(BuildContext context, AppTokens t) {
+    final titleCtrl = TextEditingController(text: widget.mission.title);
+    final goalCtrl  = TextEditingController(text: widget.mission.goal);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: t.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppRadius.x2l))),
+      builder: (sheetCtx) {
+        final kb = MediaQuery.viewInsetsOf(sheetCtx).bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, kb + 24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SheetHandle(),
+            const SizedBox(height: 16),
+            Text(
+              'Edit Mission',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _SheetLabel('Title'),
+            const SizedBox(height: 6),
+            PremiumInputField(controller: titleCtrl, hint: 'Mission title'),
+            const SizedBox(height: 14),
+            _SheetLabel('Goal'),
+            const SizedBox(height: 6),
+            PremiumInputField(
+              controller: goalCtrl,
+              hint: 'What do you want to achieve?',
+              maxLines: 3, minLines: 2,
+            ),
+            const SizedBox(height: 24),
+            Builder(builder: (ctx) {
+              return PremiumButton(
+                label: 'Save changes',
+                onPressed: () async {
+                  final title = titleCtrl.text.trim();
+                  final goal  = goalCtrl.text.trim();
+                  if (title.isEmpty) return;
+                  Navigator.of(sheetCtx).pop();
+                  final container = ProviderScope.containerOf(ctx);
+                  try {
+                    await container.read(repositoryProvider).updateMission(
+                      widget.mission.id,
+                      {'title': title, 'description': goal},
+                    );
+                  } catch (_) {}
+                  widget.onEdit();
+                },
+              );
+            }),
+          ]),
+        );
+      },
+    );
+  }
+
+  // Returns a category-matched accent color
+  Color _categoryColor(AppTokens t, String category) {
+    return switch (category.toLowerCase()) {
+      'career' || 'business' || 'productivity' => t.primary,
+      'health'                                  => t.success,
+      'finance'                                 => t.warning,
+      _                                         => t.primary,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
-    return PremiumCard(
-      radius: AppRadius.x2l,
-      onTap:  () => context.push('/missions/${mission.id}'),
-      child:  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          CategoryChip(mission.category),
-          const SizedBox(width: 8),
-          StatusBadge(mission.status),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => showModalBottomSheet(
-              context: context,
-              backgroundColor: t.surface,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(AppRadius.lg))),
-              builder: (_) => SafeArea(
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  ListTile(
-                    leading: Icon(LucideIcons.pencil, color: t.textSecondary),
-                    title:   const Text('Edit'),
-                    onTap:   () => Navigator.pop(context),
-                  ),
-                  ListTile(
-                    leading: Icon(LucideIcons.trash2, color: t.destructive),
-                    title:   Text('Delete',
-                        style: TextStyle(color: t.destructive)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      onDelete();
-                    },
-                  ),
-                ]),
+    final t       = context.tokens;
+    final mission = widget.mission;
+    final catColor = _categoryColor(t, mission.category);
+
+    return _PressScaleCard(
+      onTap: () => context.push('/missions/${mission.id}'),
+      child: Container(
+        decoration: BoxDecoration(
+          color:        t.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.x2l),
+          border:       Border.all(color: t.cardBorder),
+          boxShadow:    AppElevation.level1(Theme.of(context).brightness),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.x2l),
+          child: IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+              // â”€â”€ 3px left colour bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              Container(
+                width: 3,
+                decoration: BoxDecoration(
+                  color: catColor,
+                  borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(AppRadius.x2l)),
+                ),
               ),
-            ),
-            child: Icon(LucideIcons.ellipsis,
-                size: 18, color: t.textMuted),
+              // â”€â”€ Card content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    // Top row: chips + menu
+                    Row(children: [
+                      CategoryChip(mission.category),
+                      const SizedBox(width: 8),
+                      StatusBadge(mission.status),
+                      const Spacer(),
+                      // 40Ã—40 hit-target menu button
+                      Consumer(builder: (ctx, menuRef, _) {
+                        final seen    = menuRef.watch(tooltipSeenProvider);
+                        final showTip = !(seen['mission_menu'] ?? false);
+
+                        void openMenu() {
+                          if (showTip) {
+                            menuRef.read(tooltipSeenProvider.notifier)
+                                .state = {
+                              ...menuRef.read(tooltipSeenProvider),
+                              'mission_menu': true,
+                            };
+                          }
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: t.surface,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(AppRadius.x2l)),
+                            ),
+                            builder: (_) => SafeArea(
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                const SizedBox(height: 14),
+                                const SheetHandle(),
+                                const SizedBox(height: 8),
+                                ListTile(
+                                  leading: Icon(LucideIcons.externalLink,
+                                      color: t.textSecondary),
+                                  title: const Text('Open'),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    context.push('/missions/${mission.id}');
+                                  },
+                                ),
+                                ListTile(
+                                  leading: Icon(LucideIcons.pencil,
+                                      color: t.textSecondary),
+                                  title: const Text('Edit'),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _editSheet(context, t);
+                                  },
+                                ),
+                                Divider(height: 1, color: t.border),
+                                ListTile(
+                                  leading: Icon(LucideIcons.trash2,
+                                      color: t.destructive),
+                                  title: Text('Delete',
+                                      style: TextStyle(
+                                          color: t.destructive)),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    widget.onDelete();
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                              ]),
+                            ),
+                          );
+                        }
+
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            GestureDetector(
+                              onTap: openMenu,
+                              child: SizedBox(
+                                width: 40, height: 40,
+                                child: Center(
+                                  child: Icon(LucideIcons.ellipsis,
+                                      size: 18, color: t.textMuted),
+                                ),
+                              ),
+                            ),
+                            // One-time tooltip
+                            if (showTip)
+                              Positioned(
+                                right: 44, top: 4,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: t.surface,
+                                      borderRadius: BorderRadius.circular(
+                                          AppRadius.md),
+                                      border: Border.all(color: t.border),
+                                      boxShadow: AppElevation.level1(
+                                          Theme.of(ctx).brightness),
+                                    ),
+                                    child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                      Icon(LucideIcons.info,
+                                          size: 10, color: t.primary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Tap for options',
+                                        style: TextStyle(
+                                          color:      t.textSecondary,
+                                          fontSize:   10,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ]),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      }),
+                    ]),
+                    const SizedBox(height: 12),
+
+                    // Title â€” w800 / -0.5 tracking
+                    Text(
+                      mission.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(
+                            fontWeight:    FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      mission.goal,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color:  t.textMuted,
+                        height: 1.6,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Progress row
+                    Row(children: [
+                      SectionLabel('PROGRESS'),
+                      const Spacer(),
+                      Text(
+                        '${(mission.progress * 100).round()}%',
+                        style: TextStyle(
+                          color:      catColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize:   13,
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 6),
+                    // Progress bar with category-tinted gradient
+                    PremiumProgressBar(
+                      value:  mission.progress,
+                      height: 6,
+                      color:  catColor,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Deadline row â€” pill chip around the date
+                    Row(children: [
+                      _DeadlineChip(
+                        deadline: mission.deadline,
+                        tokens:   t,
+                      ),
+                      const Spacer(),
+                      Icon(LucideIcons.chevronRight,
+                          size: 16, color: t.textMuted),
+                    ]),
+                  ]),
+                ),
+              ),
+            ]),
           ),
-        ]),
-        const SizedBox(height: 14),
-        Text(mission.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        Text(mission.goal,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: t.textMuted, height: 1.5, fontSize: 13)),
-        const SizedBox(height: 16),
-        Row(children: [
-          SectionLabel('PROGRESS'),
-          const Spacer(),
-          Text('${(mission.progress * 100).round()}%',
-              style: TextStyle(
-                color: t.primary, fontWeight: FontWeight.w700,
-                fontSize: 14,
-              )),
-        ]),
-        const SizedBox(height: 6),
-        PremiumProgressBar(value: mission.progress),
-        const SizedBox(height: 12),
-        Row(children: [
-          Icon(LucideIcons.calendarDays, size: 13, color: t.textMuted),
-          const SizedBox(width: 5),
-          Text(mission.deadline,
-              style: TextStyle(color: t.textMuted, fontSize: 12)),
-          const Spacer(),
-          Icon(LucideIcons.chevronRight, size: 16, color: t.textMuted),
-        ]),
-      ]),
-    ).staggered(index);
+        ),
+      ),
+    ).staggered(widget.index);
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  PRESS-SCALE CARD WRAPPER
+//  Used by _MissionCard to get the scale-on-press
+//  behaviour without inheriting PremiumCard's
+//  topAccentColor / sheen stack.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _PressScaleCard extends StatefulWidget {
+  const _PressScaleCard({required this.child, required this.onTap});
+  final Widget child;
+  final VoidCallback onTap;
+  @override
+  State<_PressScaleCard> createState() => _PressScaleCardState();
+}
+
+class _PressScaleCardState extends State<_PressScaleCard> {
+  bool _pressed = false;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap:       widget.onTap,
+        onTapDown:   (_) => setState(() => _pressed = true),
+        onTapUp:     (_) => setState(() => _pressed = false),
+        onTapCancel: ()  => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale:    _pressed ? 0.97 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve:    Curves.easeOut,
+          child:    widget.child,
+        ),
+      );
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  DEADLINE CHIP
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _DeadlineChip extends StatelessWidget {
+  const _DeadlineChip({required this.deadline, required this.tokens});
+  final String deadline;
+  final AppTokens tokens;
+
+  bool get _isOverdue {
+    // deadline format: 'd/m/yyyy'
+    final parts = deadline.split('/');
+    if (parts.length != 3) return false;
+    final d = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final y = int.tryParse(parts[2]);
+    if (d == null || m == null || y == null) return false;
+    return DateTime(y, m, d).isBefore(DateTime.now());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (deadline == 'No deadline') {
+      return Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(LucideIcons.calendarDays, size: 12, color: tokens.textMuted),
+        const SizedBox(width: 4),
+        Text(deadline,
+            style: TextStyle(color: tokens.textMuted, fontSize: 11)),
+      ]);
+    }
+    final overdue  = _isOverdue;
+    final fg       = overdue ? tokens.destructive : tokens.textMuted;
+    final chipBg   = overdue
+        ? tokens.destructive.withValues(alpha: 0.10)
+        : tokens.backgroundSubtle;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color:        chipBg,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(LucideIcons.calendarDays, size: 11, color: fg),
+        const SizedBox(width: 4),
+        Text(
+          deadline,
+          style: TextStyle(
+            color:      fg,
+            fontSize:   11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MISSION DETAIL SCREEN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class MissionDetailScreen extends ConsumerStatefulWidget {
   const MissionDetailScreen({required this.id, super.key});
@@ -2120,14 +3937,26 @@ class MissionDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<MissionDetailScreen> createState() => _MissionDetailState();
 }
 
-class _MissionDetailState extends ConsumerState<MissionDetailScreen> {
+class _MissionDetailState extends ConsumerState<MissionDetailScreen>
+    with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _mission;
   List<TaskData> _tasks = [];
   bool _loading = true;
   String? _error;
+  late final TabController _tabController =
+      TabController(length: 3, vsync: this);
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
@@ -2137,6 +3966,7 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen> {
       final res  = await Future.wait([
         repo.mission(id), repo.tasks(missionId: id),
       ]);
+      if (!mounted) return;
       final m = res[0] as Map<String, dynamic>;
       setState(() {
         _mission = m;
@@ -2146,6 +3976,7 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen> {
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() { _error = e.toString(); _loading = false; });
     }
   }
@@ -2156,7 +3987,60 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen> {
     if (_loading) {
       return Scaffold(
         backgroundColor: t.background,
-        body: Center(child: CircularProgressIndicator(color: t.primary)),
+        body: SafeArea(
+          child: ListView(padding: const EdgeInsets.all(16), children: [
+            // Header skeleton
+            Container(
+              height: 280,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color:        t.primarySurface,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 64, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment:  MainAxisAlignment.end,
+                  children: [
+                    _SkeletonBox(width: 80, height: 22, radius: AppRadius.full),
+                    const SizedBox(height: 10),
+                    const _SkeletonBox(height: 26),
+                    const SizedBox(height: 6),
+                    _SkeletonBox(width: 200, height: 20),
+                  ],
+                ),
+              ),
+            ),
+            // Overview card skeleton
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color:        t.cardBg,
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                border:       Border.all(color: t.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SkeletonBox(height: 14),
+                  const SizedBox(height: 4),
+                  const _SkeletonBox(height: 14),
+                  const SizedBox(height: 4),
+                  _SkeletonBox(width: 220, height: 14),
+                  const SizedBox(height: 16),
+                  _SkeletonBox(width: 120, height: 22, radius: AppRadius.full),
+                  const SizedBox(height: 12),
+                  _SkeletonBox(height: 6, radius: AppRadius.full),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const _SkeletonTaskRow(),
+            const _SkeletonTaskRow(),
+            const _SkeletonTaskRow(),
+          ]),
+        ),
       );
     }
     if (_error != null) {
@@ -2165,7 +4049,7 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen> {
         appBar: AppBar(),
         body: Padding(
           padding: const EdgeInsets.all(20),
-          child: _ApiErrorBanner(error: _error!, onRetry: _load),
+          child: _InlineErrorState(title: "Couldn't load mission"),
         ),
       );
     }
@@ -2173,47 +4057,156 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen> {
     final progress = ((m['progress'] as num?)?.toDouble() ?? 0).clamp(0.0, 100.0);
     final mission  = MissionData.fromJson(m);
 
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        backgroundColor: t.background,
-        body: NestedScrollView(
-          headerSliverBuilder: (_, __) => [
-            SliverAppBar(
-              expandedHeight: 200,
-              pinned:         true,
-              flexibleSpace:  FlexibleSpaceBar(
-                background: GradientCard(
-                  radius:  0,
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-                  child:   Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment:  MainAxisAlignment.end,
-                    children: [
-                      StatusBadge(mission.status),
-                      const SizedBox(height: 10),
-                      Text(m['title'] ?? '',
-                          style: const TextStyle(
-                            color: Colors.white, fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          )),
-                    ],
+    return Scaffold(
+      backgroundColor: t.background,
+      body: NestedScrollView(
+        headerSliverBuilder: (_, __) => [
+          SliverAppBar(
+            expandedHeight: 280,
+            pinned:         true,
+            flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.pin,
+              background: Stack(children: [
+                // Gradient header
+                Positioned.fill(
+                  child: GradientCard(
+                    radius:  0,
+                    padding: EdgeInsets.zero,
+                    child:   const SizedBox.expand(),
                   ),
                 ),
-              ),
-              bottom: TabBar(
-                tabs: const [
-                  Tab(text: 'Overview'),
-                  Tab(text: 'Tasks'),
-                  Tab(text: 'AI Insights'),
-                ],
-                labelColor:           t.primary,
-                unselectedLabelColor: t.textMuted,
-                indicatorColor:       t.primary,
-              ),
+                // Bottom fade to transparent so it blends into content
+                Positioned(
+                  left: 0, right: 0, bottom: 0,
+                  height: 80,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end:   Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          t.background.withValues(alpha: 0.85),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Header content
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.fromLTRB(20, 64, 20, 64),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment:  MainAxisAlignment.end,
+                      children: [
+                        StatusBadge(mission.status),
+                        const SizedBox(height: 10),
+                        // Large glowing progress ring overlaid on header
+                        Row(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                          Expanded(
+                            child: Text(
+                              m['title'] ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color:      Colors.white,
+                                fontSize:   22,
+                                fontWeight: FontWeight.w800,
+                                height:     1.25,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // 72px progress ring with glow
+                          Container(
+                            decoration: BoxDecoration(
+                              shape:     BoxShape.circle,
+                              boxShadow: AppElevation.ringGlow(
+                                  Theme.of(context).brightness),
+                            ),
+                            child: SizedBox(
+                              width: 72, height: 72,
+                              child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                // Track
+                                SizedBox(
+                                  width: 72, height: 72,
+                                  child: CircularProgressIndicator(
+                                    value:       1.0,
+                                    strokeWidth: 5,
+                                    color: Colors.white
+                                        .withValues(alpha: 0.20),
+                                  ),
+                                ),
+                                // Fill
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(
+                                      begin: 0,
+                                      end:   progress / 100),
+                                  duration: const Duration(
+                                      milliseconds: 900),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (_, v, __) => SizedBox(
+                                    width: 72, height: 72,
+                                    child: CircularProgressIndicator(
+                                      value:       v,
+                                      strokeWidth: 5,
+                                      color:       Colors.white,
+                                      strokeCap:   StrokeCap.round,
+                                    ),
+                                  ),
+                                ),
+                                // Percentage label
+                                Text(
+                                  '${progress.round()}%',
+                                  style: const TextStyle(
+                                    color:      Colors.white,
+                                    fontSize:   13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ]),
+                            ),
+                          ),
+                        ]),
+                      ],
+                    ),
+                  ),
+                ),
+              ]),
             ),
-          ],
-          body: TabBarView(children: [
+            // Segmented pill tab bar
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(52),
+              child: Consumer(builder: (ctx, tabRef, _) {
+                final seen = tabRef.watch(tooltipSeenProvider);
+                return _SegmentedTabBar(
+                  controller: _tabController,
+                  tabs: const ['Overview', 'Tasks', 'AI Insights'],
+                  newTabIndex: (seen['ai_insights_tab'] ?? false) ? null : 2,
+                  onTabTap: (i) {
+                    if (i == 2 && !(seen['ai_insights_tab'] ?? false)) {
+                      tabRef.read(tooltipSeenProvider.notifier).state = {
+                        ...tabRef.read(tooltipSeenProvider),
+                        'ai_insights_tab': true,
+                      };
+                    }
+                  },
+                );
+              }),
+            ),
+          ),
+        ],
+        body: TabBarView(
+          controller: _tabController,
+          children: [
             // Overview tab
             ListView(
               padding: const EdgeInsets.all(16),
@@ -2221,9 +4214,12 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen> {
                 PremiumCard(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text(m['description'] ?? m['goal'] ?? '',
-                      style: TextStyle(
-                          color: t.textSecondary, height: 1.6, fontSize: 14)),
+                  Text(
+                    m['description'] ?? m['goal'] ?? '',
+                    style: TextStyle(
+                      color: t.textSecondary, height: 1.6,
+                      fontSize: 14),
+                  ),
                   const SizedBox(height: 16),
                   Row(children: [
                     CategoryChip(mission.category),
@@ -2232,26 +4228,132 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen> {
                   ]),
                   const SizedBox(height: 16),
                   Row(children: [
-                    Text('${progress.round()}%',
-                        style: TextStyle(
-                          color: t.primary, fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        )),
+                    Text(
+                      '${progress.round()}%',
+                      style: TextStyle(
+                        color:      t.primary,
+                        fontSize:   22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Text('progress',
-                        style: TextStyle(color: t.textMuted, fontSize: 13)),
+                        style: TextStyle(
+                            color: t.textMuted, fontSize: 13)),
                   ]),
                   const SizedBox(height: 8),
-                  PremiumProgressBar(value: progress / 100),
+                  PremiumProgressBar(value: progress / 100, height: 6),
                 ])),
               ],
             ),
             // Tasks tab
-            _DetailTasksTab(tasks: _tasks, missionId: widget.id,
+            _DetailTasksTab(
+                tasks: _tasks, missionId: widget.id,
                 onRefresh: _load),
             // AI Insights tab
             _InsightsTab(missionTitle: m['title'] ?? ''),
-          ]),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  SEGMENTED TAB BAR
+//  All tabs inside a single rounded container;
+//  active tab gets a surface background + shadow.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _SegmentedTabBar extends StatefulWidget {
+  const _SegmentedTabBar({
+    required this.controller,
+    required this.tabs,
+    this.newTabIndex,
+    this.onTabTap,
+  });
+  final TabController controller;
+  final List<String> tabs;
+  /// When set, shows a pulsing "New" dot on this tab index.
+  final int? newTabIndex;
+  final void Function(int)? onTabTap;
+
+  @override
+  State<_SegmentedTabBar> createState() => _SegmentedTabBarState();
+}
+
+class _SegmentedTabBarState extends State<_SegmentedTabBar> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTabChange);
+  }
+
+  void _onTabChange() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTabChange);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      child: Container(
+        height: 36,
+        decoration: BoxDecoration(
+          color:        t.backgroundSubtle,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border:       Border.all(color: t.border),
+        ),
+        child: Row(
+          children: widget.tabs.indexed.map((item) {
+            final isActive = widget.controller.index == item.$1;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  widget.controller.animateTo(item.$1);
+                  widget.onTabTap?.call(item.$1);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve:    Curves.easeOutCubic,
+                  margin:   const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color:        isActive ? t.surface : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    boxShadow:    isActive
+                        ? AppElevation.level1(
+                            Theme.of(context).brightness)
+                        : null,
+                  ),
+                  child: Center(
+                    child: Stack(clipBehavior: Clip.none, children: [
+                      Text(
+                        item.$2,
+                        style: TextStyle(
+                          color: isActive ? t.primary : t.textMuted,
+                          fontSize:   12,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                      // Pulsing "New" dot for first-time discovery
+                      if (widget.newTabIndex == item.$1)
+                        Positioned(
+                          top: -2, right: -8,
+                          child: _PulseDot(color: t.primary),
+                        ),
+                    ]),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ),
     );
@@ -2313,7 +4415,7 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.lg))),
+            top: Radius.circular(AppRadius.x2l))),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (context, setModal) {
           final kb = MediaQuery.viewInsetsOf(context).bottom;
@@ -2323,21 +4425,17 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
             minChildSize:     0.4,
             maxChildSize:     0.92,
             builder: (_, scrollCtrl) => Column(children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 14, bottom: 8),
-                child: Center(
-                  child: Container(
-                    width: 36, height: 4,
-                    decoration: BoxDecoration(
-                      color:        t.border,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    )),
-                ),
-              ),
+              const SizedBox(height: 14),
+              const SheetHandle(),
+              const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                child: Text('Add Task',
-                    style: Theme.of(context).textTheme.headlineLarge),
+                child: Text(
+                  'Add Task',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
               Expanded(
                 child: ListView(
@@ -2512,12 +4610,14 @@ class _InsightsTabState extends ConsumerState<_InsightsTab> {
         userInput:   'Give strategic insights for: ${widget.missionTitle}',
         contextData: {'missionTitle': widget.missionTitle},
       );
+      if (!mounted) return;
       setState(() {
         _insight = result['output']?.toString() ??
             'No insights available right now.';
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() { _insight = 'Error: $e'; _loading = false; });
     }
   }
@@ -2544,23 +4644,25 @@ class _InsightsTabState extends ConsumerState<_InsightsTab> {
       if (_insight == null && !_loading)
         Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(height: 32),
-          Container(
-            width: 60, height: 60,
-            decoration: BoxDecoration(
-              gradient: AppGradients.lifekit,
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              boxShadow: AppShadows.greenSm,
-            ),
-            child: const Icon(LucideIcons.sparkles,
-                color: Colors.white, size: 26),
-          ),
-          const SizedBox(height: 16),
-          Text('Get AI insights',
-              style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 8),
-          Text('Powered by your LifeKit AI Coach',
-              style: TextStyle(color: t.textMuted, fontSize: 13)),
+          EmptyStateOrb(icon: LucideIcons.sparkles, size: 72, iconSize: 28),
           const SizedBox(height: 20),
+          Text(
+            'Get AI insights',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize:   17,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Powered by your LifeKit AI Coach',
+            style: TextStyle(
+              color: context.tokens.textMuted,
+              fontSize: 13,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 24),
           PremiumButton(
               label: 'Generate insights',
               onPressed: _fetch,
@@ -2570,9 +4672,9 @@ class _InsightsTabState extends ConsumerState<_InsightsTab> {
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // TASKS SCREEN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -2581,7 +4683,8 @@ class TasksScreen extends ConsumerStatefulWidget {
 }
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
-  bool _loading = false;
+  bool   _loading     = false;
+  bool   _searchOpen  = false;
 
   @override
   void initState() {
@@ -2615,147 +4718,337 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
+  /// Build the grouped-by-mission list with a collapsible Completed section.
+  List<Widget> _buildGroupedItems(
+    List<TaskData> active,
+    List<TaskData> done,
+    AppTokens t,
+    bool completedExpanded,
+    WidgetRef ref,
+  ) {
+    final items = <Widget>[];
+
+    // Group active tasks by mission title
+    final groups = <String, List<TaskData>>{};
+    for (final task in active) {
+      groups.putIfAbsent(task.missionTitle.isEmpty
+          ? 'Uncategorised' : task.missionTitle, () => []).add(task);
+    }
+
+    var globalIdx = 0;
+    for (final entry in groups.entries) {
+      items.add(_GroupedSectionHeader(
+        entry.key,
+        count:      entry.value.length,
+        topPadding: globalIdx == 0 ? 4 : 20,
+      ));
+      for (final task in entry.value) {
+        items.add(_OptimisticTaskRow(
+          key:        ValueKey('task_${task.id}'),
+          task:       task,
+          index:      globalIdx,
+          onToggle:   () => _optimisticToggle(task, ref),
+          onDelete:   () async {
+            await ref.read(repositoryProvider)
+                .deleteTask(task.id).catchError((_) {});
+            _loadTasks();
+          },
+        ));
+        globalIdx++;
+      }
+    }
+
+    // Completed section â€” collapsible
+    if (done.isNotEmpty) {
+      items.add(
+        GestureDetector(
+          onTap: () => ref
+              .read(completedTasksExpandedProvider.notifier)
+              .state = !completedExpanded,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 20, bottom: 8),
+            child: Row(children: [
+              Text(
+                'COMPLETED (${done.length})',
+                style: TextStyle(
+                  color:         t.textSecondary,
+                  fontSize:      11,
+                  fontWeight:    FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Divider(color: t.border, height: 1)),
+              const SizedBox(width: 8),
+              AnimatedRotation(
+                turns:    completedExpanded ? 0.5 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(LucideIcons.chevronDown,
+                    size: 14, color: t.textMuted),
+              ),
+            ]),
+          ),
+        ),
+      );
+      if (completedExpanded) {
+        for (final task in done) {
+          items.add(_OptimisticTaskRow(
+            key:      ValueKey('done_${task.id}'),
+            task:     task,
+            index:    globalIdx,
+            onToggle: () => _optimisticToggle(task, ref),
+            onDelete: () async {
+              await ref.read(repositoryProvider)
+                  .deleteTask(task.id).catchError((_) {});
+              _loadTasks();
+            },
+          ));
+          globalIdx++;
+        }
+      }
+    }
+
+    return items;
+  }
+
+  /// Optimistic task toggle â€” flips done locally, reverts on API error.
+  void _optimisticToggle(TaskData task, WidgetRef ref) {
+    final prev  = task.done;
+    final tasks = List<TaskData>.from(ref.read(tasksProvider));
+    final idx   = tasks.indexWhere((t) => t.id == task.id);
+    if (idx < 0) return;
+
+    // Flip immediately
+    tasks[idx].done = !prev;
+    ref.read(tasksProvider.notifier).state = List.from(tasks);
+
+    ref.read(repositoryProvider)
+        .setTaskStatus(task.id, !prev ? 'COMPLETED' : 'PENDING')
+        .catchError((_) {
+      // Revert on failure
+      final current = List<TaskData>.from(ref.read(tasksProvider));
+      final i = current.indexWhere((t) => t.id == task.id);
+      if (i >= 0) current[i].done = prev;
+      ref.read(tasksProvider.notifier).state = List.from(current);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Couldn't save â€” tap to retry"),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: () => _optimisticToggle(task, ref),
+          ),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final tasks = ref.watch(tasksProvider);
-    final t     = context.tokens;
+    final allTasks         = ref.watch(tasksProvider);
+    final query            = ref.watch(tasksSearchProvider).toLowerCase().trim();
+    final completedExpanded= ref.watch(completedTasksExpandedProvider);
+    final t                = context.tokens;
+
+    // Apply search
+    final searched = query.isEmpty
+        ? allTasks
+        : allTasks.where((task) =>
+            task.title.toLowerCase().contains(query) ||
+            task.missionTitle.toLowerCase().contains(query)).toList();
+
+    final activeTasks = searched.where((t) => !t.done).toList();
+    final doneTasks   = searched.where((t) =>  t.done).toList();
 
     final stats = [
-      (tasks.length,                                  'Total',       t.primary),
-      (tasks.where((t) => t.status == 'In Progress').length, 'In Progress', t.info),
-      (tasks.where((t) => t.priority == 'high' ||
-                          t.priority == 'urgent').length,    'High Priority', t.warning),
-      (tasks.where((t) => t.done).length,             'Done',        t.success),
+      (allTasks.length,
+          allTasks.where((t) => t.status == 'In Progress').length,
+          allTasks.where((t) => t.priority == 'high' ||
+                                t.priority == 'urgent').length,
+          allTasks.where((t) => t.done).length),
+    ];
+    final statItems = [
+      (allTasks.length,                        'Total',        t.primary),
+      (stats[0].$2,                            'In Progress',  t.info),
+      (stats[0].$3,                            'High Priority',t.warning),
+      (stats[0].$4,                            'Done',         t.success),
     ];
 
     return Scaffold(
       backgroundColor: t.background,
-      floatingActionButton: FloatingActionButton(
-        onPressed:       () => _addTaskSheet(context, tasks),
-        backgroundColor: t.primary,
-        child:           const Icon(Icons.add, color: Colors.white),
-      ),
+      // FAB removed â€” QuickActionBar handles creation
       body: SafeArea(
-        child: Column(children: [
-          _PageHeading('Tasks',
-              subtitle: 'Protect your momentum.',
-              actions: [
-                IconButton(
-                  onPressed: _loadTasks,
-                  icon: Icon(LucideIcons.refreshCw,
+        child: Stack(children: [
+          Column(children: [
+            _PageHeading('Tasks',
+                subtitle: '${activeTasks.length} remaining',
+                actions: [
+                  IconButton(
+                    onPressed: () {
+                      setState(() => _searchOpen = !_searchOpen);
+                      if (!_searchOpen) {
+                        ref.read(tasksSearchProvider.notifier).state = '';
+                      }
+                    },
+                    icon: Icon(
+                      _searchOpen ? LucideIcons.x : LucideIcons.search,
                       size: 18, color: t.textSecondary),
-                ),
-              ]).pageEntrance(),
-
-          // Stat chips — use IntrinsicHeight so cards size to their content
-          SizedBox(
-            height: 90,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: stats.indexed.map((item) => SizedBox(
-                    width: 115,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 10, bottom: 2),
-                      child: PremiumCard(
-                        radius:  AppRadius.lg,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text('${item.$2.$1}',
-                                style: TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.w800,
-                                  color: item.$2.$3,
-                                )),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(item.$2.$2,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.w700,
-                                color: t.textSecondary,
-                              )),
-                        ]),
-                      ).staggered(item.$1),
-                    ),
-                  )).toList(),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          if (_loading)
-            LinearProgressIndicator(color: t.primary, minHeight: 2,
-                backgroundColor: t.backgroundSubtle),
-
-          Expanded(
-            child: tasks.isEmpty
-                ? Center(child: Column(
-                    mainAxisSize: MainAxisSize.min, children: [
-                  Icon(LucideIcons.squareCheck,
-                      size: 52, color: t.textMuted),
-                  const SizedBox(height: 12),
-                  Text('No tasks yet',
-                      style: TextStyle(color: t.textMuted)),
-                ]))
-                : RefreshIndicator(
-                    onRefresh: _loadTasks, color: t.primary,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      itemCount: tasks.length,
-                      itemBuilder: (_, i) {
-                        final task = tasks[i];
-                        return Dismissible(
-                          key:        ValueKey('${task.id}_$i'),
-                          background: Container(
-                            color: t.success,
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.only(left: 20),
-                            child: const Icon(LucideIcons.check,
-                                color: Colors.white),
-                          ),
-                          secondaryBackground: Container(
-                            color: t.destructive,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            child: const Icon(LucideIcons.trash2,
-                                color: Colors.white),
-                          ),
-                          confirmDismiss: (dir) async {
-                            if (dir == DismissDirection.endToStart) {
-                              await ref.read(repositoryProvider)
-                                  .deleteTask(task.id)
-                                  .catchError((_) {});
-                              _loadTasks();
-                              return true;
-                            }
-                            await ref.read(repositoryProvider)
-                                .setTaskStatus(task.id, 'COMPLETED')
-                                .catchError((_) {});
-                            _loadTasks();
-                            return false;
-                          },
-                          child: _PremiumTaskRow(
-                            task:     task,
-                            index:    i,
-                            onToggle: () async {
-                              await ref.read(repositoryProvider)
-                                  .setTaskStatus(task.id,
-                                      task.done ? 'PENDING' : 'COMPLETED')
-                                  .catchError((_) {});
-                              _loadTasks();
-                            },
-                          ),
-                        );
-                      },
-                    ),
                   ),
+                  IconButton(
+                    onPressed: _loadTasks,
+                    icon: Icon(LucideIcons.refreshCw,
+                        size: 18, color: t.textSecondary),
+                  ),
+                ]).pageEntrance(),
+
+            // Animated search bar
+            _SearchBar(
+              visible:   _searchOpen,
+              hint:      'Search tasksâ€¦',
+              onChanged: (v) =>
+                  ref.read(tasksSearchProvider.notifier).state = v,
+              onDismiss: () {
+                setState(() => _searchOpen = false);
+                ref.read(tasksSearchProvider.notifier).state = '';
+              },
+            ),
+
+            // Stat chips
+            if (!_searchOpen)
+              SizedBox(
+                height: 90,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: statItems.indexed.map((item) => SizedBox(
+                        width: 115,
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                              right: 10, bottom: 2),
+                          child: PremiumCard(
+                            radius:  AppRadius.lg,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '${item.$2.$1}',
+                                  style: TextStyle(
+                                    fontSize:   22,
+                                    fontWeight: FontWeight.w800,
+                                    color:      item.$2.$3,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                item.$2.$2,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize:   10,
+                                  fontWeight: FontWeight.w700,
+                                  color:      t.textSecondary,
+                                ),
+                              ),
+                            ]),
+                          ).staggered(item.$1),
+                        ),
+                      )).toList(),
+                ),
+              ),
+            const SizedBox(height: 8),
+
+            if (_loading)
+              LinearProgressIndicator(
+                  color: t.primary, minHeight: 2,
+                  backgroundColor: t.backgroundSubtle),
+
+            Expanded(
+              child: allTasks.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                            mainAxisSize: MainAxisSize.min, children: [
+                          EmptyStateOrb(
+                              icon:     LucideIcons.squareCheck,
+                              size:     72,
+                              iconSize: 32),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Tasks come from your missions',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize:   17,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Create a mission to get started â€” '
+                            'tasks will appear here automatically.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color:    t.textMuted,
+                              fontSize: 13,
+                              height:   1.6,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          PremiumButton(
+                            label:    'Go to Missions',
+                            minWidth: 200,
+                            onPressed: () => context.go('/missions'),
+                          ),
+                        ]).animate().fadeIn(duration: 300.ms),
+                      ),
+                    )
+                  : searched.isEmpty && query.isNotEmpty
+                      ? Center(
+                          child: Column(
+                              mainAxisSize: MainAxisSize.min, children: [
+                            Icon(LucideIcons.searchX,
+                                size: 32, color: t.textMuted),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No results for "$query"',
+                              style: TextStyle(
+                                color:      t.textMuted,
+                                fontSize:   14,
+                                fontWeight: FontWeight.w500),
+                            ),
+                          ]),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadTasks,
+                          color:     t.primary,
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 4, 16, 120),
+                            children: _buildGroupedItems(
+                              activeTasks, doneTasks, t,
+                              completedExpanded, ref,
+                            ),
+                          ),
+                        ),
+            ),
+          ]),
+
+          // Floating quick-action bar
+          _QuickActionBar(
+            onAddTask:    () => _addTaskSheet(context, allTasks),
+            onNewMission: () => context.go('/missions'),
+            onAskAI:      () => context.go('/ai-coach'),
           ),
         ]),
       ),
@@ -2784,7 +5077,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.lg))),
+            top: Radius.circular(AppRadius.x2l))),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (context, setModal) {
           final kb = MediaQuery.viewInsetsOf(context).bottom;
@@ -2794,17 +5087,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             minChildSize:     0.5,
             maxChildSize:     0.95,
             builder: (_, scrollCtrl) => Column(children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 14, bottom: 8),
-                child: Center(
-                  child: Container(
-                    width: 36, height: 4,
-                    decoration: BoxDecoration(
-                      color:        t.border,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    )),
-                ),
-              ),
+              const SizedBox(height: 14),
+              const SheetHandle(),
+              const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                 child: Row(children: [
@@ -2818,8 +5103,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         size: 16, color: Colors.white),
                   ),
                   const SizedBox(width: 10),
-                  Text('New Task',
-                      style: Theme.of(context).textTheme.headlineLarge),
+                  Text(
+                    'New Task',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ]),
               ),
               Expanded(
@@ -3005,7 +5294,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                             .catchError((_) => <String, dynamic>{});
                         // If a duration was provided, patch the task
                         if (dur != null && dur > 0) {
-                          // best-effort update — ignore error
+                          // best-effort update â€” ignore error
                           ref.read(repositoryProvider)
                               .tasks(missionId: mId)
                               .then((list) {
@@ -3033,9 +5322,98 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  OPTIMISTIC TASK ROW
+//  Wraps _PremiumTaskRow with a shake animation
+//  triggered when the toggle fails, and a
+//  swipe-to-delete background.
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _OptimisticTaskRow extends StatefulWidget {
+  const _OptimisticTaskRow({
+    super.key,
+    required this.task,
+    required this.index,
+    required this.onToggle,
+    required this.onDelete,
+  });
+  final TaskData task;
+  final int index;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
+
+  @override
+  State<_OptimisticTaskRow> createState() => _OptimisticTaskRowState();
+}
+
+class _OptimisticTaskRowState extends State<_OptimisticTaskRow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shakeCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 400),
+  );
+
+  late final Animation<double> _shakeAnim = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 0.0, end: -6.0), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: -6.0, end: 6.0), weight: 2),
+    TweenSequenceItem(tween: Tween(begin: 6.0, end: -4.0), weight: 2),
+    TweenSequenceItem(tween: Tween(begin: -4.0, end: 4.0), weight: 2),
+    TweenSequenceItem(tween: Tween(begin: 4.0, end: 0.0), weight: 1),
+  ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeOut));
+
+  /// Call this to trigger the shake feedback.
+  void shake() => _shakeCtrl.forward(from: 0);
+
+  @override
+  void dispose() {
+    _shakeCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return AnimatedBuilder(
+      animation: _shakeAnim,
+      builder: (_, child) => Transform.translate(
+        offset: Offset(_shakeAnim.value, 0),
+        child: child,
+      ),
+      child: Dismissible(
+        key:       widget.key ?? ValueKey(widget.task.id),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          decoration: BoxDecoration(
+            color:        t.destructive,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(LucideIcons.trash2, color: Colors.white, size: 18),
+            const SizedBox(height: 2),
+            const Text('Delete',
+                style: TextStyle(
+                  color: Colors.white, fontSize: 10,
+                  fontWeight: FontWeight.w600)),
+          ]),
+        ),
+        confirmDismiss: (_) async {
+          widget.onDelete();
+          return false; // We handle removal ourselves
+        },
+        child: _PremiumTaskRow(
+          task:     widget.task,
+          index:    widget.index,
+          onToggle: widget.onToggle,
+        ),
+      ),
+    );
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // AI COACH SCREEN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class ChatMessage {
   ChatMessage(this.text, this.isUser);
@@ -3241,7 +5619,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                     ),
             ),
 
-            // Input bar — glass style
+            // Input bar â€” glass style
             ClipRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
@@ -3269,7 +5647,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                             minLines:   1,
                             maxLines:   5,
                             decoration: InputDecoration(
-                              hintText:       'Ask your AI Coach…',
+                              hintText:       'Ask your AI Coachâ€¦',
                               border:         InputBorder.none,
                               enabledBorder:  InputBorder.none,
                               focusedBorder:  InputBorder.none,
@@ -3511,9 +5889,9 @@ class _SuggestedPrompts extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // PROFILE SCREEN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -3532,9 +5910,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     setState(() => _loading = true);
     try {
       final p = await ref.read(repositoryProvider).profile();
+      if (!mounted) return;
       setState(() { _profile = p; _loading = false; });
       ref.read(profileProvider.notifier).state = p;
-    } catch (_) { setState(() => _loading = false); }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
   String get _initials {
@@ -3751,9 +6133,9 @@ class _NavTile extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ONBOARDING SCREEN (kept functional, lightly styled)
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -3893,7 +6275,7 @@ class _OnboardWelcome extends StatelessWidget {
               ?.copyWith(color: t.textPrimary, height: 1.1)),
       const SizedBox(height: 12),
       Text(
-        'LifeKit turns your goals into structured missions, intelligent plans, and daily actions — powered by specialist AI.',
+        'LifeKit turns your goals into structured missions, intelligent plans, and daily actions â€” powered by specialist AI.',
         style: TextStyle(color: t.textMuted, height: 1.6),
       ),
     ]);
@@ -4000,7 +6382,7 @@ class _OnboardGoal extends StatelessWidget {
       const SizedBox(height: 24),
       PremiumInputField(
         controller: ctrl,
-        hint:       'I want to…',
+        hint:       'I want toâ€¦',
         maxLines:   6, minLines: 4,
       ),
     ]);
@@ -4040,7 +6422,7 @@ class _OnboardAnalysis extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Building your roadmap…',
+      Text('Building your roadmapâ€¦',
           style: Theme.of(context).textTheme.displayMedium),
       const SizedBox(height: 8),
       Text('Analyzing your goals, schedule, and preferences.',
@@ -4061,7 +6443,7 @@ class _OnboardAnalysis extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 24),
-      Center(child: Text('This will only take a moment…',
+      Center(child: Text('This will only take a momentâ€¦',
           style: TextStyle(color: t.textMuted))),
     ]);
   }
@@ -4098,7 +6480,7 @@ class _OnboardPreview extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             goal.isEmpty ? 'Your first mission'
-                : (goal.length > 60 ? '${goal.substring(0, 60)}…' : goal),
+                : (goal.length > 60 ? '${goal.substring(0, 60)}â€¦' : goal),
             style: const TextStyle(
               color: Colors.white, fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -4106,9 +6488,9 @@ class _OnboardPreview extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const Text(
-            '○  Define your success criteria\n\n'
-            '○  Break into weekly milestones\n\n'
-            '○  Track daily progress',
+            'â—‹  Define your success criteria\n\n'
+            'â—‹  Break into weekly milestones\n\n'
+            'â—‹  Track daily progress',
             style: TextStyle(color: Colors.white70, height: 1.6),
           ),
           const SizedBox(height: 14),
@@ -4120,9 +6502,9 @@ class _OnboardPreview extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // FEATURE SCREEN (generic live-data screen)
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class FeatureScreen extends ConsumerStatefulWidget {
   const FeatureScreen({required this.path, super.key});
@@ -4153,8 +6535,10 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
         '/recommendations' => repo.recommendations(),
         _ => Future.value(const <Map<String, dynamic>>[]),
       };
+      if (!mounted) return;
       setState(() { _items = items; _loading = false; });
     } catch (e) {
+      if (!mounted) return;
       setState(() { _error = e.toString(); _loading = false; });
     }
   }
@@ -4163,7 +6547,7 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
       .split('/')
       .where((e) => e.isNotEmpty)
       .map((e) => '${e[0].toUpperCase()}${e.substring(1)}')
-      .join(' · ');
+      .join(' Â· ');
 
   @override
   Widget build(BuildContext context) {
@@ -4193,14 +6577,26 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
                   onRefresh: _load,
                   color:     t.primary,
                   child: _items.isEmpty
-                      ? Center(child: Column(
-                          mainAxisSize: MainAxisSize.min, children: [
-                        Icon(LucideIcons.inbox,
-                            size: 52, color: t.textMuted),
-                        const SizedBox(height: 12),
-                        Text('No ${_title.toLowerCase()} yet',
-                            style: TextStyle(color: t.textMuted)),
-                      ]))
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                            EmptyStateOrb(
+                                icon: LucideIcons.inbox,
+                                size: 72, iconSize: 30),
+                            const SizedBox(height: 20),
+                            Text(
+                              'No ${_title.toLowerCase()} yet',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 17,
+                                  ),
+                            ),
+                          ]).animate().fadeIn(duration: 300.ms),
+                        )
                       : ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: _items.length,
@@ -4239,16 +6635,22 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.lg))),
+            top: Radius.circular(AppRadius.x2l))),
       builder: (sheetCtx) => Padding(
-        padding: EdgeInsets.fromLTRB(24, 20, 24,
+        padding: EdgeInsets.fromLTRB(24, 16, 24,
             MediaQuery.viewInsetsOf(sheetCtx).bottom + 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Add Memory',
-                style: Theme.of(sheetCtx).textTheme.headlineLarge),
+            const SheetHandle(),
+            const SizedBox(height: 16),
+            Text(
+              'Add Memory',
+              style: Theme.of(sheetCtx).textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 16),
             PremiumInputField(
               controller: ctrl,
@@ -4309,36 +6711,52 @@ class _ItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return PremiumCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(children: [
-        Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_title(),
+        Expanded(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              _title(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontWeight: FontWeight.w600, color: t.textPrimary)),
-          if (_subtitle().isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(_subtitle(),
-                maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: t.textMuted, fontSize: 12)),
-          ],
-        ])),
+                fontWeight:    FontWeight.w700,
+                fontSize:      14,
+                color:         t.textPrimary,
+                letterSpacing: -0.2,
+              ),
+            ),
+            if (_subtitle().isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text(
+                _subtitle(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color:    t.textMuted,
+                  fontSize: 12,
+                  height:   1.5,
+                ),
+              ),
+            ],
+          ]),
+        ),
         if (path == '/memory' || path == '/notifications')
           IconButton(
             onPressed: onDelete,
-            icon: Icon(LucideIcons.trash2,
-                size: 16, color: t.textMuted),
+            icon: Icon(LucideIcons.trash2, size: 16, color: t.textMuted),
           )
         else
-          Icon(LucideIcons.chevronRight,
-              size: 16, color: t.textMuted),
+          Icon(LucideIcons.chevronRight, size: 16, color: t.textMuted),
       ]),
     ).staggered(index);
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ANALYTICS SCREEN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _AnalyticsScreen extends ConsumerWidget {
   const _AnalyticsScreen();
@@ -4432,9 +6850,9 @@ class _AnalyticsScreen extends ConsumerWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SETTINGS SCREEN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class _SettingsScreen extends ConsumerWidget {
   const _SettingsScreen();

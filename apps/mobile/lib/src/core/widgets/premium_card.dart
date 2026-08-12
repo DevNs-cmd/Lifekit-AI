@@ -1,67 +1,111 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../design/tokens.dart';
 
 // ─────────────────────────────────────────────
 //  PREMIUM CARD
-//  Base card used everywhere in the app.
+//  Base card — uses Level-1 elevation by default.
+//  Elevates to Level-2 on press via PressScaleWidget.
 // ─────────────────────────────────────────────
-class PremiumCard extends StatelessWidget {
+class PremiumCard extends StatefulWidget {
   const PremiumCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.radius = AppRadius.xl,
-    this.shadows = AppShadows.card,
+    this.shadows,           // null → use elevation1 for brightness
     this.margin = EdgeInsets.zero,
     this.onTap,
     this.onLongPress,
+    this.topAccentColor,    // optional 2-px top border accent
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double radius;
-  final List<BoxShadow> shadows;
+  final List<BoxShadow>? shadows;
   final EdgeInsetsGeometry margin;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
+  /// When set, draws a 2-px accent line along the top edge in this color.
+  final Color? topAccentColor;
+
+  @override
+  State<PremiumCard> createState() => _PremiumCardState();
+}
+
+class _PremiumCardState extends State<PremiumCard> {
+  bool _pressed = false;
+
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Container(
-        margin: margin,
-        decoration: BoxDecoration(
-          color:        t.cardBg,
-          borderRadius: BorderRadius.circular(radius),
-          border:       Border.all(color: t.cardBorder),
-          boxShadow:    shadows,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: Stack(
-            children: [
-              // Sheen highlight — top 60dp glassy highlight
+    final t         = context.tokens;
+    final brightness = Theme.of(context).brightness;
+    final shadows   = widget.shadows ??
+        (_pressed
+            ? AppElevation.level2(brightness)
+            : AppElevation.level1(brightness));
+
+    final card = AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      margin:       widget.margin,
+      decoration: BoxDecoration(
+        color:        t.cardBg,
+        borderRadius: BorderRadius.circular(widget.radius),
+        border:       Border.all(color: t.cardBorder),
+        boxShadow:    shadows,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(widget.radius),
+        child: Stack(
+          children: [
+            // Sheen highlight — top 60dp glassy highlight
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: Container(
+                height: 60,
+                decoration: BoxDecoration(
+                  gradient: AppGradients.cardSheen,
+                  borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(widget.radius)),
+                ),
+              ),
+            ),
+            // Top accent bar
+            if (widget.topAccentColor != null)
               Positioned(
                 top: 0, left: 0, right: 0,
                 child: Container(
-                  height: 60,
+                  height: 2,
                   decoration: BoxDecoration(
-                    gradient: AppGradients.cardSheen,
+                    color: widget.topAccentColor,
                     borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(radius)),
+                        top: Radius.circular(widget.radius)),
                   ),
                 ),
               ),
-              // Content
-              Padding(padding: padding, child: child),
-            ],
-          ),
+            // Content
+            Padding(padding: widget.padding, child: widget.child),
+          ],
         ),
+      ),
+    );
+
+    if (widget.onTap == null && widget.onLongPress == null) return card;
+
+    return GestureDetector(
+      onTap:       widget.onTap,
+      onLongPress: widget.onLongPress,
+      onTapDown:   (_) => setState(() => _pressed = true),
+      onTapUp:     (_) => setState(() => _pressed = false),
+      onTapCancel: ()  => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale:    _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve:    Curves.easeOut,
+        child:    card,
       ),
     );
   }
@@ -88,7 +132,7 @@ class GradientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
+    final t    = context.tokens;
     final grad = gradient ?? t.heroGradient;
 
     return Container(
@@ -101,8 +145,25 @@ class GradientCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         child: Stack(
           children: [
-            // Noise texture-like overlay using a semi-transparent
-            // gradient to simulate grain at 4% opacity
+            // Radial glow in the top-right corner for depth
+            Positioned(
+              top: -60, right: -60,
+              child: SizedBox(
+                width: 200, height: 200,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        t.primary.withValues(alpha: 0.15),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Noise texture overlay (4 % white)
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -147,7 +208,7 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark
+    final bgColor    = isDark
         ? const Color(0xCC1C1C1C)
         : const Color(0xCCFFFFFF);
     final borderColor = isDark
@@ -173,7 +234,7 @@ class GlassCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  STATUS BADGE
+//  STATUS BADGE  (with soft glow)
 // ─────────────────────────────────────────────
 class StatusBadge extends StatelessWidget {
   const StatusBadge(this.status, {super.key});
@@ -198,14 +259,22 @@ class StatusBadge extends StatelessWidget {
         color:        bg,
         borderRadius: BorderRadius.circular(AppRadius.full),
         border:       Border.all(color: border),
+        // Soft glow matching the badge's own color
+        boxShadow: [
+          BoxShadow(
+            color:      fg.withValues(alpha: 0.20),
+            blurRadius: 8,
+            offset:     Offset.zero,
+          ),
+        ],
       ),
       child: Text(
         status,
         style: TextStyle(
-          color:       fg,
-          fontSize:    11,
-          fontWeight:  FontWeight.w700,
-          letterSpacing: 0.2,
+          color:         fg,
+          fontSize:      11,
+          fontWeight:    FontWeight.w700,
+          letterSpacing: 0.3,
         ),
       ),
     );
@@ -234,13 +303,14 @@ class PriorityBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color:        bg,
         borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: fg.withValues(alpha: 0.25)),
       ),
       child: Text(
         priority.toUpperCase(),
         style: TextStyle(
-          color:       fg,
-          fontSize:    9,
-          fontWeight:  FontWeight.w800,
+          color:         fg,
+          fontSize:      9,
+          fontWeight:    FontWeight.w800,
           letterSpacing: 0.6,
         ),
       ),
@@ -265,6 +335,7 @@ class CategoryChip extends StatelessWidget {
       decoration: BoxDecoration(
         color:        c.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadius.full),
+        border:       Border.all(color: c.withValues(alpha: 0.25)),
       ),
       child: Text(
         label,
@@ -291,9 +362,9 @@ class SectionLabel extends StatelessWidget {
     return Text(
       text.toUpperCase(),
       style: TextStyle(
-        color:       t.textMuted,
-        fontSize:    10,
-        fontWeight:  FontWeight.w700,
+        color:         t.textMuted,
+        fontSize:      10,
+        fontWeight:    FontWeight.w800,
         letterSpacing: 1.2,
       ),
     );
@@ -301,7 +372,44 @@ class SectionLabel extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  PREMIUM PROGRESS BAR — gradient fill
+//  SQUIRCLE ICON CONTAINER
+//  Replaces plain square icon containers with a
+//  continuous-curve squircle shape and tinted bg.
+// ─────────────────────────────────────────────
+class SquircleIcon extends StatelessWidget {
+  const SquircleIcon({
+    super.key,
+    required this.icon,
+    required this.color,
+    required this.background,
+    this.size = 48,
+    this.iconSize = 22,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color background;
+  final double size;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    // Simulate squircle via a high borderRadius (~40% of size)
+    final radius = size * 0.38;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color:        background,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: Icon(icon, color: color, size: iconSize),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  PREMIUM PROGRESS BAR — gradient fill + spring
 // ─────────────────────────────────────────────
 class PremiumProgressBar extends StatelessWidget {
   const PremiumProgressBar({
@@ -309,15 +417,19 @@ class PremiumProgressBar extends StatelessWidget {
     required this.value,
     this.height = 6,
     this.animate = true,
+    this.color,           // override gradient start color
   });
 
-  final double value; // 0.0 – 1.0
+  final double value;      // 0.0 – 1.0
   final double height;
   final bool animate;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final fillColor = color ?? t.primary;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.full),
       child: Container(
@@ -325,7 +437,8 @@ class PremiumProgressBar extends StatelessWidget {
         color: t.backgroundSubtle,
         child: LayoutBuilder(
           builder: (_, constraints) {
-            final targetWidth = constraints.maxWidth * value.clamp(0.0, 1.0);
+            final targetWidth =
+                constraints.maxWidth * value.clamp(0.0, 1.0);
             return TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: targetWidth),
               duration: animate
@@ -337,8 +450,15 @@ class PremiumProgressBar extends StatelessWidget {
                 child: Container(
                   width: w,
                   height: height,
-                  decoration: const BoxDecoration(
-                    gradient: AppGradients.lifekit,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        fillColor,
+                        fillColor.withValues(alpha: 0.6),
+                      ],
+                    ),
+                    borderRadius:
+                        BorderRadius.circular(AppRadius.full),
                   ),
                 ),
               ),
@@ -388,36 +508,130 @@ class _MeshBackgroundState extends State<MeshBackground>
         // Base background
         Positioned.fill(child: ColoredBox(color: t.background)),
         // Blob 1 — top-right, translates 0→12dp X, 0→-8dp Y
-        AnimatedBuilder(
-          animation: _ctrl1,
-          builder: (_, __) => Positioned.fill(
-            child: Transform.translate(
+        // Blob 1 — Positioned.fill must be a direct Stack child.
+        // AnimatedBuilder sits inside it, not the other way around.
+        Positioned.fill(
+          child: AnimatedBuilder(
+            animation: _ctrl1,
+            builder: (_, __) => Transform.translate(
               offset: Offset(12 * _ctrl1.value, -8 * _ctrl1.value),
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
                   gradient: AppGradients.meshBlob1,
                 ),
               ),
             ),
           ),
         ),
-        // Blob 2 — bottom-left, translates 0→-8dp X, 0→10dp Y
-        AnimatedBuilder(
-          animation: _ctrl2,
-          builder: (_, __) => Positioned.fill(
-            child: Transform.translate(
+        // Blob 2
+        Positioned.fill(
+          child: AnimatedBuilder(
+            animation: _ctrl2,
+            builder: (_, __) => Transform.translate(
               offset: Offset(-8 * _ctrl2.value, 10 * _ctrl2.value),
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
                   gradient: AppGradients.meshBlob2,
                 ),
               ),
             ),
           ),
         ),
-        // Content on top
         widget.child,
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  PULSING EMPTY-STATE ORB
+//  72×72 circular container with radial gradient
+//  background that gently pulses (scale 1.0 → 1.06).
+// EmptyStateOrb — pulsing 72x72 circular container.
+// Uses an explicit AnimationController so the repeating scale animation is
+// safely stopped in dispose(). DO NOT use .animate(onPlay:) — flutter_animate
+// creates an internal GlobalKey for onPlay which causes "Duplicate GlobalKey"
+// crashes on rebuild.
+class EmptyStateOrb extends StatefulWidget {
+  const EmptyStateOrb({
+    super.key,
+    required this.icon,
+    this.size = 72,
+    this.iconSize = 32,
+  });
+
+  final IconData icon;
+  final double size;
+  final double iconSize;
+
+  @override
+  State<EmptyStateOrb> createState() => _EmptyStateOrbState();
+}
+
+class _EmptyStateOrbState extends State<EmptyStateOrb>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _scale = Tween<double>(
+    begin: 1.0,
+    end:   1.06,
+  ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return AnimatedBuilder(
+      animation: _scale,
+      builder: (_, child) => Transform.scale(
+        scale: _scale.value,
+        child: child,
+      ),
+      child: Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [t.primarySurface, t.primarySurface.withValues(alpha: 0)],
+          ),
+          border: Border.all(
+            color: t.primary.withValues(alpha: 0.18),
+            width: 1.5,
+          ),
+        ),
+        child: Icon(widget.icon, size: widget.iconSize, color: t.primary),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  SHEET DRAG HANDLE  (reusable)
+// ─────────────────────────────────────────────
+class SheetHandle extends StatelessWidget {
+  const SheetHandle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        decoration: BoxDecoration(
+          color:        t.border,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+        ),
+      ),
     );
   }
 }

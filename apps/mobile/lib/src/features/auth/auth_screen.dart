@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -149,29 +149,33 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                   ),
                 ),
                 // Animated blobs
+                // Animated blobs — Positioned.fill must be a direct Stack child.
+                // AnimatedBuilder goes INSIDE Positioned.fill.
                 if (!reduceMotion) ...[
-                  AnimatedBuilder(
-                    animation: _blob1,
-                    builder: (_, __) => Positioned.fill(
-                      child: Transform.translate(
-                        offset: Offset(
-                            12 * _blob1.value, -8 * _blob1.value),
-                        child: const DecoratedBox(
-                          decoration: BoxDecoration(
-                              gradient: AppGradients.meshBlob1),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _blob1,
+                        builder: (_, __) => Transform.translate(
+                          offset: Offset(12 * _blob1.value, -8 * _blob1.value),
+                          child: const DecoratedBox(
+                            decoration: BoxDecoration(
+                                gradient: AppGradients.meshBlob1),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  AnimatedBuilder(
-                    animation: _blob2,
-                    builder: (_, __) => Positioned.fill(
-                      child: Transform.translate(
-                        offset: Offset(
-                            -8 * _blob2.value, 10 * _blob2.value),
-                        child: const DecoratedBox(
-                          decoration: BoxDecoration(
-                              gradient: AppGradients.meshBlob2),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _blob2,
+                        builder: (_, __) => Transform.translate(
+                          offset: Offset(-8 * _blob2.value, 10 * _blob2.value),
+                          child: const DecoratedBox(
+                            decoration: BoxDecoration(
+                                gradient: AppGradients.meshBlob2),
+                          ),
                         ),
                       ),
                     ),

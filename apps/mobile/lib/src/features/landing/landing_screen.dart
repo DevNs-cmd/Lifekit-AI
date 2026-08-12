@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -54,12 +54,15 @@ class _LandingScreenState extends State<LandingScreen>
                   ),
 
                   // Animated blobs — non-interactive
+                  // Animated blobs — non-interactive
+                  // Positioned.fill must be a direct Stack child.
+                  // AnimatedBuilder goes INSIDE Positioned.fill, not the other way around.
                   if (!reduceMotion) ...[
-                    IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: _blob1,
-                        builder: (_, __) => Positioned.fill(
-                          child: Transform.translate(
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: _blob1,
+                          builder: (_, __) => Transform.translate(
                             offset: Offset(14 * _blob1.value, -10 * _blob1.value),
                             child: const DecoratedBox(
                               decoration: BoxDecoration(
@@ -70,11 +73,11 @@ class _LandingScreenState extends State<LandingScreen>
                         ),
                       ),
                     ),
-                    IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: _blob2,
-                        builder: (_, __) => Positioned.fill(
-                          child: Transform.translate(
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: _blob2,
+                          builder: (_, __) => Transform.translate(
                             offset: Offset(-10 * _blob2.value, 12 * _blob2.value),
                             child: const DecoratedBox(
                               decoration: BoxDecoration(

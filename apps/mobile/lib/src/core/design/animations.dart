@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 // ─────────────────────────────────────────────
@@ -267,11 +267,13 @@ class _PulseGlowState extends State<PulseGlow>
         child: widget.child,
       );
 }
-
 // ─────────────────────────────────────────────
 //  SHIMMER SKELETON HELPER
+//  Uses an explicit AnimationController so the shimmer repeats correctly
+//  and is stopped safely in dispose(). DO NOT use .animate(onPlay:) — it
+//  creates an internal GlobalKey that causes "Duplicate GlobalKey" crashes.
 // ─────────────────────────────────────────────
-class ShimmerBox extends StatelessWidget {
+class ShimmerBox extends StatefulWidget {
   const ShimmerBox({
     super.key,
     this.width,
@@ -283,20 +285,47 @@ class ShimmerBox extends StatelessWidget {
   final double borderRadius;
 
   @override
+  State<ShimmerBox> createState() => _ShimmerBoxState();
+}
+
+class _ShimmerBoxState extends State<ShimmerBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  late final Animation<double> _anim =
+      Tween<double>(begin: -2.0, end: 2.0).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.linear),
+      );
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE),
-        borderRadius: BorderRadius.circular(borderRadius),
+    final base  = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE);
+    final shine = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFF8F8F8);
+
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Container(
+        width:  widget.width,
+        height: widget.height,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          gradient: LinearGradient(
+            begin: Alignment(_anim.value - 1, 0),
+            end:   Alignment(_anim.value,     0),
+            colors: [base, shine, base],
+          ),
+        ),
       ),
-    )
-        .animate(onPlay: (c) => c.repeat())
-        .shimmer(
-          duration: 1200.ms,
-          color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFF8F8F8),
-        );
+    );
   }
 }
