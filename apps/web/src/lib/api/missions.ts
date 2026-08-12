@@ -71,6 +71,7 @@ export async function createMission(
     targetDate: input.targetDate
       ? new Date(input.targetDate).toISOString()
       : new Date(Date.now() + 90 * 86400000).toISOString(),
+    category: input.category,
   };
   const data = await post<any>("/life-missions", payload);
   return mapBackendMissionToFrontend(data);
@@ -86,6 +87,8 @@ export async function updateMission(
     payload.description = patchData.description;
   if (patchData.targetDate !== undefined)
     payload.targetDate = patchData.targetDate;
+  if (patchData.category !== undefined)
+    payload.category = patchData.category;
 
   const data = await patch<any>(`/life-missions/${id}`, payload);
   return mapBackendMissionToFrontend(data);

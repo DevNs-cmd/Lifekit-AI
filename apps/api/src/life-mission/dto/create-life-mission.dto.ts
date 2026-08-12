@@ -76,4 +76,12 @@ export class CreateLifeMissionDto {
   })
   @IsDateString({}, { message: "Target date must be a valid ISO date string" })
   targetDate!: string;
+
+  @ApiPropertyOptional({
+    description: "The category classification of the life mission",
+    example: "career",
+  })
+  @IsString()
+  @IsOptional()
+  category?: string;
 }

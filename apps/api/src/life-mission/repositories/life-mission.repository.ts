@@ -34,7 +34,7 @@ export class LifeMissionRepository implements ILifeMissionRepository {
           user_id: userId,
           title: data.title,
           description: serializedDescription,
-          category: null,
+          category: data.category ?? null,
           priority: PriorityLevel.MEDIUM,
           status: MissionStatus.ACTIVE,
           start_date: data.startDate ? new Date(data.startDate) : new Date(),
@@ -169,6 +169,10 @@ export class LifeMissionRepository implements ILifeMissionRepository {
         start_date: data.startDate ? new Date(data.startDate) : undefined,
         target_date: data.targetDate ? new Date(data.targetDate) : undefined,
       };
+
+      if (data.category !== undefined) {
+        updatePayload.category = data.category;
+      }
 
       const updated = await this.prisma.missions.update({
         where: { mission_id: id },
