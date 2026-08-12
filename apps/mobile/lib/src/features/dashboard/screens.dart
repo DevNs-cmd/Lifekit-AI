@@ -2712,7 +2712,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       itemBuilder: (_, i) {
                         final task = tasks[i];
                         return Dismissible(
-                          key:        ValueKey('${task.id}_$i'),
+                          key:        ValueKey(task.id),
                           background: Container(
                             color: t.success,
                             alignment: Alignment.centerLeft,
@@ -2729,17 +2729,35 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                           ),
                           confirmDismiss: (dir) async {
                             if (dir == DismissDirection.endToStart) {
-                              await ref.read(repositoryProvider)
-                                  .deleteTask(task.id)
-                                  .catchError((_) {});
-                              _loadTasks();
                               return true;
                             }
-                            await ref.read(repositoryProvider)
+                            // startToEnd: mark task as completed
+                            final currentTasks = ref.read(tasksProvider);
+                            ref.read(tasksProvider.notifier).state = currentTasks.map((t) {
+                              if (t.id == task.id) {
+                                t.done = true;
+                                t.status = 'Done';
+                              }
+                              return t;
+                            }).toList();
+
+                            ref.read(repositoryProvider)
                                 .setTaskStatus(task.id, 'COMPLETED')
-                                .catchError((_) {});
-                            _loadTasks();
+                                .then((_) => _loadTasks())
+                                .catchError((_) => _loadTasks());
                             return false;
+                          },
+                          onDismissed: (dir) {
+                            if (dir == DismissDirection.endToStart) {
+                              final currentTasks = ref.read(tasksProvider);
+                              ref.read(tasksProvider.notifier).state =
+                                  currentTasks.where((t) => t.id != task.id).toList();
+
+                              ref.read(repositoryProvider)
+                                  .deleteTask(task.id)
+                                  .then((_) => _loadTasks())
+                                  .catchError((_) => _loadTasks());
+                            }
                           },
                           child: _PremiumTaskRow(
                             task:     task,
