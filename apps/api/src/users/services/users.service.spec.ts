@@ -94,6 +94,7 @@ describe("UsersService", () => {
           interests: ["AI"],
         },
         createdAt: user.created_at,
+        subscriptionPlan: "free",
       });
     });
 

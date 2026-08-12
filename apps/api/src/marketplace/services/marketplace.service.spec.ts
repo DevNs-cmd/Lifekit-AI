@@ -107,7 +107,7 @@ describe("MarketplaceService", () => {
       };
       mockMarketplaceRepository.searchListings.mockResolvedValue(paginated);
 
-      const result = await service.findAll(filters, { page: 1, limit: 10 });
+      const result = await service.findAll(1, filters, { page: 1, limit: 10 });
       expect(mockMarketplaceRepository.searchListings).toHaveBeenCalledWith(
         filters,
         { page: 1, limit: 10 },
