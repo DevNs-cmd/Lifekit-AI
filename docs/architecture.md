@@ -116,3 +116,18 @@ LifeKit follows a **modular monolith** architecture with a clear separation of c
   - **Progress Processing** — track and update user progress metrics
   - **Notification Processing** — send push/email notifications
 
+---
+
+## Port Configuration & Network Mappings
+
+In the local environment, services run in a Docker network or on localhost, utilizing the following port structure:
+
+| Service / Layer | Mapped Host Port | Internal Container Port | Description |
+| :--- | :--- | :--- | :--- |
+| **Next.js Frontend** | `3000` | `3000` | User Web Interface |
+| **NestJS Backend** | `4000` | `4000` | Primary Backend REST & WebSocket Gateway |
+| **FastAPI Service** | `8000` | `8000` | AI Processing Orchestrator |
+| **PostgreSQL** | `5434` | `5432` | Relational SQL Storage |
+| **Redis** | `6380` | `6379` | Cache & Job Queue Broker |
+| **Qdrant (HTTP)** | `6333` | `6333` | Vector Database REST Endpoint |
+| **Qdrant (gRPC)** | `6334` | `6334` | Vector Database gRPC Interface |

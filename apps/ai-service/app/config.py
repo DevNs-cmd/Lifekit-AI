@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
 
+    # Fallback LLM Config
+    fallback_api_key: str = ""
+    fallback_api_base: str = "https://api.openai.com/v1"
+    fallback_model: str = "gpt-4o"
+
     # CORS
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:4000"]
 
