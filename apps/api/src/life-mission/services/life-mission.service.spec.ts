@@ -5,6 +5,7 @@ import { LifeMissionRepository } from "../repositories/life-mission.repository";
 import { CreateLifeMissionDto } from "../dto/create-life-mission.dto";
 import { LifeMission } from "../entities/life-mission.entity";
 import { MissionStatus, PriorityLevel } from "../../common/enums";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -49,6 +50,12 @@ describe("LifeMissionService", () => {
         {
           provide: LifeMissionRepository,
           useValue: mockMissionRepository,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: {
+            emit: jest.fn(),
+          },
         },
       ],
     }).compile();
