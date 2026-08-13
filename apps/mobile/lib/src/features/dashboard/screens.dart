@@ -1,6 +1,6 @@
-﻿// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously
 import 'dart:ui';
-import 'package:fl_chart/fl_chart.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,9 +21,14 @@ import '../../core/widgets/premium_input.dart';
 
 class MissionData {
   const MissionData({
-    required this.id, required this.title, required this.goal,
-    required this.category, required this.status, required this.priority,
-    required this.progress, required this.deadline,
+    required this.id,
+    required this.title,
+    required this.goal,
+    required this.category,
+    required this.status,
+    required this.priority,
+    required this.progress,
+    required this.deadline,
   });
   final int id;
   final String title, goal, category, status, priority, deadline;
@@ -38,10 +43,10 @@ class MissionData {
       id: (j['id'] ?? 0) is String
           ? int.tryParse(j['id'].toString()) ?? 0
           : (j['id'] ?? 0) as int,
-      title:    (j['title'] ?? '').toString(),
-      goal:     (j['description'] ?? j['goal'] ?? '').toString(),
+      title: (j['title'] ?? '').toString(),
+      goal: (j['description'] ?? j['goal'] ?? '').toString(),
       category: (j['category'] ?? 'Lifestyle').toString(),
-      status:   _normalizeStatus(j['status']?.toString()),
+      status: _normalizeStatus(j['status']?.toString()),
       priority: (j['priority'] ?? 'medium').toString().toLowerCase(),
       progress: progress.clamp(0.0, 1.0),
       deadline: target == null
@@ -54,11 +59,11 @@ class MissionData {
     if (s == null) return 'Active';
     return switch (s.toUpperCase()) {
       'ACTIVE' || 'IN_PROGRESS' => 'Active',
-      'PAUSED'    => 'Paused',
+      'PAUSED' => 'Paused',
       'COMPLETED' || 'DONE' => 'Completed',
-      'DRAFT'     => 'Draft',
-      'AT_RISK'   => 'At Risk',
-      'ARCHIVED'  => 'Archived',
+      'DRAFT' => 'Draft',
+      'AT_RISK' => 'At Risk',
+      'ARCHIVED' => 'Archived',
       _ => s,
     };
   }
@@ -66,9 +71,14 @@ class MissionData {
 
 class TaskData {
   TaskData({
-    required this.id, required this.missionId, required this.title,
-    required this.missionTitle, required this.priority,
-    required this.minutes, required this.status, this.done = false,
+    required this.id,
+    required this.missionId,
+    required this.title,
+    required this.missionTitle,
+    required this.priority,
+    required this.minutes,
+    required this.status,
+    this.done = false,
   });
   final int id, missionId;
   final String title, missionTitle, priority;
@@ -79,18 +89,19 @@ class TaskData {
   factory TaskData.fromJson(Map<String, dynamic> j, String missionTitle) {
     final rawStatus = (j['status'] ?? 'PENDING').toString().toUpperCase();
     return TaskData(
-      id:           _parseInt(j['id'] ?? j['task_id']),
-      missionId:    _parseInt(j['mission_id'] ?? j['missionId']),
-      title:        (j['title'] ?? '').toString(),
+      id: _parseInt(j['id'] ?? j['task_id']),
+      missionId: _parseInt(j['mission_id'] ?? j['missionId']),
+      title: (j['title'] ?? '').toString(),
       missionTitle: missionTitle,
-      priority:     (j['priority'] ?? 'medium').toString().toLowerCase(),
-      minutes:      ((j['estimated_time'] ?? j['estimatedDurationMinutes'])
-                      as num?)?.toInt() ?? 30,
+      priority: (j['priority'] ?? 'medium').toString().toLowerCase(),
+      minutes: ((j['estimated_time'] ?? j['estimatedDurationMinutes']) as num?)
+              ?.toInt() ??
+          30,
       status: switch (rawStatus) {
         'IN_PROGRESS' => 'In Progress',
-        'COMPLETED'   => 'Done',
-        'REVIEW'      => 'Review',
-        _             => 'To Do',
+        'COMPLETED' => 'Done',
+        'REVIEW' => 'Review',
+        _ => 'To Do',
       },
       done: rawStatus == 'COMPLETED',
     );
@@ -106,9 +117,9 @@ class TaskData {
 // STATE PROVIDERS
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-final missionsProvider   = StateProvider<List<MissionData>>((ref) => const []);
-final tasksProvider      = StateProvider<List<TaskData>>((ref) => const []);
-final profileProvider    = StateProvider<Map<String, dynamic>>((ref) => const {});
+final missionsProvider = StateProvider<List<MissionData>>((ref) => const []);
+final tasksProvider = StateProvider<List<TaskData>>((ref) => const []);
+final profileProvider = StateProvider<Map<String, dynamic>>((ref) => const {});
 final notifCountProvider = StateProvider<int>((ref) => 0);
 
 // â”€â”€ UX feature providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -133,16 +144,15 @@ final dashboardProvider = FutureProvider<void>((ref) async {
     repo.unreadNotificationCount().catchError((_) => 0),
   ]);
   final rawMissions = results[0] as List<Map<String, dynamic>>;
-  ref.read(profileProvider.notifier).state =
-      results[1] as Map<String, dynamic>;
+  ref.read(profileProvider.notifier).state = results[1] as Map<String, dynamic>;
   ref.read(notifCountProvider.notifier).state = results[2] as int;
   final missions = rawMissions.map(MissionData.fromJson).toList();
   ref.read(missionsProvider.notifier).state = missions;
   if (missions.isNotEmpty) {
     final taskResults = await Future.wait(
-      missions.take(3).map((m) =>
-          repo.tasks(missionId: m.id)
-              .catchError((_) => <Map<String, dynamic>>[])),
+      missions.take(3).map((m) => repo
+          .tasks(missionId: m.id)
+          .catchError((_) => <Map<String, dynamic>>[])),
     );
     final allTasks = taskResults.indexed
         .expand((item) =>
@@ -169,26 +179,26 @@ class _PageHeading extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(56, 18, 12, 12),
       child: Row(children: [
         Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                color:         t.textPrimary,
-                fontWeight:    FontWeight.w900,
-                letterSpacing: -1.0,
-              ),
+                    color: t.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1.0,
+                  ),
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 3),
               Text(
                 subtitle!,
                 style: TextStyle(
-                  color:    t.textMuted,
+                  color: t.textMuted,
                   fontSize: 13,
-                  height:   1.4,
+                  height: 1.4,
                 ),
               ),
             ],
@@ -212,9 +222,9 @@ class _ApiErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color:        t.destructiveSurface,
+        color: t.destructiveSurface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border:       Border.all(color: t.destructive.withValues(alpha: 0.3)),
+        border: Border.all(color: t.destructive.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         Icon(LucideIcons.wifiOff, color: t.destructive, size: 18),
@@ -240,9 +250,9 @@ class _SheetLabel extends StatelessWidget {
     final t = context.tokens;
     return Text(text,
         style: TextStyle(
-          fontSize:    12,
-          fontWeight:  FontWeight.w700,
-          color:       t.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: t.textSecondary,
           letterSpacing: 0.1,
         ));
   }
@@ -250,22 +260,24 @@ class _SheetLabel extends StatelessWidget {
 
 class _PremiumTaskRow extends StatelessWidget {
   const _PremiumTaskRow({
-    required this.task, required this.index, required this.onToggle,
+    required this.task,
+    required this.index,
+    required this.onToggle,
   });
   final TaskData task;
   final int index;
   final VoidCallback onToggle;
 
   Color _priorityColor(AppTokens t) => switch (task.priority) {
-    'urgent' => t.priorityUrgentFg,
-    'high'   => t.priorityHighFg,
-    'medium' => t.priorityMedFg,
-    _        => t.textMuted,
-  };
+        'urgent' => t.priorityUrgentFg,
+        'high' => t.priorityHighFg,
+        'medium' => t.priorityMedFg,
+        _ => t.textMuted,
+      };
 
   @override
   Widget build(BuildContext context) {
-    final t          = context.tokens;
+    final t = context.tokens;
     final brightness = Theme.of(context).brightness;
 
     return GestureDetector(
@@ -274,17 +286,18 @@ class _PremiumTaskRow extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color:        t.surface,
+          color: t.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border:       Border.all(color: t.border),
-          boxShadow:    AppElevation.level1(brightness),
+          border: Border.all(color: t.border),
+          boxShadow: AppElevation.level1(brightness),
         ),
         child: Row(children: [
           // Priority left strip
           Container(
-            width: 3, height: 36,
+            width: 3,
+            height: 36,
             decoration: BoxDecoration(
-              color:        _priorityColor(t),
+              color: _priorityColor(t),
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
@@ -294,7 +307,8 @@ class _PremiumTaskRow extends StatelessWidget {
             onTap: onToggle,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 20, height: 20,
+              width: 20,
+              height: 20,
               decoration: BoxDecoration(
                 color: task.done ? t.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
@@ -304,33 +318,32 @@ class _PremiumTaskRow extends StatelessWidget {
                 ),
               ),
               child: task.done
-                  ? const Icon(LucideIcons.check,
-                      size: 12, color: Colors.white)
+                  ? const Icon(LucideIcons.check, size: 12, color: Colors.white)
                       .animate()
                       .scale(
                         begin: const Offset(0.8, 0.8),
-                        end:   const Offset(1.0, 1.0),
+                        end: const Offset(1.0, 1.0),
                         duration: 200.ms,
-                        curve:    Curves.elasticOut,
+                        curve: Curves.elasticOut,
                       )
                   : null,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 300),
                 style: TextStyle(
-                  fontWeight:      FontWeight.w600,
-                  fontSize:        14,
-                  color:           task.done ? t.textMuted : t.textPrimary,
-                  decoration:      task.done
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: task.done ? t.textMuted : t.textPrimary,
+                  decoration: task.done
                       ? TextDecoration.lineThrough
                       : TextDecoration.none,
                   decorationColor: t.textMuted,
-                  letterSpacing:   -0.2,
+                  letterSpacing: -0.2,
                 ),
                 child: Text(
                   task.title,
@@ -352,7 +365,7 @@ class _PremiumTaskRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
             decoration: BoxDecoration(
-              color:        t.backgroundSubtle,
+              color: t.backgroundSubtle,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -361,8 +374,8 @@ class _PremiumTaskRow extends StatelessWidget {
               Text(
                 '${task.minutes}m',
                 style: TextStyle(
-                  color:      t.textMuted,
-                  fontSize:   10,
+                  color: t.textMuted,
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -384,9 +397,10 @@ class _PremiumTaskRow extends StatelessWidget {
 //  Pull-to-refresh is the recovery gesture â€” no button.
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _InlineErrorState extends StatelessWidget {
-  const _InlineErrorState({this.title = 'Something went wrong', this.subtitle});
+  const _InlineErrorState({this.title = 'Something went wrong'});
   final String title;
-  final String? subtitle;
+  static const String subtitle =
+      'Check your connection and pull down to refresh';
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +410,8 @@ class _InlineErrorState extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 64, height: 64,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: t.backgroundSubtle,
@@ -417,7 +432,7 @@ class _InlineErrorState extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            subtitle ?? 'Check your connection and pull down to refresh',
+            subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.6),
           ),
@@ -441,17 +456,16 @@ class _GroupedSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Padding(
-      padding: EdgeInsets.only(
-        top: topPadding, left: 0, right: 0, bottom: 8),
+      padding: EdgeInsets.only(top: topPadding, left: 0, right: 0, bottom: 8),
       child: Row(children: [
         Text(
           count != null
               ? '${label.toUpperCase()} ($count)'
               : label.toUpperCase(),
           style: TextStyle(
-            color:         t.textSecondary,
-            fontSize:      11,
-            fontWeight:    FontWeight.w700,
+            color: t.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
             letterSpacing: 0.8,
           ),
         ),
@@ -524,9 +538,9 @@ class _SearchBarState extends State<_SearchBar> {
               child: Container(
                 height: 44,
                 decoration: BoxDecoration(
-                  color:        t.surface,
+                  color: t.surface,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border:       Border.all(color: t.primary, width: 1.5),
+                  border: Border.all(color: t.primary, width: 1.5),
                   boxShadow: [
                     BoxShadow(
                       color: t.primary.withValues(alpha: 0.15),
@@ -540,21 +554,19 @@ class _SearchBarState extends State<_SearchBar> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
-                      controller:  _ctrl,
-                      focusNode:   _focusNode,
-                      onChanged:   widget.onChanged,
+                      controller: _ctrl,
+                      focusNode: _focusNode,
+                      onChanged: widget.onChanged,
                       textInputAction: TextInputAction.search,
-                      style: TextStyle(
-                        fontSize: 14, color: t.textPrimary),
+                      style: TextStyle(fontSize: 14, color: t.textPrimary),
                       decoration: InputDecoration(
-                        hintText:       widget.hint,
-                        border:         InputBorder.none,
-                        enabledBorder:  InputBorder.none,
-                        focusedBorder:  InputBorder.none,
+                        hintText: widget.hint,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
-                        isDense:        true,
-                        hintStyle: TextStyle(
-                            color: t.textMuted, fontSize: 14),
+                        isDense: true,
+                        hintStyle: TextStyle(color: t.textMuted, fontSize: 14),
                       ),
                     ),
                   ),
@@ -566,8 +578,8 @@ class _SearchBarState extends State<_SearchBar> {
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Icon(LucideIcons.x,
-                            size: 16, color: t.textMuted),
+                        child:
+                            Icon(LucideIcons.x, size: 16, color: t.textMuted),
                       ),
                     )
                   else
@@ -578,8 +590,9 @@ class _SearchBarState extends State<_SearchBar> {
                         child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: t.primary, fontSize: 12,
-                            fontWeight: FontWeight.w600),
+                              color: t.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -601,7 +614,8 @@ class _SearchBarState extends State<_SearchBar> {
 // when the widget rebuilds (e.g. list scroll, parent setState).
 class _SkeletonBox extends StatefulWidget {
   const _SkeletonBox({
-    this.width, this.height = 14,
+    this.width,
+    this.height = 14,
     this.radius = AppRadius.sm,
   });
   final double? width;
@@ -621,7 +635,7 @@ class _SkeletonBoxState extends State<_SkeletonBox>
 
   late final Animation<double> _anim = Tween<double>(
     begin: -1.5,
-    end:    1.5,
+    end: 1.5,
   ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.linear));
 
   @override
@@ -633,19 +647,19 @@ class _SkeletonBoxState extends State<_SkeletonBox>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final base   = isDark ? const Color(0xFF252525) : const Color(0xFFEEEEEE);
-    final shine  = isDark ? const Color(0xFF333333) : const Color(0xFFF8F8F8);
+    final base = isDark ? const Color(0xFF252525) : const Color(0xFFEEEEEE);
+    final shine = isDark ? const Color(0xFF333333) : const Color(0xFFF8F8F8);
 
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) => Container(
-        width:  widget.width,
+        width: widget.width,
         height: widget.height,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(widget.radius),
           gradient: LinearGradient(
             begin: Alignment(_anim.value - 1, 0),
-            end:   Alignment(_anim.value,     0),
+            end: Alignment(_anim.value, 0),
             colors: [base, shine, base],
           ),
         ),
@@ -664,23 +678,24 @@ class _SkeletonMissionCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color:        t.cardBg,
+        color: t.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.x2l),
-        border:       Border.all(color: t.cardBorder),
+        border: Border.all(color: t.cardBorder),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child:
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
         Row(children: [
           _SkeletonBox(width: 64, height: 22, radius: AppRadius.full),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _SkeletonBox(width: 56, height: 22, radius: AppRadius.full),
         ]),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         _SkeletonBox(height: 16, radius: AppRadius.sm),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         _SkeletonBox(width: 200, height: 13),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         _SkeletonBox(height: 6, radius: AppRadius.full),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _SkeletonBox(width: 100, height: 13),
       ]),
     );
@@ -697,24 +712,24 @@ class _SkeletonTaskRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color:        t.surface,
+        color: t.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border:       Border.all(color: t.border),
+        border: Border.all(color: t.border),
       ),
-      child: Row(children: [
+      child: Row(children: const [
         _SkeletonBox(width: 3, height: 36, radius: AppRadius.full),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         _SkeletonBox(width: 20, height: 20, radius: 6),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _SkeletonBox(height: 14),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             _SkeletonBox(width: 100, height: 11),
           ]),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         _SkeletonBox(width: 36, height: 24, radius: AppRadius.full),
       ]),
     );
@@ -730,28 +745,29 @@ class _SkeletonHeroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color:        t.primarySurface,
+        color: t.primarySurface,
         borderRadius: BorderRadius.circular(AppRadius.x3l),
-        border:       Border.all(color: t.border),
+        border: Border.all(color: t.border),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child:
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
         Row(children: [
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _SkeletonBox(width: 80, height: 14),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             _SkeletonBox(width: 160, height: 30, radius: AppRadius.sm),
           ]),
-          const Spacer(),
+          Spacer(),
           _SkeletonBox(width: 48, height: 48, radius: 24),
         ]),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _SkeletonBox(height: 14),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         _SkeletonBox(width: 220, height: 14),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         Row(children: [
           _SkeletonBox(width: 110, height: 36, radius: AppRadius.full),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           _SkeletonBox(width: 90, height: 36, radius: AppRadius.full),
         ]),
       ]),
@@ -768,17 +784,18 @@ class _SkeletonMetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color:        t.cardBg,
+        color: t.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border:       Border.all(color: t.cardBorder),
+        border: Border.all(color: t.cardBorder),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child:
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
         _SkeletonBox(width: 48, height: 48, radius: 18),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         _SkeletonBox(width: 56, height: 28, radius: AppRadius.sm),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         _SkeletonBox(width: 70, height: 10),
-        const SizedBox(height: 2),
+        SizedBox(height: 2),
         _SkeletonBox(width: 90, height: 10),
       ]),
     );
@@ -805,7 +822,8 @@ class _QuickActionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Positioned(
-      left: 24, right: 24,
+      left: 24,
+      right: 24,
       bottom: 16 + MediaQuery.of(context).padding.bottom,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.full),
@@ -814,34 +832,33 @@ class _QuickActionBar extends StatelessWidget {
           child: Container(
             height: 56,
             decoration: BoxDecoration(
-              color:        t.surface.withValues(alpha: 0.90),
+              color: t.surface.withValues(alpha: 0.90),
               borderRadius: BorderRadius.circular(AppRadius.full),
-              border:       Border.all(color: t.border),
-              boxShadow:    AppElevation.level2(
-                  Theme.of(context).brightness),
+              border: Border.all(color: t.border),
+              boxShadow: AppElevation.level2(Theme.of(context).brightness),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _QuickBtn(
-                  icon:    LucideIcons.plus,
-                  label:   'Task',
-                  color:   t.primary,
-                  onTap:   onAddTask,
+                  icon: LucideIcons.plus,
+                  label: 'Task',
+                  color: t.primary,
+                  onTap: onAddTask,
                 ),
                 Container(width: 1, height: 24, color: t.border),
                 _QuickBtn(
-                  icon:    LucideIcons.target,
-                  label:   'Mission',
-                  color:   t.info,
-                  onTap:   onNewMission,
+                  icon: LucideIcons.target,
+                  label: 'Mission',
+                  color: t.info,
+                  onTap: onNewMission,
                 ),
                 Container(width: 1, height: 24, color: t.border),
                 _QuickBtn(
-                  icon:    LucideIcons.sparkles,
-                  label:   'Ask AI',
-                  color:   t.warning,
-                  onTap:   onAskAI,
+                  icon: LucideIcons.sparkles,
+                  label: 'Ask AI',
+                  color: t.warning,
+                  onTap: onAskAI,
                 ),
               ],
             ),
@@ -854,8 +871,10 @@ class _QuickActionBar extends StatelessWidget {
 
 class _QuickBtn extends StatefulWidget {
   const _QuickBtn({
-    required this.icon, required this.label,
-    required this.color, required this.onTap,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
   });
   final IconData icon;
   final String label;
@@ -872,11 +891,14 @@ class _QuickBtnState extends State<_QuickBtn> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return GestureDetector(
-      onTapDown:   (_) => setState(() => _pressed = true),
-      onTapUp:     (_) { setState(() => _pressed = false); widget.onTap(); },
-      onTapCancel: ()  => setState(() => _pressed = false),
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
-        scale:    _pressed ? 0.90 : 1.0,
+        scale: _pressed ? 0.90 : 1.0,
         duration: const Duration(milliseconds: 100),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -886,8 +908,8 @@ class _QuickBtnState extends State<_QuickBtn> {
             Text(
               widget.label,
               style: TextStyle(
-                color:      t.textSecondary,
-                fontSize:   9,
+                color: t.textSecondary,
+                fontSize: 9,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.3,
               ),
@@ -907,9 +929,21 @@ class _HowItWorksGuide extends StatelessWidget {
   const _HowItWorksGuide();
 
   static const _steps = [
-    (LucideIcons.target,       'Create a Mission',      'Define your goal and let AI build the plan.'),
-    (LucideIcons.wandSparkles, 'AI Builds Your Plan',   'Get milestones, tasks, and timelines instantly.'),
-    (LucideIcons.squareCheck,  'Execute Daily',         'Track progress and stay focused every day.'),
+    (
+      LucideIcons.target,
+      'Create a Mission',
+      'Define your goal and let AI build the plan.'
+    ),
+    (
+      LucideIcons.wandSparkles,
+      'AI Builds Your Plan',
+      'Get milestones, tasks, and timelines instantly.'
+    ),
+    (
+      LucideIcons.squareCheck,
+      'Execute Daily',
+      'Track progress and stay focused every day.'
+    ),
   ];
 
   @override
@@ -921,14 +955,15 @@ class _HowItWorksGuide extends StatelessWidget {
         child: Text(
           'HOW LIFEKIT WORKS',
           style: TextStyle(
-            color:         t.textMuted,
-            fontSize:      10,
-            fontWeight:    FontWeight.w800,
+            color: t.textMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
           ),
         ),
       ),
-      Row(children: _steps.indexed.map((item) {
+      Row(
+          children: _steps.indexed.map((item) {
         final (icon, title, desc) = item.$2;
         return Expanded(
           child: Padding(
@@ -941,15 +976,16 @@ class _HowItWorksGuide extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color:        t.surface,
+                  color: t.surface,
                   borderRadius: BorderRadius.circular(AppRadius.xl),
-                  border:       Border.all(color: t.cardBorder),
+                  border: Border.all(color: t.cardBorder),
                 ),
                 child: Column(children: [
                   Container(
-                    width: 36, height: 36,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color:        t.primarySurface,
+                      color: t.primarySurface,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(icon, size: 16, color: t.primary),
@@ -959,10 +995,10 @@ class _HowItWorksGuide extends StatelessWidget {
                     title,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:      t.textPrimary,
-                      fontSize:   11,
+                      color: t.textPrimary,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      height:     1.3,
+                      height: 1.3,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -970,17 +1006,18 @@ class _HowItWorksGuide extends StatelessWidget {
                     desc,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:    t.textMuted,
+                      color: t.textMuted,
                       fontSize: 10,
-                      height:   1.4,
+                      height: 1.4,
                     ),
                   ),
                 ]),
               ),
             ),
-          ).animate(delay: (item.$1 * 80).ms)
-            .fadeIn(duration: 280.ms)
-            .slideY(begin: 0.06, end: 0, duration: 280.ms),
+          )
+              .animate(delay: (item.$1 * 80).ms)
+              .fadeIn(duration: 280.ms)
+              .slideY(begin: 0.06, end: 0, duration: 280.ms),
         );
       }).toList()),
     ]);
@@ -1003,15 +1040,17 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final boot        = ref.watch(dashboardProvider);
-    final tasks       = ref.watch(tasksProvider);
-    final missions    = ref.watch(missionsProvider);
-    final profile     = ref.watch(profileProvider);
-    final notifCount  = ref.watch(notifCountProvider);
-    final t           = context.tokens;
+    final boot = ref.watch(dashboardProvider);
+    final tasks = ref.watch(tasksProvider);
+    final missions = ref.watch(missionsProvider);
+    final profile = ref.watch(profileProvider);
+    final notifCount = ref.watch(notifCountProvider);
+    final t = context.tokens;
 
     final firstName = (profile['fullName'] ?? profile['full_name'] ?? 'there')
-        .toString().split(' ').first;
+        .toString()
+        .split(' ')
+        .first;
 
     return MeshBackground(
       child: Scaffold(
@@ -1028,7 +1067,7 @@ class HomeScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        gradient:     AppGradients.lifekit,
+                        gradient: AppGradients.lifekit,
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: const Icon(LucideIcons.leaf,
@@ -1037,12 +1076,15 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(width: 9),
                     Text('LifeKit',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w900,
-                            color: t.textPrimary, letterSpacing: -0.5)),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: t.textPrimary,
+                            letterSpacing: -0.5)),
                     const Spacer(),
                     if (boot.isLoading)
                       SizedBox(
-                        width: 16, height: 16,
+                        width: 16,
+                        height: 16,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: t.primary),
                       ),
@@ -1073,14 +1115,16 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     GridView.count(
                       shrinkWrap: true,
-                      physics:    const NeverScrollableScrollPhysics(),
+                      physics: const NeverScrollableScrollPhysics(),
                       crossAxisCount: 2,
-                      mainAxisSpacing:  10,
+                      mainAxisSpacing: 10,
                       crossAxisSpacing: 10,
                       childAspectRatio: 0.9,
                       children: const [
-                        _SkeletonMetricCard(), _SkeletonMetricCard(),
-                        _SkeletonMetricCard(), _SkeletonMetricCard(),
+                        _SkeletonMetricCard(),
+                        _SkeletonMetricCard(),
+                        _SkeletonMetricCard(),
+                        _SkeletonMetricCard(),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -1089,9 +1133,9 @@ class HomeScreen extends ConsumerWidget {
                   ] else ...[
                     // â”€â”€ Hero card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     _HomeHeroCard(
-                      greeting:  _greeting(),
+                      greeting: _greeting(),
                       firstName: firstName,
-                      tasks:     tasks,
+                      tasks: tasks,
                     ).heroEntrance(),
                     const SizedBox(height: 16),
 
@@ -1104,43 +1148,47 @@ class HomeScreen extends ConsumerWidget {
                     // â”€â”€ Metric grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     GridView.count(
                       shrinkWrap: true,
-                      physics:    const NeverScrollableScrollPhysics(),
+                      physics: const NeverScrollableScrollPhysics(),
                       crossAxisCount: 2,
-                      mainAxisSpacing:  10,
+                      mainAxisSpacing: 10,
                       crossAxisSpacing: 10,
                       childAspectRatio: 0.9,
                       children: [
                         _MetricCard(
-                          value: tasks.isEmpty ? 0 :
-                              (tasks.where((t) => t.done).length * 100 /
-                               tasks.length),
-                          suffix:  '%',
-                          label:   'Productivity',
-                          detail:  'Task completion',
-                          icon:    LucideIcons.chartNoAxesCombined,
-                          index:   0,
+                          value: tasks.isEmpty
+                              ? 0
+                              : (tasks.where((t) => t.done).length *
+                                  100 /
+                                  tasks.length),
+                          suffix: '%',
+                          label: 'Productivity',
+                          detail: 'Task completion',
+                          icon: LucideIcons.chartNoAxesCombined,
+                          index: 0,
                         ),
                         _MetricCard(
                           value: tasks.where((t) => !t.done).length.toDouble(),
-                          label:  'Remaining',
+                          label: 'Remaining',
                           detail: 'tasks today',
-                          icon:   LucideIcons.listChecks,
-                          index:  1,
+                          icon: LucideIcons.listChecks,
+                          index: 1,
                         ),
                         _MetricCard(
-                          value: missions.where((m) => m.status == 'Active')
-                              .length.toDouble(),
-                          label:  'Missions',
+                          value: missions
+                              .where((m) => m.status == 'Active')
+                              .length
+                              .toDouble(),
+                          label: 'Missions',
                           detail: 'active now',
-                          icon:   LucideIcons.target,
-                          index:  2,
+                          icon: LucideIcons.target,
+                          index: 2,
                         ),
                         _MetricCard(
                           value: tasks.length.toDouble(),
-                          label:  'Total tasks',
+                          label: 'Total tasks',
                           detail: 'across missions',
-                          icon:   LucideIcons.squareCheck,
-                          index:  3,
+                          icon: LucideIcons.squareCheck,
+                          index: 3,
                         ),
                       ],
                     ),
@@ -1153,7 +1201,8 @@ class HomeScreen extends ConsumerWidget {
                     ],
 
                     // â”€â”€ AI Insight card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                    _AiInsightCard(tasks: tasks, missions: missions).staggered(5),
+                    _AiInsightCard(tasks: tasks, missions: missions)
+                        .staggered(5),
                     const SizedBox(height: 16),
 
                     // â”€â”€ Primary mission â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1178,7 +1227,7 @@ class HomeScreen extends ConsumerWidget {
                 context.go('/tasks');
               },
               onNewMission: () => context.go('/missions'),
-              onAskAI:      () => context.go('/ai-coach'),
+              onAskAI: () => context.go('/ai-coach'),
             ),
           ]),
         ),
@@ -1207,31 +1256,34 @@ class _HomeHeroCard extends StatelessWidget {
       orElse: () => tasks.isNotEmpty
           ? tasks.first
           : TaskData(
-              id: 0, missionId: 0,
+              id: 0,
+              missionId: 0,
               title: 'Create your first mission',
-              missionTitle: '', priority: 'medium',
-              minutes: 5, status: 'To Do'),
+              missionTitle: '',
+              priority: 'medium',
+              minutes: 5,
+              status: 'To Do'),
     );
 
-    final doneTasks  = tasks.where((tk) => tk.done).length;
+    final doneTasks = tasks.where((tk) => tk.done).length;
     final totalTasks = tasks.length;
     final completion = totalTasks > 0 ? doneTasks / totalTasks : 0.0;
 
     return GradientCard(
-      radius:  AppRadius.x3l,
+      radius: AppRadius.x3l,
       // Extra padding â€” 24 all around as spec'd
       padding: const EdgeInsets.all(24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // â”€â”€ Top row: greeting + date chip + completion ring â”€â”€
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
                 '$greeting,',
                 style: const TextStyle(
-                  color: Colors.white70, fontSize: 14,
+                  color: Colors.white70,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1242,11 +1294,11 @@ class _HomeHeroCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color:         Colors.white,
-                  fontSize:      30,
-                  fontWeight:    FontWeight.w900,
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
                   letterSpacing: -1.0,
-                  height:        1.1,
+                  height: 1.1,
                 ),
               ),
             ]),
@@ -1264,18 +1316,19 @@ class _HomeHeroCard extends StatelessWidget {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color:        Colors.white.withValues(alpha: 0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(AppRadius.full),
-                  border:       Border.all(
-                      color: Colors.white.withValues(alpha: 0.25)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.25)),
                 ),
                 child: Text(
                   _todayLabel(),
                   style: const TextStyle(
-                    color: Colors.white, fontSize: 11,
+                    color: Colors.white,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1289,21 +1342,21 @@ class _HomeHeroCard extends StatelessWidget {
           tasks.isEmpty
               ? 'Set up your first mission to get started.'
               : '${tasks.where((tk) => !tk.done).length} tasks remaining. AI has prioritised your best next move.',
-          style: const TextStyle(
-              color: Colors.white70, height: 1.5, fontSize: 14),
+          style:
+              const TextStyle(color: Colors.white70, height: 1.5, fontSize: 14),
         ),
         const SizedBox(height: 18),
 
         // Action buttons
         Row(children: [
           _HeroOutlineButton(
-            icon:  LucideIcons.wandSparkles,
+            icon: LucideIcons.wandSparkles,
             label: 'Plan with AI',
             onTap: () => context.go('/ai-coach'),
           ),
           const SizedBox(width: 10),
           _HeroOutlineButton(
-            icon:  LucideIcons.plus,
+            icon: LucideIcons.plus,
             label: 'Add task',
             onTap: () => context.go('/tasks'),
           ),
@@ -1328,7 +1381,7 @@ class _HomeHeroCard extends StatelessWidget {
                           left: Radius.circular(AppRadius.x2l)),
                       boxShadow: [
                         BoxShadow(
-                          color:      t.primary.withValues(alpha: 0.6),
+                          color: t.primary.withValues(alpha: 0.6),
                           blurRadius: 6,
                         ),
                       ],
@@ -1338,7 +1391,7 @@ class _HomeHeroCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color:        Colors.white.withValues(alpha: 0.10),
+                        color: Colors.white.withValues(alpha: 0.10),
                         borderRadius: const BorderRadius.horizontal(
                             right: Radius.circular(AppRadius.x2l)),
                         border: Border.all(
@@ -1347,93 +1400,92 @@ class _HomeHeroCard extends StatelessWidget {
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                        Row(children: [
-                          Icon(LucideIcons.sparkles,
-                              size: 14,
-                              color: Colors.amber.shade300),
-                          const SizedBox(width: 6),
-                          Text(
-                            'NEXT BEST ACTION',
-                            style: TextStyle(
-                              color:         Colors.amber.shade300,
-                              fontSize:      10,
-                              fontWeight:    FontWeight.w700,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                        ]),
-                        const SizedBox(height: 10),
-                        Text(
-                          nextTask.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color:      Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize:   16,
-                            height:     1.3,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          nextTask.missionTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white60, fontSize: 12),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(children: [
-                          Icon(LucideIcons.clock3,
-                              size: 12, color: Colors.white60),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${nextTask.minutes} min',
-                            style: const TextStyle(
-                                color: Colors.white60, fontSize: 12),
-                          ),
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.full),
-                            ),
-                            child: const Text(
-                              'Highest impact',
-                              style: TextStyle(
-                                color:      Colors.white,
-                                fontSize:   10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: () => context.go('/tasks'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 6),
-                              decoration: BoxDecoration(
-                                color:        Colors.white,
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.full),
-                                boxShadow: AppShadows.greenSm,
-                              ),
-                              child: Text(
-                                'Start â†’',
+                            Row(children: [
+                              Icon(LucideIcons.sparkles,
+                                  size: 14, color: Colors.amber.shade300),
+                              const SizedBox(width: 6),
+                              Text(
+                                'NEXT BEST ACTION',
                                 style: TextStyle(
-                                  color:      t.primary,
+                                  color: Colors.amber.shade300,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w700,
-                                  fontSize:   12,
+                                  letterSpacing: 0.8,
                                 ),
                               ),
+                            ]),
+                            const SizedBox(height: 10),
+                            Text(
+                              nextTask.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                height: 1.3,
+                              ),
                             ),
-                          ),
-                        ]),
-                      ]),
+                            const SizedBox(height: 4),
+                            Text(
+                              nextTask.missionTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Colors.white60, fontSize: 12),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(children: [
+                              Icon(LucideIcons.clock3,
+                                  size: 12, color: Colors.white60),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${nextTask.minutes} min',
+                                style: const TextStyle(
+                                    color: Colors.white60, fontSize: 12),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.full),
+                                ),
+                                child: const Text(
+                                  'Highest impact',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: () => context.go('/tasks'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.full),
+                                    boxShadow: AppShadows.greenSm,
+                                  ),
+                                  child: Text(
+                                    'Start â†’',
+                                    style: TextStyle(
+                                      color: t.primary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ]),
+                          ]),
                     ),
                   ),
                 ]),
@@ -1456,19 +1508,17 @@ class _HomeHeroCard extends StatelessWidget {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 18),
               decoration: BoxDecoration(
-                color:        Colors.white.withValues(alpha: 0.10),
+                color: Colors.white.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(AppRadius.full),
-                border:       Border.all(
-                    color: Colors.white.withValues(alpha: 0.22)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
               ),
               child: Row(children: [
-                Icon(LucideIcons.sparkles,
-                    size: 16, color: t.primary),
+                Icon(LucideIcons.sparkles, size: 16, color: t.primary),
                 const SizedBox(width: 10),
                 Text(
                   'What do you want to achieve today?',
                   style: TextStyle(
-                    color:    Colors.white.withValues(alpha: 0.50),
+                    color: Colors.white.withValues(alpha: 0.50),
                     fontSize: 13,
                   ),
                 ),
@@ -1483,8 +1533,18 @@ class _HomeHeroCard extends StatelessWidget {
   String _todayLabel() {
     final now = DateTime.now();
     const months = [
-      'Jan','Feb','Mar','Apr','May','Jun',
-      'Jul','Aug','Sep','Oct','Nov','Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[now.month - 1]} ${now.day}';
   }
@@ -1503,29 +1563,32 @@ class _HeroCompletionRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = (value * 100).round();
     return SizedBox(
-      width: 48, height: 48,
+      width: 48,
+      height: 48,
       child: Stack(alignment: Alignment.center, children: [
         // Track
         SizedBox(
-          width: 48, height: 48,
+          width: 48,
+          height: 48,
           child: CircularProgressIndicator(
-            value:           1.0,
-            strokeWidth:     3.5,
-            color:           Colors.white.withValues(alpha: 0.18),
+            value: 1.0,
+            strokeWidth: 3.5,
+            color: Colors.white.withValues(alpha: 0.18),
           ),
         ),
         // Fill
         TweenAnimationBuilder<double>(
-          tween:    Tween(begin: 0, end: value),
+          tween: Tween(begin: 0, end: value),
           duration: const Duration(milliseconds: 900),
-          curve:    Curves.easeOutCubic,
+          curve: Curves.easeOutCubic,
           builder: (_, v, __) => SizedBox(
-            width: 48, height: 48,
+            width: 48,
+            height: 48,
             child: CircularProgressIndicator(
-              value:       v,
+              value: v,
               strokeWidth: 3.5,
-              color:       Colors.white,
-              strokeCap:   StrokeCap.round,
+              color: Colors.white,
+              strokeCap: StrokeCap.round,
             ),
           ),
         ),
@@ -1533,8 +1596,8 @@ class _HeroCompletionRing extends StatelessWidget {
         Text(
           '$pct%',
           style: const TextStyle(
-            color:      Colors.white,
-            fontSize:   11,
+            color: Colors.white,
+            fontSize: 11,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -1545,7 +1608,9 @@ class _HeroCompletionRing extends StatelessWidget {
 
 class _HeroOutlineButton extends StatelessWidget {
   const _HeroOutlineButton({
-    required this.icon, required this.label, required this.onTap,
+    required this.icon,
+    required this.label,
+    required this.onTap,
   });
   final IconData icon;
   final String label;
@@ -1557,17 +1622,17 @@ class _HeroOutlineButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
-            color:        Colors.white.withValues(alpha: 0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(AppRadius.full),
-            border:       Border.all(
-                color: Colors.white.withValues(alpha: 0.4)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 15, color: Colors.white),
             const SizedBox(width: 6),
             Text(label,
                 style: const TextStyle(
-                  color: Colors.white, fontSize: 13,
+                  color: Colors.white,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                 )),
           ]),
@@ -1586,8 +1651,11 @@ class _HeroOutlineButton extends StatelessWidget {
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _MetricCard extends StatelessWidget {
   const _MetricCard({
-    required this.value, required this.label, required this.detail,
-    required this.icon, required this.index,
+    required this.value,
+    required this.label,
+    required this.detail,
+    required this.icon,
+    required this.index,
     this.suffix = '',
   });
   final double value;
@@ -1600,16 +1668,16 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t           = context.tokens;
+    final t = context.tokens;
     final accentAlpha = _accentOpacities[index.clamp(0, 3)];
     final accentColor = t.primary.withValues(alpha: accentAlpha);
     // Stagger delay: 0ms, 80ms, 160ms, 240ms
-    final delay       = Duration(milliseconds: index * 80);
+    final delay = Duration(milliseconds: index * 80);
 
     return PremiumCard(
-      radius:          AppRadius.lg,
-      padding:         const EdgeInsets.all(16),
-      topAccentColor:  accentColor,
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(16),
+      topAccentColor: accentColor,
       child: Stack(children: [
         // Subtle inner gradient: primarySurface top â†’ transparent bottom
         Positioned.fill(
@@ -1618,7 +1686,7 @@ class _MetricCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.lg),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
-                end:   Alignment.bottomCenter,
+                end: Alignment.bottomCenter,
                 colors: [
                   t.primarySurface.withValues(alpha: 0.55),
                   Colors.transparent,
@@ -1632,22 +1700,22 @@ class _MetricCard extends StatelessWidget {
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Squircle icon container (48Ã—48)
           SquircleIcon(
-            icon:       icon,
-            color:      t.primary,
+            icon: icon,
+            color: t.primary,
             background: t.primarySurface,
-            size:       48,
-            iconSize:   22,
+            size: 48,
+            iconSize: 22,
           ),
           const SizedBox(height: 14),
           // Large animated metric value (28px / w900)
           AnimatedMetric(
-            value:          value,
-            suffix:         suffix,
+            value: value,
+            suffix: suffix,
             fractionDigits: 0,
             style: TextStyle(
-              fontSize:      28,
-              fontWeight:    FontWeight.w900,
-              color:         t.textPrimary,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: t.textPrimary,
               letterSpacing: -1.0,
             ),
           ),
@@ -1655,12 +1723,12 @@ class _MetricCard extends StatelessWidget {
           // UPPERCASE label
           Text(
             label.toUpperCase(),
-            maxLines:  1,
-            overflow:  TextOverflow.ellipsis,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontWeight:    FontWeight.w700,
-              fontSize:      10,
-              color:         t.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 10,
+              color: t.textPrimary,
               letterSpacing: 0.8,
             ),
           ),
@@ -1695,22 +1763,21 @@ class _TodaysPlan extends ConsumerWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
                 "Today's execution plan",
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight:    FontWeight.w800,
-                  letterSpacing: -0.4,
-                ),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
+                    ),
               ),
               const SizedBox(height: 2),
               Text(
                 'AI-prioritized to protect your momentum',
-                style: TextStyle(
-                  color: t.textMuted, fontSize: 12, height: 1.4),
+                style: TextStyle(color: t.textMuted, fontSize: 12, height: 1.4),
               ),
             ]),
           ),
@@ -1719,7 +1786,8 @@ class _TodaysPlan extends ConsumerWidget {
             child: Text(
               'See all',
               style: TextStyle(
-                color: t.primary, fontSize: 12,
+                color: t.primary,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1733,13 +1801,12 @@ class _TodaysPlan extends ConsumerWidget {
             children: [
               // Circled task number
               Container(
-                width: 20, height: 20,
+                width: 20,
+                height: 20,
                 margin: const EdgeInsets.only(top: 11, right: 8, bottom: 8),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: item.$2.done
-                      ? t.primarySurface
-                      : t.backgroundSubtle,
+                  color: item.$2.done ? t.primarySurface : t.backgroundSubtle,
                   border: Border.all(
                     color: item.$2.done ? t.primary : t.border,
                     width: 1.5,
@@ -1749,8 +1816,8 @@ class _TodaysPlan extends ConsumerWidget {
                   child: Text(
                     '$taskNum',
                     style: TextStyle(
-                      color:      item.$2.done ? t.primary : t.textMuted,
-                      fontSize:   9,
+                      color: item.$2.done ? t.primary : t.textMuted,
+                      fontSize: 9,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -1758,13 +1825,14 @@ class _TodaysPlan extends ConsumerWidget {
               ),
               Expanded(
                 child: _PremiumTaskRow(
-                  task:     item.$2,
-                  index:    item.$1,
+                  task: item.$2,
+                  index: item.$1,
                   onToggle: () {
                     final copy = [...tasks];
                     copy[item.$1].done = !copy[item.$1].done;
                     ref.read(tasksProvider.notifier).state = copy;
-                    ref.read(repositoryProvider)
+                    ref
+                        .read(repositoryProvider)
                         .setTaskStatus(
                           item.$2.id,
                           copy[item.$1].done ? 'COMPLETED' : 'PENDING',
@@ -1791,22 +1859,21 @@ class _AiInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t          = context.tokens;
+    final t = context.tokens;
     final brightness = Theme.of(context).brightness;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
-          end:   Alignment.centerRight,
+          end: Alignment.centerRight,
           colors: [t.primarySurface, t.surface],
         ),
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border:    Border.all(color: t.cardBorder),
+        border: Border.all(color: t.cardBorder),
         boxShadow: AppElevation.level1(brightness),
       ),
       child: IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           // Glowing left accent bar
           Container(
             width: 3,
@@ -1816,9 +1883,9 @@ class _AiInsightCard extends StatelessWidget {
                   left: Radius.circular(AppRadius.xl)),
               boxShadow: [
                 BoxShadow(
-                  color:      t.primary.withValues(alpha: 0.45),
+                  color: t.primary.withValues(alpha: 0.45),
                   blurRadius: 8,
-                  offset:     Offset.zero,
+                  offset: Offset.zero,
                 ),
               ],
             ),
@@ -1826,17 +1893,17 @@ class _AiInsightCard extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(18),
-              child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 // Pulsing AI icon
                 PulseGlow(
                   child: Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      gradient:     AppGradients.lifekit,
+                      gradient: AppGradients.lifekit,
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      boxShadow:    AppShadows.greenSm,
+                      boxShadow: AppShadows.greenSm,
                     ),
                     child: const Icon(LucideIcons.wandSparkles,
                         color: Colors.white, size: 18),
@@ -1847,58 +1914,59 @@ class _AiInsightCard extends StatelessWidget {
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Row(children: [
-                      Text(
-                        'AI INSIGHT',
-                        style: TextStyle(
-                          color:         t.primary,
-                          fontSize:      10,
-                          fontWeight:    FontWeight.w800,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _PulseDot(color: t.primary),
-                    ]),
-                    const SizedBox(height: 8),
-                    Text(
-                      tasks.isNotEmpty
-                          ? 'Your most impactful task is "${tasks.first.title}".'
-                          : 'Start by creating your first mission.',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      missions.isEmpty
-                          ? 'LifeKit turns goals into structured missions with AI guidance.'
-                          : 'You have ${missions.where((m) => m.status == 'Active').length} active mission${missions.length == 1 ? '' : 's'} in progress.',
-                      style: TextStyle(
-                        color:  t.textMuted,
-                        height: 1.6,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    GestureDetector(
-                      onTap: () => context.go('/ai-coach'),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Row(children: [
+                          Text(
+                            'AI INSIGHT',
+                            style: TextStyle(
+                              color: t.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _PulseDot(color: t.primary),
+                        ]),
+                        const SizedBox(height: 8),
                         Text(
-                          'Explore with AI',
+                          tasks.isNotEmpty
+                              ? 'Your most impactful task is "${tasks.first.title}".'
+                              : 'Start by creating your first mission.',
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.3,
+                                  ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          missions.isEmpty
+                              ? 'LifeKit turns goals into structured missions with AI guidance.'
+                              : 'You have ${missions.where((m) => m.status == 'Active').length} active mission${missions.length == 1 ? '' : 's'} in progress.',
                           style: TextStyle(
-                            color:      t.primary,
-                            fontSize:   13,
-                            fontWeight: FontWeight.w700,
+                            color: t.textMuted,
+                            height: 1.6,
+                            fontSize: 13,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Icon(LucideIcons.arrowRight,
-                            size: 13, color: t.primary),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () => context.go('/ai-coach'),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text(
+                              'Explore with AI',
+                              style: TextStyle(
+                                color: t.primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(LucideIcons.arrowRight,
+                                size: 13, color: t.primary),
+                          ]),
+                        ),
                       ]),
-                    ),
-                  ]),
                 ),
               ]),
             ),
@@ -1946,7 +2014,8 @@ class _PulseDotState extends State<_PulseDot>
           child: Transform.scale(
             scale: _scale.value,
             child: Container(
-              width: 8, height: 8,
+              width: 8,
+              height: 8,
               decoration: BoxDecoration(
                 color: widget.color,
                 shape: BoxShape.circle,
@@ -1984,26 +2053,25 @@ class _PrimaryMissionCard extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight:    FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
         ),
         const SizedBox(height: 6),
         Text(
           mission.goal,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: t.textMuted, height: 1.6, fontSize: 13),
+          style: TextStyle(color: t.textMuted, height: 1.6, fontSize: 13),
         ),
         const SizedBox(height: 16),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Text(
             '${(mission.progress * 100).round()}%',
             style: TextStyle(
-              fontSize:      28,
-              fontWeight:    FontWeight.w900,
-              color:         t.primary,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: t.primary,
               letterSpacing: -1.0,
             ),
           ),
@@ -2025,9 +2093,9 @@ class _PrimaryMissionCard extends StatelessWidget {
           Text(
             'View mission details',
             style: TextStyle(
-              color:      t.primary,
+              color: t.primary,
               fontWeight: FontWeight.w600,
-              fontSize:   13,
+              fontSize: 13,
             ),
           ),
         ]),
@@ -2056,12 +2124,12 @@ class _DaysRemainingChip extends StatelessWidget {
     final y = int.tryParse(parts[2]);
     if (d == null || m == null || y == null) return const SizedBox.shrink();
     final target = DateTime(y, m, d);
-    final days   = target.difference(DateTime.now()).inDays;
+    final days = target.difference(DateTime.now()).inDays;
 
     final (color, bg) = days > 30
-        ? (tokens.success,     tokens.successSurface)
+        ? (tokens.success, tokens.successSurface)
         : days >= 7
-            ? (tokens.warning,     tokens.warningSurface)
+            ? (tokens.warning, tokens.warningSurface)
             : (tokens.destructive, tokens.destructiveSurface);
 
     final label = days < 0
@@ -2073,14 +2141,14 @@ class _DaysRemainingChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color:        bg,
+        color: bg,
         borderRadius: BorderRadius.circular(AppRadius.full),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color:      color,
-          fontSize:   10,
+          color: color,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -2099,22 +2167,19 @@ class MissionsScreen extends ConsumerStatefulWidget {
 }
 
 class _MissionsScreenState extends ConsumerState<MissionsScreen> {
-  String  _filter  = 'All';
-  bool    _loading = false;
+  String _filter = 'All';
+  bool _loading = false;
   String? _error;
-  bool    _scrolled    = false;
-  bool    _searchOpen  = false;
-  final   _scrollCtrl  = ScrollController();
+  bool _searchOpen = false;
+  final _scrollCtrl = ScrollController();
 
   // â”€â”€ Undo-delete state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   MissionData? _deletedMission;
-  int?         _deletedIndex;
+  int? _deletedIndex;
 
   @override
   void initState() {
     super.initState();
-    _scrollCtrl.addListener(() =>
-        setState(() => _scrolled = _scrollCtrl.offset > 40));
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -2125,10 +2190,13 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final repo = ref.read(repositoryProvider);
-      final raw  = await repo.missions();
+      final raw = await repo.missions();
       ref.read(missionsProvider.notifier).state =
           raw.map(MissionData.fromJson).toList();
     } catch (e) {
@@ -2147,38 +2215,50 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
     // Remove from UI immediately
     all.removeAt(idx);
     ref.read(missionsProvider.notifier).state = all;
-    setState(() { _deletedMission = m; _deletedIndex = idx; });
+    setState(() {
+      _deletedMission = m;
+      _deletedIndex = idx;
+    });
 
     ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '"${m.title.length > 30 ? '${m.title.substring(0, 30)}â€¦' : m.title}" deleted',
-        ),
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () {
-            if (_deletedMission == null) return;
-            final current = List<MissionData>.from(
-                ref.read(missionsProvider));
-            final insertAt =
-                (_deletedIndex ?? current.length).clamp(0, current.length);
-            current.insert(insertAt, _deletedMission!);
-            ref.read(missionsProvider.notifier).state = current;
-            setState(() { _deletedMission = null; _deletedIndex = null; });
-          },
-        ),
-      ),
-    ).closed.then((reason) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          SnackBar(
+            content: Text(
+              '"${m.title.length > 30 ? '${m.title.substring(0, 30)}â€¦' : m.title}" deleted',
+            ),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () {
+                if (_deletedMission == null) return;
+                final current =
+                    List<MissionData>.from(ref.read(missionsProvider));
+                final insertAt =
+                    (_deletedIndex ?? current.length).clamp(0, current.length);
+                current.insert(insertAt, _deletedMission!);
+                ref.read(missionsProvider.notifier).state = current;
+                setState(() {
+                  _deletedMission = null;
+                  _deletedIndex = null;
+                });
+              },
+            ),
+          ),
+        )
+        .closed
+        .then((reason) {
       // If closed for any reason other than action (undo), commit delete
-      if (reason != SnackBarClosedReason.action &&
-          _deletedMission != null) {
-        ref.read(repositoryProvider)
+      if (reason != SnackBarClosedReason.action && _deletedMission != null) {
+        ref
+            .read(repositoryProvider)
             .deleteMission(_deletedMission!.id)
             .catchError((_) => _load());
-        setState(() { _deletedMission = null; _deletedIndex = null; });
+        setState(() {
+          _deletedMission = null;
+          _deletedIndex = null;
+        });
       }
     });
   }
@@ -2186,7 +2266,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
   // Build grouped list for "All" filter
   List<Widget> _buildGroupedList(List<MissionData> all, AppTokens t) {
     final groups = <String, List<MissionData>>{};
-    const order  = ['Active', 'Paused', 'At Risk', 'Draft', 'Completed'];
+    const order = ['Active', 'Paused', 'At Risk', 'Draft', 'Completed'];
     for (final status in order) {
       final items = all.where((m) => m.status == status).toList();
       if (items.isNotEmpty) groups[status] = items;
@@ -2203,15 +2283,15 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
     for (final entry in groups.entries) {
       widgets.add(_GroupedSectionHeader(
         entry.key,
-        count:      entry.value.length,
+        count: entry.value.length,
         topPadding: globalIdx == 0 ? 4 : 20,
       ));
       for (final m in entry.value) {
         widgets.add(_MissionCard(
           m,
-          index:    globalIdx,
+          index: globalIdx,
           onDelete: () => _deleteMission(m),
-          onEdit:   _load,
+          onEdit: _load,
         ));
         widgets.add(const SizedBox(height: 12));
         globalIdx++;
@@ -2222,17 +2302,19 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final all    = ref.watch(missionsProvider);
-    final query  = ref.watch(missionsSearchProvider).toLowerCase().trim();
-    final t      = context.tokens;
+    final all = ref.watch(missionsProvider);
+    final query = ref.watch(missionsSearchProvider).toLowerCase().trim();
+    final t = context.tokens;
 
     // Apply search filter first, then status filter
     final searched = query.isEmpty
         ? all
-        : all.where((m) =>
-            m.title.toLowerCase().contains(query) ||
-            m.goal.toLowerCase().contains(query) ||
-            m.category.toLowerCase().contains(query)).toList();
+        : all
+            .where((m) =>
+                m.title.toLowerCase().contains(query) ||
+                m.goal.toLowerCase().contains(query) ||
+                m.category.toLowerCase().contains(query))
+            .toList();
 
     final shown = _filter == 'All'
         ? searched
@@ -2259,9 +2341,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                       ref.read(missionsSearchProvider.notifier).state = '';
                     }
                   },
-                  icon: Icon(
-                    _searchOpen ? LucideIcons.x : LucideIcons.search,
-                    size: 18, color: t.textSecondary),
+                  icon: Icon(_searchOpen ? LucideIcons.x : LucideIcons.search,
+                      size: 18, color: t.textSecondary),
                 ),
                 IconButton(
                   onPressed: _load,
@@ -2273,8 +2354,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
 
             // Animated search bar
             _SearchBar(
-              visible:   _searchOpen,
-              hint:      'Search missionsâ€¦',
+              visible: _searchOpen,
+              hint: 'Search missionsâ€¦',
               onChanged: (v) =>
                   ref.read(missionsSearchProvider.notifier).state = v,
               onDismiss: () {
@@ -2289,17 +2370,20 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                 height: 44,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     for (final f in [
-                      'All', 'Active', 'Paused', 'Draft',
-                      'Completed', 'At Risk'
+                      'All',
+                      'Active',
+                      'Paused',
+                      'Draft',
+                      'Completed',
+                      'At Risk'
                     ])
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: _PremiumFilterChip(
-                          label:    f,
+                          label: f,
                           selected: _filter == f,
                           onTap: () => setState(() => _filter = f),
                         ),
@@ -2312,8 +2396,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
 
             if (_loading)
               LinearProgressIndicator(
-                color: t.primary, minHeight: 2,
-                backgroundColor: t.backgroundSubtle),
+                  color: t.primary,
+                  minHeight: 2,
+                  backgroundColor: t.backgroundSubtle),
 
             Expanded(
               child: _error != null && all.isEmpty
@@ -2331,63 +2416,63 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                           ],
                         )
                       : shown.isEmpty && query.isNotEmpty
-                      // Search no-results
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                              Icon(LucideIcons.searchX,
-                                  size: 32, color: t.textMuted),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No results for "$query"',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color:      t.textMuted,
-                                  fontSize:   14,
-                                  fontWeight: FontWeight.w500),
+                          // Search no-results
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(LucideIcons.searchX,
+                                          size: 32, color: t.textMuted),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'No results for "$query"',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            color: t.textMuted,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                    ]),
                               ),
-                            ]),
-                          ),
-                        )
-                      : shown.isEmpty
-                          ? _MissionsEmptyState(
-                              onCreateTap: () => _createSheet(context))
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              color:     t.primary,
-                              child: ListView(
-                                controller: _scrollCtrl,
-                                padding: const EdgeInsets.fromLTRB(
-                                    16, 4, 16, 120),
-                                children: useGrouped
-                                    ? _buildGroupedList(shown, t)
-                                    : shown.indexed.map((item) {
-                                        final m = item.$2;
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                              bottom: 12),
-                                          child: _MissionCard(
-                                            m,
-                                            index:    item.$1,
-                                            onDelete: () =>
-                                                _deleteMission(m),
-                                            onEdit: _load,
-                                          ),
-                                        );
-                                      }).toList(),
-                              ),
-                            ),
+                            )
+                          : shown.isEmpty
+                              ? _MissionsEmptyState(
+                                  onCreateTap: () => _createSheet(context))
+                              : RefreshIndicator(
+                                  onRefresh: _load,
+                                  color: t.primary,
+                                  child: ListView(
+                                    controller: _scrollCtrl,
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 4, 16, 120),
+                                    children: useGrouped
+                                        ? _buildGroupedList(shown, t)
+                                        : shown.indexed.map((item) {
+                                            final m = item.$2;
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 12),
+                                              child: _MissionCard(
+                                                m,
+                                                index: item.$1,
+                                                onDelete: () =>
+                                                    _deleteMission(m),
+                                                onEdit: _load,
+                                              ),
+                                            );
+                                          }).toList(),
+                                  ),
+                                ),
             ),
           ]),
 
           // Floating quick-action bar
           _QuickActionBar(
-            onAddTask:    () => _showAddTaskSheet(context),
+            onAddTask: () => _showAddTaskSheet(context),
             onNewMission: () => _createSheet(context),
-            onAskAI:      () => context.go('/ai-coach'),
+            onAskAI: () => context.go('/ai-coach'),
           ),
         ]),
       ),
@@ -2427,8 +2512,8 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
       isScrollControlled: true,
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-              top: Radius.circular(AppRadius.x2l))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (ctx2, setModal) {
           final kb = MediaQuery.viewInsetsOf(ctx2).bottom;
@@ -2438,38 +2523,41 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
               const SheetHandle(),
               const SizedBox(height: 16),
               Text('Quick Add Task',
-                  style: Theme.of(ctx2).textTheme.headlineLarge
+                  style: Theme.of(ctx2)
+                      .textTheme
+                      .headlineLarge
                       ?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 16),
               // Mission selector
               DropdownButtonFormField<int>(
-                value: selectedMissionId,
+                initialValue: selectedMissionId,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: t.backgroundSubtle,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide: BorderSide(color: t.border)),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderSide: BorderSide(color: t.border)),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide: BorderSide(color: t.border)),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderSide: BorderSide(color: t.border)),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide: BorderSide(color: t.primary, width: 1.5)),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 14),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderSide: BorderSide(color: t.primary, width: 1.5)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 ),
-                items: missions.map((m) => DropdownMenuItem(
-                      value: m.id,
-                      child: Text(m.title,
-                          overflow: TextOverflow.ellipsis))).toList(),
+                items: missions
+                    .map((m) => DropdownMenuItem(
+                        value: m.id,
+                        child: Text(m.title, overflow: TextOverflow.ellipsis)))
+                    .toList(),
                 onChanged: (v) => setModal(() => selectedMissionId = v),
               ),
               const SizedBox(height: 12),
               PremiumInputField(
                 controller: titleCtrl,
-                hint:       'Task titleâ€¦',
-                autofocus:  true,
+                hint: 'Task titleâ€¦',
+                autofocus: true,
                 textInputAction: TextInputAction.done,
               ),
               const SizedBox(height: 16),
@@ -2479,10 +2567,9 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                   final title = titleCtrl.text.trim();
                   if (title.isEmpty || selectedMissionId == null) return;
                   Navigator.of(sheetCtx).pop();
-                  await ref.read(repositoryProvider)
-                      .createTask(
-                        missionId: selectedMissionId!,
-                        title:     title)
+                  await ref
+                      .read(repositoryProvider)
+                      .createTask(missionId: selectedMissionId!, title: title)
                       .catchError((_) => <String, dynamic>{});
                 },
               ),
@@ -2512,26 +2599,26 @@ class _MissionCreateFlow extends StatefulWidget {
 
 class _MissionCreateFlowState extends State<_MissionCreateFlow> {
   // â”€â”€ step 1 form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  final _goalCtrl        = TextEditingController();
-  final _weeklyHrsCtrl   = TextEditingController();
-  final _budgetCtrl      = TextEditingController();
+  final _goalCtrl = TextEditingController();
+  final _weeklyHrsCtrl = TextEditingController();
+  final _budgetCtrl = TextEditingController();
   final _constraintsCtrl = TextEditingController();
   String? _category;
-  String  _budgetCurrency = 'INR';
+  String _budgetCurrency = 'INR';
   DateTime? _targetDate;
 
   // â”€â”€ progressive disclosure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bool _advancedOpen = false;
 
   // â”€â”€ inline validation state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  bool _goalTouched      = false;
-  bool _categoryTouched  = false;
-  bool _pastDateWarning  = false;
+  bool _goalTouched = false;
+  bool _categoryTouched = false;
+  bool _pastDateWarning = false;
 
   // â”€â”€ step / plan state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   int _step = 1; // 1 = form, 2 = generating, 3 = review, 4 = done
   String? _genError;
-  Map<String, dynamic> _plan = {};  // result from AI
+  Map<String, dynamic> _plan = {}; // result from AI
 
   // â”€â”€ generation animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   int _genAnimStep = 0;
@@ -2565,8 +2652,8 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
     _tickGenAnim();
 
     try {
-      final repo  = widget.repositoryReader();
-      final goal  = _goalCtrl.text.trim();
+      final repo = widget.repositoryReader();
+      final goal = _goalCtrl.text.trim();
       final extra = [
         if (_weeklyHrsCtrl.text.trim().isNotEmpty)
           'Weekly hours: ${_weeklyHrsCtrl.text.trim()}',
@@ -2595,8 +2682,8 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
         final trimmed = line.trim();
         if (RegExp(r'^(\d+[\.\):]|[-â€¢*])').hasMatch(trimmed) &&
             trimmed.length > 5) {
-          milestones.add(trimmed.replaceFirst(
-              RegExp(r'^(\d+[\.\):\s]+|[-â€¢*]\s*)'), ''));
+          milestones.add(
+              trimmed.replaceFirst(RegExp(r'^(\d+[\.\):\s]+|[-â€¢*]\s*)'), ''));
         }
       }
       if (milestones.isEmpty && raw.isNotEmpty) {
@@ -2610,11 +2697,11 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
 
       setState(() {
         _plan = {
-          'title':      title,
-          'category':   _category,
-          'goal':       goal,
+          'title': title,
+          'category': _category,
+          'goal': goal,
           'milestones': milestones,
-          'raw':        raw,
+          'raw': raw,
         };
         _step = 3;
       });
@@ -2641,10 +2728,10 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
   Future<void> _activate({bool draft = false}) async {
     setState(() => _step = 4);
     try {
-      final repo  = widget.repositoryReader();
-      final goal  = _goalCtrl.text.trim();
+      final repo = widget.repositoryReader();
+      final goal = _goalCtrl.text.trim();
       final title = (_plan['title'] as String?) ?? goal;
-      final desc  = [
+      final desc = [
         goal,
         if (_constraintsCtrl.text.trim().isNotEmpty)
           'Constraints: ${_constraintsCtrl.text.trim()}',
@@ -2655,9 +2742,9 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
       ].join('\n');
 
       await repo.createMission(
-        title:       title,
+        title: title,
         description: desc,
-        targetDate:  _targetDate?.toIso8601String(),
+        targetDate: _targetDate?.toIso8601String(),
       );
       widget.onCreated();
       if (mounted) Navigator.of(context).pop();
@@ -2667,16 +2754,16 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
   }
 
   static const _categories = [
-    ('career',               'Career'),
-    ('finance',              'Finance'),
-    ('health',               'Health'),
-    ('travel',               'Travel'),
-    ('business',             'Business'),
-    ('education',            'Education'),
-    ('productivity',         'Productivity'),
+    ('career', 'Career'),
+    ('finance', 'Finance'),
+    ('health', 'Health'),
+    ('travel', 'Travel'),
+    ('business', 'Business'),
+    ('education', 'Education'),
+    ('productivity', 'Productivity'),
     ('personal-development', 'Personal Growth'),
-    ('lifestyle',            'Lifestyle'),
-    ('family',               'Family'),
+    ('lifestyle', 'Lifestyle'),
+    ('family', 'Family'),
   ];
 
   @override
@@ -2689,11 +2776,13 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
         elevation: 0,
         leading: _step == 1 || _step == 3
             ? IconButton(
-                icon: Icon(LucideIcons.arrowLeft,
-                    color: t.textPrimary),
+                icon: Icon(LucideIcons.arrowLeft, color: t.textPrimary),
                 onPressed: () {
                   if (_step == 3) {
-                    setState(() { _step = 1; _plan = {}; });
+                    setState(() {
+                      _step = 1;
+                      _plan = {};
+                    });
                   } else {
                     Navigator.of(context).pop();
                   }
@@ -2720,7 +2809,8 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
               const SizedBox(width: 12),
               Text('Step $_step of 4',
                   style: TextStyle(
-                    color: t.textMuted, fontSize: 12,
+                    color: t.textMuted,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   )),
             ]),
@@ -2744,323 +2834,332 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
 
   // â”€â”€ STEP 1: Goal form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildStep1(AppTokens t) {
-    final goalLen  = _goalCtrl.text.length;
+    final goalLen = _goalCtrl.text.length;
     final goalOver = goalLen >= 180;
 
     return SizedBox.expand(
       child: SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (_genError != null) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color:        t.destructiveSurface,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border:       Border.all(
-                  color: t.destructive.withValues(alpha: 0.4)),
+        padding: const EdgeInsets.all(20),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (_genError != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: t.destructiveSurface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: t.destructive.withValues(alpha: 0.4)),
+              ),
+              child: Row(children: [
+                Icon(LucideIcons.alertCircle, size: 16, color: t.destructive),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(_genError!,
+                      style: TextStyle(color: t.destructive, fontSize: 12)),
+                ),
+              ]),
             ),
+            const SizedBox(height: 16),
+          ],
+
+          // Header
+          Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: AppGradients.lifekit,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: const Icon(LucideIcons.sparkles,
+                  size: 18, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Text('Describe your goal',
+                style: Theme.of(context).textTheme.headlineLarge),
+          ]),
+          const SizedBox(height: 4),
+          Text(
+            'Be specific â€” include your desired outcome, timeframe and any constraints.',
+            style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 20),
+
+          // â”€â”€ Goal field with inline char count â”€â”€
+          _SheetLabel('What do you want to achieve? *'),
+          const SizedBox(height: 6),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border(
+                left: BorderSide(
+                  color: _goalTouched && goalLen == 0
+                      ? t.destructive
+                      : Colors.transparent,
+                  width: 3,
+                ),
+              ),
+            ),
+            child: PremiumInputField(
+              controller: _goalCtrl,
+              hint: 'e.g. I want to become a machine learning engineer '
+                  'within 6 months and land a jobâ€¦',
+              maxLines: 4,
+              minLines: 3,
+              onChanged: (_) => setState(() => _goalTouched = true),
+            ),
+          ),
+          // Char count + error hint
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
             child: Row(children: [
-              Icon(LucideIcons.alertCircle,
-                  size: 16, color: t.destructive),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(_genError!,
+              if (_goalTouched && goalLen == 0)
+                Text('Goal is required',
                     style: TextStyle(
-                        color: t.destructive, fontSize: 12)),
+                        color: t.destructive,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500)),
+              const Spacer(),
+              Text(
+                '$goalLen / 200',
+                style: TextStyle(
+                  color: goalLen >= 200
+                      ? t.destructive
+                      : goalOver
+                          ? t.warning
+                          : t.textMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ]),
           ),
-          const SizedBox(height: 16),
-        ],
+          const SizedBox(height: 14),
 
-        // Header
-        Row(children: [
-          Container(
-            width: 36, height: 36,
+          // â”€â”€ Category with touched validation â”€â”€
+          _SheetLabel('Category *'),
+          const SizedBox(height: 6),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
-              gradient:     AppGradients.lifekit,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: const Icon(LucideIcons.sparkles,
-                size: 18, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Text('Describe your goal',
-              style: Theme.of(context).textTheme.headlineLarge),
-        ]),
-        const SizedBox(height: 4),
-        Text(
-          'Be specific â€” include your desired outcome, timeframe and any constraints.',
-          style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.5),
-        ),
-        const SizedBox(height: 20),
-
-        // â”€â”€ Goal field with inline char count â”€â”€
-        _SheetLabel('What do you want to achieve? *'),
-        const SizedBox(height: 6),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border(
-              left: BorderSide(
-                color: _goalTouched && goalLen == 0
-                    ? t.destructive
-                    : Colors.transparent,
-                width: 3,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border(
+                left: BorderSide(
+                  color: _categoryTouched && _category == null
+                      ? t.destructive
+                      : Colors.transparent,
+                  width: 3,
+                ),
               ),
             ),
+            child: DropdownButtonFormField<String>(
+              initialValue: _category,
+              decoration: _dropDecoration(t, hint: 'Select a category'),
+              items: _categories
+                  .map((c) => DropdownMenuItem(
+                        value: c.$1,
+                        child: Text(c.$2),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() {
+                _category = v;
+                _categoryTouched = true;
+              }),
+            ),
           ),
-          child: PremiumInputField(
-            controller: _goalCtrl,
-            hint: 'e.g. I want to become a machine learning engineer '
-                'within 6 months and land a jobâ€¦',
-            maxLines: 4, minLines: 3,
-            onChanged: (_) => setState(() => _goalTouched = true),
-          ),
-        ),
-        // Char count + error hint
-        Padding(
-          padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
-          child: Row(children: [
-            if (_goalTouched && goalLen == 0)
-              Text('Goal is required',
+          if (_categoryTouched && _category == null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 4),
+              child: Text('Category is required',
                   style: TextStyle(
-                      color: t.destructive, fontSize: 11,
+                      color: t.destructive,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500)),
-            const Spacer(),
-            Text(
-              '$goalLen / 200',
-              style: TextStyle(
-                color: goalLen >= 200
-                    ? t.destructive
-                    : goalOver
-                        ? t.warning
-                        : t.textMuted,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
             ),
-          ]),
-        ),
-        const SizedBox(height: 14),
+          const SizedBox(height: 20),
 
-        // â”€â”€ Category with touched validation â”€â”€
-        _SheetLabel('Category *'),
-        const SizedBox(height: 6),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border(
-              left: BorderSide(
-                color: _categoryTouched && _category == null
-                    ? t.destructive
-                    : Colors.transparent,
-                width: 3,
-              ),
-            ),
-          ),
-          child: DropdownButtonFormField<String>(
-            initialValue: _category,
-            decoration: _dropDecoration(t, hint: 'Select a category'),
-            items: _categories.map((c) => DropdownMenuItem(
-              value: c.$1, child: Text(c.$2),
-            )).toList(),
-            onChanged: (v) => setState(() {
-              _category = v;
-              _categoryTouched = true;
-            }),
-          ),
-        ),
-        if (_categoryTouched && _category == null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4, left: 4),
-            child: Text('Category is required',
+          // â”€â”€ Advanced options â€” progressive disclosure â”€â”€
+          GestureDetector(
+            onTap: () => setState(() => _advancedOpen = !_advancedOpen),
+            child: Row(children: [
+              Text(
+                'Advanced options',
                 style: TextStyle(
-                    color: t.destructive, fontSize: 11,
-                    fontWeight: FontWeight.w500)),
-          ),
-        const SizedBox(height: 20),
-
-        // â”€â”€ Advanced options â€” progressive disclosure â”€â”€
-        GestureDetector(
-          onTap: () => setState(() => _advancedOpen = !_advancedOpen),
-          child: Row(children: [
-            Text(
-              'Advanced options',
-              style: TextStyle(
-                color:      t.primary,
-                fontSize:   13,
-                fontWeight: FontWeight.w600,
+                  color: t.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            AnimatedRotation(
-              turns:    _advancedOpen ? 0.5 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: Icon(LucideIcons.chevronDown,
-                  size: 16, color: t.primary),
-            ),
-          ]),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 280),
-          curve:    Curves.easeOutCubic,
-          child: _advancedOpen
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                    Row(children: [
-                      Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        _SheetLabel('Target date'),
-                        const SizedBox(height: 6),
-                        _DateButton(
-                          date:   _targetDate,
-                          onTap: () async {
-                            final p = await showDatePicker(
-                              context: context,
-                              initialDate: _targetDate ??
-                                  DateTime.now()
-                                      .add(const Duration(days: 30)),
-                              firstDate: DateTime.now(),
-                              lastDate:  DateTime.now()
-                                  .add(const Duration(days: 3650)),
-                            );
-                            if (p != null) {
-                              final isPast =
-                                  p.isBefore(DateTime.now());
-                              setState(() {
-                                _targetDate     = p;
-                                _pastDateWarning = isPast;
-                              });
-                            }
-                          },
-                          tokens: t,
-                        ),
-                        if (_pastDateWarning)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'That date has already passed',
-                              style: TextStyle(
-                                color:      t.warning,
-                                fontSize:   11,
-                                fontWeight: FontWeight.w500,
+              const SizedBox(width: 4),
+              AnimatedRotation(
+                turns: _advancedOpen ? 0.5 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child:
+                    Icon(LucideIcons.chevronDown, size: 16, color: t.primary),
+              ),
+            ]),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            child: _advancedOpen
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(children: [
+                            Expanded(
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  _SheetLabel('Target date'),
+                                  const SizedBox(height: 6),
+                                  _DateButton(
+                                    date: _targetDate,
+                                    onTap: () async {
+                                      final p = await showDatePicker(
+                                        context: context,
+                                        initialDate: _targetDate ??
+                                            DateTime.now()
+                                                .add(const Duration(days: 30)),
+                                        firstDate: DateTime.now(),
+                                        lastDate: DateTime.now()
+                                            .add(const Duration(days: 3650)),
+                                      );
+                                      if (p != null) {
+                                        final isPast =
+                                            p.isBefore(DateTime.now());
+                                        setState(() {
+                                          _targetDate = p;
+                                          _pastDateWarning = isPast;
+                                        });
+                                      }
+                                    },
+                                    tokens: t,
+                                  ),
+                                  if (_pastDateWarning)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'That date has already passed',
+                                        style: TextStyle(
+                                          color: t.warning,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                ])),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  _SheetLabel('Weekly hours'),
+                                  const SizedBox(height: 6),
+                                  PremiumInputField(
+                                    controller: _weeklyHrsCtrl,
+                                    hint: 'e.g. 10',
+                                    keyboardType: TextInputType.number,
+                                    textInputAction: TextInputAction.next,
+                                  ),
+                                ])),
+                          ]),
+                          const SizedBox(height: 16),
+                          _SheetLabel('Budget (optional)'),
+                          const SizedBox(height: 6),
+                          Row(children: [
+                            SizedBox(
+                              width: 110,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _budgetCurrency,
+                                isDense: true,
+                                decoration: _dropDecoration(t),
+                                items: const [
+                                  DropdownMenuItem(
+                                      value: 'INR', child: Text('â‚¹ INR')),
+                                  DropdownMenuItem(
+                                      value: 'USD', child: Text('\$ USD')),
+                                  DropdownMenuItem(
+                                      value: 'EUR', child: Text('â‚¬ EUR')),
+                                ],
+                                onChanged: (v) => setState(
+                                    () => _budgetCurrency = v ?? 'INR'),
                               ),
                             ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                                child: PremiumInputField(
+                              controller: _budgetCtrl,
+                              hint: 'Amount',
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                            )),
+                          ]),
+                          const SizedBox(height: 16),
+                          _SheetLabel('Constraints (optional)'),
+                          const SizedBox(height: 6),
+                          PremiumInputField(
+                            controller: _constraintsCtrl,
+                            hint: 'e.g. Can only work on this on weekendsâ€¦',
+                            maxLines: 2,
+                            minLines: 2,
+                            textInputAction: TextInputAction.done,
                           ),
-                      ])),
-                      const SizedBox(width: 12),
-                      Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        _SheetLabel('Weekly hours'),
-                        const SizedBox(height: 6),
-                        PremiumInputField(
-                          controller:   _weeklyHrsCtrl,
-                          hint:         'e.g. 10',
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.next,
-                        ),
-                      ])),
-                    ]),
-                    const SizedBox(height: 16),
+                        ]),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 28),
 
-                    _SheetLabel('Budget (optional)'),
-                    const SizedBox(height: 6),
-                    Row(children: [
-                      SizedBox(
-                        width: 110,
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _budgetCurrency,
-                          isDense: true,
-                          decoration: _dropDecoration(t),
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'INR', child: Text('â‚¹ INR')),
-                            DropdownMenuItem(
-                                value: 'USD', child: Text('\$ USD')),
-                            DropdownMenuItem(
-                                value: 'EUR', child: Text('â‚¬ EUR')),
-                          ],
-                          onChanged: (v) => setState(
-                              () => _budgetCurrency = v ?? 'INR'),
-                        ),
+          // Generate button â€” shows inline hint when not ready
+          ListenableBuilder(
+            listenable: _goalCtrl,
+            builder: (_, __) {
+              final goalFilled = _goalCtrl.text.trim().isNotEmpty;
+              final catFilled = _category != null;
+              final ready = goalFilled && catFilled;
+              final hint = !goalFilled
+                  ? 'Enter your goal to continue'
+                  : !catFilled
+                      ? 'Select a category to continue'
+                      : null;
+              return Column(children: [
+                PremiumButton(
+                  label: 'Generate AI Mission Plan',
+                  onPressed: ready
+                      ? _generate
+                      : () {
+                          setState(() {
+                            _goalTouched = true;
+                            _categoryTouched = true;
+                          });
+                        },
+                ),
+                if (hint != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      hint,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: t.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(child: PremiumInputField(
-                        controller:      _budgetCtrl,
-                        hint:            'Amount',
-                        keyboardType:    TextInputType.number,
-                        textInputAction: TextInputAction.next,
-                      )),
-                    ]),
-                    const SizedBox(height: 16),
-
-                    _SheetLabel('Constraints (optional)'),
-                    const SizedBox(height: 6),
-                    PremiumInputField(
-                      controller: _constraintsCtrl,
-                      hint:     'e.g. Can only work on this on weekendsâ€¦',
-                      maxLines: 2, minLines: 2,
-                      textInputAction: TextInputAction.done,
-                    ),
-                  ]),
-                )
-              : const SizedBox.shrink(),
-        ),
-        const SizedBox(height: 28),
-
-        // Generate button â€” shows inline hint when not ready
-        ListenableBuilder(
-          listenable: _goalCtrl,
-          builder: (_, __) {
-            final goalFilled = _goalCtrl.text.trim().isNotEmpty;
-            final catFilled  = _category != null;
-            final ready      = goalFilled && catFilled;
-            final hint       = !goalFilled
-                ? 'Enter your goal to continue'
-                : !catFilled
-                    ? 'Select a category to continue'
-                    : null;
-            return Column(children: [
-              PremiumButton(
-                label: 'Generate AI Mission Plan',
-                onPressed: ready
-                    ? _generate
-                    : () {
-                        setState(() {
-                          _goalTouched     = true;
-                          _categoryTouched = true;
-                        });
-                      },
-              ),
-              if (hint != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    hint,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color:      t.textMuted,
-                      fontSize:   12,
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-            ]);
-          },
-        ),
-        const SizedBox(height: 20),
-      ]),
-    ),
-  );
+              ]);
+            },
+          ),
+          const SizedBox(height: 20),
+        ]),
+      ),
+    );
   }
 
   // â”€â”€ STEP 2: Building animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -3071,11 +3170,12 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
           padding: const EdgeInsets.all(32),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              width: 72, height: 72,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                gradient:     AppGradients.lifekit,
+                gradient: AppGradients.lifekit,
                 borderRadius: BorderRadius.circular(AppRadius.x2l),
-                boxShadow:    AppShadows.green,
+                boxShadow: AppShadows.green,
               ),
               child: const _SpinningIcon(),
             ),
@@ -3091,36 +3191,32 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isLast
-                        ? t.primarySurface : t.backgroundSubtle,
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.lg),
+                    color: isLast ? t.primarySurface : t.backgroundSubtle,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(
-                      color: isLast
-                          ? t.primary.withValues(alpha: 0.4)
-                          : t.border,
+                      color:
+                          isLast ? t.primary.withValues(alpha: 0.4) : t.border,
                     ),
                   ),
                   child: Row(children: [
                     isLast
                         ? SizedBox(
-                            width: 16, height: 16,
+                            width: 16,
+                            height: 16,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2, color: t.primary),
+                                strokeWidth: 2, color: t.primary),
                           )
-                        : Icon(LucideIcons.check,
-                            size: 16, color: t.success),
+                        : Icon(LucideIcons.check, size: 16, color: t.success),
                     const SizedBox(width: 10),
                     Text(item.$2,
                         style: TextStyle(
-                          color: isLast
-                              ? t.primary : t.textSecondary,
+                          color: isLast ? t.primary : t.textSecondary,
                           fontSize: 13,
-                          fontWeight: isLast
-                              ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight:
+                              isLast ? FontWeight.w600 : FontWeight.w400,
                         )),
                   ]),
                 ),
@@ -3134,8 +3230,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
 
   // â”€â”€ STEP 3: Review plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildStep3(AppTokens t) {
-    final milestones =
-        (_plan['milestones'] as List<String>?) ?? [];
+    final milestones = (_plan['milestones'] as List<String>?) ?? [];
     final title = (_plan['title'] as String?) ?? '';
     final catLabel = _categories
         .firstWhere((c) => c.$1 == _category,
@@ -3145,18 +3240,18 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
     return SizedBox.expand(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           // "Your mission is ready" header
           Row(children: [
             Container(
-              width: 28, height: 28,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
-                color:  t.success.withValues(alpha: 0.15),
-                shape:  BoxShape.circle,
+                color: t.success.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
-              child: Icon(LucideIcons.check,
-                  size: 16, color: t.success),
+              child: Icon(LucideIcons.check, size: 16, color: t.success),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -3168,31 +3263,33 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
 
           // Plan card
           PremiumCard(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // Title row with Edit button
-              Row(crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text('MISSION TITLE',
-                      style: TextStyle(
-                        color: t.primary, fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                      )),
-                  const SizedBox(height: 4),
-                  Text(title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w800)),
-                ])),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text('MISSION TITLE',
+                          style: TextStyle(
+                            color: t.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
+                          )),
+                      const SizedBox(height: 4),
+                      Text(title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(fontWeight: FontWeight.w800)),
+                    ])),
                 TextButton(
-                  onPressed: () =>
-                      setState(() { _step = 1; _plan = {}; }),
+                  onPressed: () => setState(() {
+                    _step = 1;
+                    _plan = {};
+                  }),
                   child: const Text('Edit Details'),
                 ),
               ]),
@@ -3201,25 +3298,27 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
               // Category badge
               Text('CATEGORY',
                   style: TextStyle(
-                    color: t.textSecondary, fontSize: 10,
-                    fontWeight: FontWeight.w700, letterSpacing: 1.0,
+                    color: t.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
                   )),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color:        t.primarySurface,
+                  color: t.primarySurface,
                   borderRadius: BorderRadius.circular(AppRadius.full),
-                  border: Border.all(
-                      color: t.primary.withValues(alpha: 0.3)),
+                  border: Border.all(color: t.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(LucideIcons.tag, size: 11, color: t.primary),
                   const SizedBox(width: 5),
                   Text(catLabel,
                       style: TextStyle(
-                        color: t.primary, fontSize: 12,
+                        color: t.primary,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       )),
                 ]),
@@ -3230,70 +3329,75 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
               if (milestones.isNotEmpty) ...[
                 Text('ROADMAP (${milestones.length} PHASES)',
                     style: TextStyle(
-                      color: t.textSecondary, fontSize: 10,
-                      fontWeight: FontWeight.w700, letterSpacing: 1.0,
+                      color: t.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
                     )),
                 const SizedBox(height: 12),
                 ...milestones.indexed.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    // Node circle + connector line
-                    SizedBox(
-                      width: 26,
-                      child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                        Container(
-                          width: 26, height: 26,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: t.primary, width: 2),
-                            color: t.background,
-                          ),
-                          child: Center(
-                            child: Text('${item.$1 + 1}',
-                                style: TextStyle(
-                                  color: t.primary, fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                )),
-                          ),
-                        ),
-                        if (item.$1 < milestones.length - 1)
-                          Container(
-                            width: 2, height: 20,
-                            color: t.border,
-                          ),
-                      ]),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: t.backgroundSubtle,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.lg),
-                              border: Border.all(color: t.border),
+                            // Node circle + connector line
+                            SizedBox(
+                              width: 26,
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 26,
+                                      height: 26,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: t.primary, width: 2),
+                                        color: t.background,
+                                      ),
+                                      child: Center(
+                                        child: Text('${item.$1 + 1}',
+                                            style: TextStyle(
+                                              color: t.primary,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                            )),
+                                      ),
+                                    ),
+                                    if (item.$1 < milestones.length - 1)
+                                      Container(
+                                        width: 2,
+                                        height: 20,
+                                        color: t.border,
+                                      ),
+                                  ]),
                             ),
-                            child: Text(item.$2,
-                                style: TextStyle(
-                                  color: t.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.4,
-                                )),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ]),
-                )),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: t.backgroundSubtle,
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadius.lg),
+                                      border: Border.all(color: t.border),
+                                    ),
+                                    child: Text(item.$2,
+                                        style: TextStyle(
+                                          color: t.textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.4,
+                                        )),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ]),
+                    )),
               ],
             ]),
           ),
@@ -3323,8 +3427,8 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
           // Regenerate
           TextButton(
             onPressed: _generate,
-            child: Text('Regenerate Plan',
-                style: TextStyle(color: t.textMuted)),
+            child:
+                Text('Regenerate Plan', style: TextStyle(color: t.textMuted)),
           ),
         ]),
       ),
@@ -3337,14 +3441,15 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         PulseGlow(
           child: Container(
-            width: 64, height: 64,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              gradient:     AppGradients.lifekit,
-              shape:        BoxShape.circle,
-              boxShadow:    AppShadows.green,
+              gradient: AppGradients.lifekit,
+              shape: BoxShape.circle,
+              boxShadow: AppShadows.green,
             ),
-            child: const Icon(LucideIcons.target,
-                size: 28, color: Colors.white),
+            child:
+                const Icon(LucideIcons.target, size: 28, color: Colors.white),
           ),
         ),
         const SizedBox(height: 20),
@@ -3356,8 +3461,8 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
 
   InputDecoration _dropDecoration(AppTokens t, {String? hint}) =>
       InputDecoration(
-        hintText:  hint,
-        filled:    true,
+        hintText: hint,
+        filled: true,
         fillColor: t.backgroundSubtle,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -3371,8 +3476,8 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: BorderSide(color: t.primary, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       );
 }
 
@@ -3391,13 +3496,15 @@ class _SpinningIconState extends State<_SpinningIcon>
   )..repeat();
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => RotationTransition(
         turns: _ctrl,
-        child: const Icon(LucideIcons.loader,
-            size: 30, color: Colors.white),
+        child: const Icon(LucideIcons.loader, size: 30, color: Colors.white),
       );
 }
 
@@ -3419,21 +3526,19 @@ class _DateButton extends StatelessWidget {
           height: 50,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color:        tokens.backgroundSubtle,
+            color: tokens.backgroundSubtle,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border:       Border.all(color: tokens.border),
+            border: Border.all(color: tokens.border),
           ),
           child: Row(children: [
-            Icon(LucideIcons.calendarDays,
-                size: 16, color: tokens.textMuted),
+            Icon(LucideIcons.calendarDays, size: 16, color: tokens.textMuted),
             const SizedBox(width: 8),
             Text(
               date == null
                   ? 'Pick date'
                   : '${date!.day}/${date!.month}/${date!.year}',
               style: TextStyle(
-                color: date == null
-                    ? tokens.textMuted : tokens.textPrimary,
+                color: date == null ? tokens.textMuted : tokens.textPrimary,
                 fontSize: 13,
               ),
             ),
@@ -3442,10 +3547,11 @@ class _DateButton extends StatelessWidget {
       );
 }
 
-
 class _PremiumFilterChip extends StatelessWidget {
   const _PremiumFilterChip({
-    required this.label, required this.selected, required this.onTap,
+    required this.label,
+    required this.selected,
+    required this.onTap,
   });
   final String label;
   final bool selected;
@@ -3461,19 +3567,19 @@ class _PremiumFilterChip extends StatelessWidget {
         height: 34,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color:        selected ? t.primarySurface : t.backgroundSubtle,
+          color: selected ? t.primarySurface : t.backgroundSubtle,
           borderRadius: BorderRadius.circular(AppRadius.full),
-          border:       Border.all(
-            color:  selected ? t.primary : t.border,
-            width:  selected ? 1.5 : 1.0,
+          border: Border.all(
+            color: selected ? t.primary : t.border,
+            width: selected ? 1.5 : 1.0,
           ),
-          boxShadow:    selected ? AppShadows.greenSm : null,
+          boxShadow: selected ? AppShadows.greenSm : null,
         ),
         child: Center(
           child: Text(label,
               style: TextStyle(
-                color:      selected ? t.primary : t.textSecondary,
-                fontSize:   12,
+                color: selected ? t.primary : t.textSecondary,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               )),
         ),
@@ -3499,28 +3605,30 @@ class _MissionsEmptyState extends StatelessWidget {
           Text(
             'No missions yet',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize:   17,
-            ),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Create your first mission to get started',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color:    t.textMuted,
+              color: t.textMuted,
               fontSize: 13,
-              height:   1.6,
+              height: 1.6,
             ),
           ),
           const SizedBox(height: 28),
           PremiumButton(
-            label:     'Create a mission',
+            label: 'Create a mission',
             onPressed: onCreateTap,
-            minWidth:  200,
+            minWidth: 200,
           ),
-        ]).animate().fadeIn(duration: 300.ms).scale(
-              begin: const Offset(0.97, 0.97), duration: 300.ms),
+        ])
+            .animate()
+            .fadeIn(duration: 300.ms)
+            .scale(begin: const Offset(0.97, 0.97), duration: 300.ms),
       ),
     );
   }
@@ -3541,15 +3649,15 @@ class _MissionCard extends StatefulWidget {
 class _MissionCardState extends State<_MissionCard> {
   void _editSheet(BuildContext context, AppTokens t) {
     final titleCtrl = TextEditingController(text: widget.mission.title);
-    final goalCtrl  = TextEditingController(text: widget.mission.goal);
+    final goalCtrl = TextEditingController(text: widget.mission.goal);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-              top: Radius.circular(AppRadius.x2l))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
       builder: (sheetCtx) {
         final kb = MediaQuery.viewInsetsOf(sheetCtx).bottom;
         return Padding(
@@ -3560,8 +3668,8 @@ class _MissionCardState extends State<_MissionCard> {
             Text(
               'Edit Mission',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
             const SizedBox(height: 20),
             _SheetLabel('Title'),
@@ -3573,7 +3681,8 @@ class _MissionCardState extends State<_MissionCard> {
             PremiumInputField(
               controller: goalCtrl,
               hint: 'What do you want to achieve?',
-              maxLines: 3, minLines: 2,
+              maxLines: 3,
+              minLines: 2,
             ),
             const SizedBox(height: 24),
             Builder(builder: (ctx) {
@@ -3581,7 +3690,7 @@ class _MissionCardState extends State<_MissionCard> {
                 label: 'Save changes',
                 onPressed: () async {
                   final title = titleCtrl.text.trim();
-                  final goal  = goalCtrl.text.trim();
+                  final goal = goalCtrl.text.trim();
                   if (title.isEmpty) return;
                   Navigator.of(sheetCtx).pop();
                   final container = ProviderScope.containerOf(ctx);
@@ -3605,15 +3714,15 @@ class _MissionCardState extends State<_MissionCard> {
   Color _categoryColor(AppTokens t, String category) {
     return switch (category.toLowerCase()) {
       'career' || 'business' || 'productivity' => t.primary,
-      'health'                                  => t.success,
-      'finance'                                 => t.warning,
-      _                                         => t.primary,
+      'health' => t.success,
+      'finance' => t.warning,
+      _ => t.primary,
     };
   }
 
   @override
   Widget build(BuildContext context) {
-    final t       = context.tokens;
+    final t = context.tokens;
     final mission = widget.mission;
     final catColor = _categoryColor(t, mission.category);
 
@@ -3621,16 +3730,16 @@ class _MissionCardState extends State<_MissionCard> {
       onTap: () => context.push('/missions/${mission.id}'),
       child: Container(
         decoration: BoxDecoration(
-          color:        t.cardBg,
+          color: t.cardBg,
           borderRadius: BorderRadius.circular(AppRadius.x2l),
-          border:       Border.all(color: t.cardBorder),
-          boxShadow:    AppElevation.level1(Theme.of(context).brightness),
+          border: Border.all(color: t.cardBorder),
+          boxShadow: AppElevation.level1(Theme.of(context).brightness),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppRadius.x2l),
           child: IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+            child:
+                Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               // â”€â”€ 3px left colour bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Container(
                 width: 3,
@@ -3647,187 +3756,190 @@ class _MissionCardState extends State<_MissionCard> {
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    // Top row: chips + menu
-                    Row(children: [
-                      CategoryChip(mission.category),
-                      const SizedBox(width: 8),
-                      StatusBadge(mission.status),
-                      const Spacer(),
-                      // 40Ã—40 hit-target menu button
-                      Consumer(builder: (ctx, menuRef, _) {
-                        final seen    = menuRef.watch(tooltipSeenProvider);
-                        final showTip = !(seen['mission_menu'] ?? false);
+                        // Top row: chips + menu
+                        Row(children: [
+                          CategoryChip(mission.category),
+                          const SizedBox(width: 8),
+                          StatusBadge(mission.status),
+                          const Spacer(),
+                          // 40Ã—40 hit-target menu button
+                          Consumer(builder: (ctx, menuRef, _) {
+                            final seen = menuRef.watch(tooltipSeenProvider);
+                            final showTip = !(seen['mission_menu'] ?? false);
 
-                        void openMenu() {
-                          if (showTip) {
-                            menuRef.read(tooltipSeenProvider.notifier)
-                                .state = {
-                              ...menuRef.read(tooltipSeenProvider),
-                              'mission_menu': true,
-                            };
-                          }
-                          showModalBottomSheet(
-                            context: context,
-                            backgroundColor: t.surface,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(AppRadius.x2l)),
-                            ),
-                            builder: (_) => SafeArea(
-                              child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                const SizedBox(height: 14),
-                                const SheetHandle(),
-                                const SizedBox(height: 8),
-                                ListTile(
-                                  leading: Icon(LucideIcons.externalLink,
-                                      color: t.textSecondary),
-                                  title: const Text('Open'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    context.push('/missions/${mission.id}');
-                                  },
+                            void openMenu() {
+                              if (showTip) {
+                                menuRef
+                                    .read(tooltipSeenProvider.notifier)
+                                    .state = {
+                                  ...menuRef.read(tooltipSeenProvider),
+                                  'mission_menu': true,
+                                };
+                              }
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: t.surface,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(AppRadius.x2l)),
                                 ),
-                                ListTile(
-                                  leading: Icon(LucideIcons.pencil,
-                                      color: t.textSecondary),
-                                  title: const Text('Edit'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _editSheet(context, t);
-                                  },
-                                ),
-                                Divider(height: 1, color: t.border),
-                                ListTile(
-                                  leading: Icon(LucideIcons.trash2,
-                                      color: t.destructive),
-                                  title: Text('Delete',
-                                      style: TextStyle(
-                                          color: t.destructive)),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    widget.onDelete();
-                                  },
-                                ),
-                                const SizedBox(height: 8),
-                              ]),
-                            ),
-                          );
-                        }
-
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            GestureDetector(
-                              onTap: openMenu,
-                              child: SizedBox(
-                                width: 40, height: 40,
-                                child: Center(
-                                  child: Icon(LucideIcons.ellipsis,
-                                      size: 18, color: t.textMuted),
-                                ),
-                              ),
-                            ),
-                            // One-time tooltip
-                            if (showTip)
-                              Positioned(
-                                right: 44, top: 4,
-                                child: IgnorePointer(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: t.surface,
-                                      borderRadius: BorderRadius.circular(
-                                          AppRadius.md),
-                                      border: Border.all(color: t.border),
-                                      boxShadow: AppElevation.level1(
-                                          Theme.of(ctx).brightness),
-                                    ),
-                                    child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                      Icon(LucideIcons.info,
-                                          size: 10, color: t.primary),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Tap for options',
-                                        style: TextStyle(
-                                          color:      t.textSecondary,
-                                          fontSize:   10,
-                                          fontWeight: FontWeight.w600,
+                                builder: (_) => SafeArea(
+                                  child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const SizedBox(height: 14),
+                                        const SheetHandle(),
+                                        const SizedBox(height: 8),
+                                        ListTile(
+                                          leading: Icon(
+                                              LucideIcons.externalLink,
+                                              color: t.textSecondary),
+                                          title: const Text('Open'),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            context.push(
+                                                '/missions/${mission.id}');
+                                          },
                                         ),
-                                      ),
-                                    ]),
+                                        ListTile(
+                                          leading: Icon(LucideIcons.pencil,
+                                              color: t.textSecondary),
+                                          title: const Text('Edit'),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            _editSheet(context, t);
+                                          },
+                                        ),
+                                        Divider(height: 1, color: t.border),
+                                        ListTile(
+                                          leading: Icon(LucideIcons.trash2,
+                                              color: t.destructive),
+                                          title: Text('Delete',
+                                              style: TextStyle(
+                                                  color: t.destructive)),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            widget.onDelete();
+                                          },
+                                        ),
+                                        const SizedBox(height: 8),
+                                      ]),
+                                ),
+                              );
+                            }
+
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                GestureDetector(
+                                  onTap: openMenu,
+                                  child: SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: Center(
+                                      child: Icon(LucideIcons.ellipsis,
+                                          size: 18, color: t.textMuted),
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        );
-                      }),
-                    ]),
-                    const SizedBox(height: 12),
+                                // One-time tooltip
+                                if (showTip)
+                                  Positioned(
+                                    right: 44,
+                                    top: 4,
+                                    child: IgnorePointer(
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: t.surface,
+                                          borderRadius: BorderRadius.circular(
+                                              AppRadius.md),
+                                          border: Border.all(color: t.border),
+                                          boxShadow: AppElevation.level1(
+                                              Theme.of(ctx).brightness),
+                                        ),
+                                        child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(LucideIcons.info,
+                                                  size: 10, color: t.primary),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Tap for options',
+                                                style: TextStyle(
+                                                  color: t.textSecondary,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ]),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          }),
+                        ]),
+                        const SizedBox(height: 12),
 
-                    // Title â€” w800 / -0.5 tracking
-                    Text(
-                      mission.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(
-                            fontWeight:    FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      mission.goal,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color:  t.textMuted,
-                        height: 1.6,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Progress row
-                    Row(children: [
-                      SectionLabel('PROGRESS'),
-                      const Spacer(),
-                      Text(
-                        '${(mission.progress * 100).round()}%',
-                        style: TextStyle(
-                          color:      catColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize:   13,
+                        // Title â€” w800 / -0.5 tracking
+                        Text(
+                          mission.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.5,
+                                  ),
                         ),
-                      ),
-                    ]),
-                    const SizedBox(height: 6),
-                    // Progress bar with category-tinted gradient
-                    PremiumProgressBar(
-                      value:  mission.progress,
-                      height: 6,
-                      color:  catColor,
-                    ),
-                    const SizedBox(height: 12),
+                        const SizedBox(height: 5),
+                        Text(
+                          mission.goal,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: t.textMuted,
+                            height: 1.6,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
 
-                    // Deadline row â€” pill chip around the date
-                    Row(children: [
-                      _DeadlineChip(
-                        deadline: mission.deadline,
-                        tokens:   t,
-                      ),
-                      const Spacer(),
-                      Icon(LucideIcons.chevronRight,
-                          size: 16, color: t.textMuted),
-                    ]),
-                  ]),
+                        // Progress row
+                        Row(children: [
+                          SectionLabel('PROGRESS'),
+                          const Spacer(),
+                          Text(
+                            '${(mission.progress * 100).round()}%',
+                            style: TextStyle(
+                              color: catColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(height: 6),
+                        // Progress bar with category-tinted gradient
+                        PremiumProgressBar(
+                          value: mission.progress,
+                          height: 6,
+                          color: catColor,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Deadline row â€” pill chip around the date
+                        Row(children: [
+                          _DeadlineChip(
+                            deadline: mission.deadline,
+                            tokens: t,
+                          ),
+                          const Spacer(),
+                          Icon(LucideIcons.chevronRight,
+                              size: 16, color: t.textMuted),
+                        ]),
+                      ]),
                 ),
               ),
             ]),
@@ -3856,15 +3968,15 @@ class _PressScaleCardState extends State<_PressScaleCard> {
   bool _pressed = false;
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap:       widget.onTap,
-        onTapDown:   (_) => setState(() => _pressed = true),
-        onTapUp:     (_) => setState(() => _pressed = false),
-        onTapCancel: ()  => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
         child: AnimatedScale(
-          scale:    _pressed ? 0.97 : 1.0,
+          scale: _pressed ? 0.97 : 1.0,
           duration: const Duration(milliseconds: 120),
-          curve:    Curves.easeOut,
-          child:    widget.child,
+          curve: Curves.easeOut,
+          child: widget.child,
         ),
       );
 }
@@ -3894,20 +4006,19 @@ class _DeadlineChip extends StatelessWidget {
       return Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(LucideIcons.calendarDays, size: 12, color: tokens.textMuted),
         const SizedBox(width: 4),
-        Text(deadline,
-            style: TextStyle(color: tokens.textMuted, fontSize: 11)),
+        Text(deadline, style: TextStyle(color: tokens.textMuted, fontSize: 11)),
       ]);
     }
-    final overdue  = _isOverdue;
-    final fg       = overdue ? tokens.destructive : tokens.textMuted;
-    final chipBg   = overdue
+    final overdue = _isOverdue;
+    final fg = overdue ? tokens.destructive : tokens.textMuted;
+    final chipBg = overdue
         ? tokens.destructive.withValues(alpha: 0.10)
         : tokens.backgroundSubtle;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color:        chipBg,
+        color: chipBg,
         borderRadius: BorderRadius.circular(AppRadius.full),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -3916,8 +4027,8 @@ class _DeadlineChip extends StatelessWidget {
         Text(
           deadline,
           style: TextStyle(
-            color:      fg,
-            fontSize:   11,
+            color: fg,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -3959,25 +4070,32 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen>
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final id   = int.tryParse(widget.id) ?? 0;
+      final id = int.tryParse(widget.id) ?? 0;
       final repo = ref.read(repositoryProvider);
-      final res  = await Future.wait([
-        repo.mission(id), repo.tasks(missionId: id),
+      final res = await Future.wait([
+        repo.mission(id),
+        repo.tasks(missionId: id),
       ]);
       if (!mounted) return;
       final m = res[0] as Map<String, dynamic>;
       setState(() {
         _mission = m;
-        _tasks   = (res[1] as List<Map<String, dynamic>>)
+        _tasks = (res[1] as List<Map<String, dynamic>>)
             .map((t) => TaskData.fromJson(t, m['title'] ?? ''))
             .toList();
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
@@ -3994,19 +4112,19 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen>
               height: 280,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color:        t.primarySurface,
+                color: t.primarySurface,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 64, 20, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment:  MainAxisAlignment.end,
-                  children: [
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: const [
                     _SkeletonBox(width: 80, height: 22, radius: AppRadius.full),
-                    const SizedBox(height: 10),
-                    const _SkeletonBox(height: 26),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 10),
+                    _SkeletonBox(height: 26),
+                    SizedBox(height: 6),
                     _SkeletonBox(width: 200, height: 20),
                   ],
                 ),
@@ -4016,21 +4134,21 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color:        t.cardBg,
+                color: t.cardBg,
                 borderRadius: BorderRadius.circular(AppRadius.xl),
-                border:       Border.all(color: t.cardBorder),
+                border: Border.all(color: t.cardBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SkeletonBox(height: 14),
-                  const SizedBox(height: 4),
-                  const _SkeletonBox(height: 14),
-                  const SizedBox(height: 4),
+                children: const [
+                  _SkeletonBox(height: 14),
+                  SizedBox(height: 4),
+                  _SkeletonBox(height: 14),
+                  SizedBox(height: 4),
                   _SkeletonBox(width: 220, height: 14),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   _SkeletonBox(width: 120, height: 22, radius: AppRadius.full),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _SkeletonBox(height: 6, radius: AppRadius.full),
                 ],
               ),
@@ -4053,9 +4171,10 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen>
         ),
       );
     }
-    final m        = _mission!;
-    final progress = ((m['progress'] as num?)?.toDouble() ?? 0).clamp(0.0, 100.0);
-    final mission  = MissionData.fromJson(m);
+    final m = _mission!;
+    final progress =
+        ((m['progress'] as num?)?.toDouble() ?? 0).clamp(0.0, 100.0);
+    final mission = MissionData.fromJson(m);
 
     return Scaffold(
       backgroundColor: t.background,
@@ -4063,27 +4182,29 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen>
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
             expandedHeight: 280,
-            pinned:         true,
+            pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.pin,
               background: Stack(children: [
                 // Gradient header
                 Positioned.fill(
                   child: GradientCard(
-                    radius:  0,
+                    radius: 0,
                     padding: EdgeInsets.zero,
-                    child:   const SizedBox.expand(),
+                    child: const SizedBox.expand(),
                   ),
                 ),
                 // Bottom fade to transparent so it blends into content
                 Positioned(
-                  left: 0, right: 0, bottom: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                   height: 80,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
-                        end:   Alignment.bottomCenter,
+                        end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
                           t.background.withValues(alpha: 0.85),
@@ -4096,86 +4217,86 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen>
                 SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding:
-                        const EdgeInsets.fromLTRB(20, 64, 20, 64),
+                    padding: const EdgeInsets.fromLTRB(20, 64, 20, 64),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment:  MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         StatusBadge(mission.status),
                         const SizedBox(height: 10),
                         // Large glowing progress ring overlaid on header
                         Row(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                          Expanded(
-                            child: Text(
-                              m['title'] ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color:      Colors.white,
-                                fontSize:   22,
-                                fontWeight: FontWeight.w800,
-                                height:     1.25,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // 72px progress ring with glow
-                          Container(
-                            decoration: BoxDecoration(
-                              shape:     BoxShape.circle,
-                              boxShadow: AppElevation.ringGlow(
-                                  Theme.of(context).brightness),
-                            ),
-                            child: SizedBox(
-                              width: 72, height: 72,
-                              child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                // Track
-                                SizedBox(
-                                  width: 72, height: 72,
-                                  child: CircularProgressIndicator(
-                                    value:       1.0,
-                                    strokeWidth: 5,
-                                    color: Colors.white
-                                        .withValues(alpha: 0.20),
-                                  ),
-                                ),
-                                // Fill
-                                TweenAnimationBuilder<double>(
-                                  tween: Tween(
-                                      begin: 0,
-                                      end:   progress / 100),
-                                  duration: const Duration(
-                                      milliseconds: 900),
-                                  curve: Curves.easeOutCubic,
-                                  builder: (_, v, __) => SizedBox(
-                                    width: 72, height: 72,
-                                    child: CircularProgressIndicator(
-                                      value:       v,
-                                      strokeWidth: 5,
-                                      color:       Colors.white,
-                                      strokeCap:   StrokeCap.round,
-                                    ),
-                                  ),
-                                ),
-                                // Percentage label
-                                Text(
-                                  '${progress.round()}%',
+                              Expanded(
+                                child: Text(
+                                  m['title'] ?? '',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    color:      Colors.white,
-                                    fontSize:   13,
+                                    color: Colors.white,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.w800,
+                                    height: 1.25,
                                   ),
                                 ),
-                              ]),
-                            ),
-                          ),
-                        ]),
+                              ),
+                              const SizedBox(width: 16),
+                              // 72px progress ring with glow
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: AppElevation.ringGlow(
+                                      Theme.of(context).brightness),
+                                ),
+                                child: SizedBox(
+                                  width: 72,
+                                  height: 72,
+                                  child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // Track
+                                        SizedBox(
+                                          width: 72,
+                                          height: 72,
+                                          child: CircularProgressIndicator(
+                                            value: 1.0,
+                                            strokeWidth: 5,
+                                            color: Colors.white
+                                                .withValues(alpha: 0.20),
+                                          ),
+                                        ),
+                                        // Fill
+                                        TweenAnimationBuilder<double>(
+                                          tween: Tween(
+                                              begin: 0, end: progress / 100),
+                                          duration:
+                                              const Duration(milliseconds: 900),
+                                          curve: Curves.easeOutCubic,
+                                          builder: (_, v, __) => SizedBox(
+                                            width: 72,
+                                            height: 72,
+                                            child: CircularProgressIndicator(
+                                              value: v,
+                                              strokeWidth: 5,
+                                              color: Colors.white,
+                                              strokeCap: StrokeCap.round,
+                                            ),
+                                          ),
+                                        ),
+                                        // Percentage label
+                                        Text(
+                                          '${progress.round()}%',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ]),
+                                ),
+                              ),
+                            ]),
                       ],
                     ),
                   ),
@@ -4211,45 +4332,43 @@ class _MissionDetailState extends ConsumerState<MissionDetailScreen>
             ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                PremiumCard(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(
-                    m['description'] ?? m['goal'] ?? '',
-                    style: TextStyle(
-                      color: t.textSecondary, height: 1.6,
-                      fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(children: [
-                    CategoryChip(mission.category),
-                    const SizedBox(width: 8),
-                    PriorityBadge(mission.priority),
-                  ]),
-                  const SizedBox(height: 16),
-                  Row(children: [
-                    Text(
-                      '${progress.round()}%',
-                      style: TextStyle(
-                        color:      t.primary,
-                        fontSize:   22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('progress',
+                PremiumCard(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(
+                        m['description'] ?? m['goal'] ?? '',
                         style: TextStyle(
-                            color: t.textMuted, fontSize: 13)),
-                  ]),
-                  const SizedBox(height: 8),
-                  PremiumProgressBar(value: progress / 100, height: 6),
-                ])),
+                            color: t.textSecondary, height: 1.6, fontSize: 14),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(children: [
+                        CategoryChip(mission.category),
+                        const SizedBox(width: 8),
+                        PriorityBadge(mission.priority),
+                      ]),
+                      const SizedBox(height: 16),
+                      Row(children: [
+                        Text(
+                          '${progress.round()}%',
+                          style: TextStyle(
+                            color: t.primary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('progress',
+                            style: TextStyle(color: t.textMuted, fontSize: 13)),
+                      ]),
+                      const SizedBox(height: 8),
+                      PremiumProgressBar(value: progress / 100, height: 6),
+                    ])),
               ],
             ),
             // Tasks tab
             _DetailTasksTab(
-                tasks: _tasks, missionId: widget.id,
-                onRefresh: _load),
+                tasks: _tasks, missionId: widget.id, onRefresh: _load),
             // AI Insights tab
             _InsightsTab(missionTitle: m['title'] ?? ''),
           ],
@@ -4273,6 +4392,7 @@ class _SegmentedTabBar extends StatefulWidget {
   });
   final TabController controller;
   final List<String> tabs;
+
   /// When set, shows a pulsing "New" dot on this tab index.
   final int? newTabIndex;
   final void Function(int)? onTabTap;
@@ -4304,9 +4424,9 @@ class _SegmentedTabBarState extends State<_SegmentedTabBar> {
       child: Container(
         height: 36,
         decoration: BoxDecoration(
-          color:        t.backgroundSubtle,
+          color: t.backgroundSubtle,
           borderRadius: BorderRadius.circular(AppRadius.full),
-          border:       Border.all(color: t.border),
+          border: Border.all(color: t.border),
         ),
         child: Row(
           children: widget.tabs.indexed.map((item) {
@@ -4319,14 +4439,13 @@ class _SegmentedTabBarState extends State<_SegmentedTabBar> {
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  curve:    Curves.easeOutCubic,
-                  margin:   const EdgeInsets.all(3),
+                  curve: Curves.easeOutCubic,
+                  margin: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
-                    color:        isActive ? t.surface : Colors.transparent,
+                    color: isActive ? t.surface : Colors.transparent,
                     borderRadius: BorderRadius.circular(AppRadius.full),
-                    boxShadow:    isActive
-                        ? AppElevation.level1(
-                            Theme.of(context).brightness)
+                    boxShadow: isActive
+                        ? AppElevation.level1(Theme.of(context).brightness)
                         : null,
                   ),
                   child: Center(
@@ -4335,17 +4454,17 @@ class _SegmentedTabBarState extends State<_SegmentedTabBar> {
                         item.$2,
                         style: TextStyle(
                           color: isActive ? t.primary : t.textMuted,
-                          fontSize:   12,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+                          fontSize: 12,
+                          fontWeight:
+                              isActive ? FontWeight.w700 : FontWeight.w500,
                           letterSpacing: -0.1,
                         ),
                       ),
                       // Pulsing "New" dot for first-time discovery
                       if (widget.newTabIndex == item.$1)
                         Positioned(
-                          top: -2, right: -8,
+                          top: -2,
+                          right: -8,
                           child: _PulseDot(color: t.primary),
                         ),
                     ]),
@@ -4362,7 +4481,9 @@ class _SegmentedTabBarState extends State<_SegmentedTabBar> {
 
 class _DetailTasksTab extends ConsumerStatefulWidget {
   const _DetailTasksTab({
-    required this.tasks, required this.missionId, required this.onRefresh,
+    required this.tasks,
+    required this.missionId,
+    required this.onRefresh,
   });
   final List<TaskData> tasks;
   final String missionId;
@@ -4376,12 +4497,13 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: [
       ...widget.tasks.indexed.map((item) => _PremiumTaskRow(
-            task:     item.$2,
-            index:    item.$1,
+            task: item.$2,
+            index: item.$1,
             onToggle: () async {
-              await ref.read(repositoryProvider)
-                  .setTaskStatus(item.$2.id,
-                      item.$2.done ? 'PENDING' : 'COMPLETED')
+              await ref
+                  .read(repositoryProvider)
+                  .setTaskStatus(
+                      item.$2.id, item.$2.done ? 'PENDING' : 'COMPLETED')
                   .catchError((_) {});
               widget.onRefresh();
             },
@@ -4389,23 +4511,23 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
       const SizedBox(height: 12),
       OutlinedButton.icon(
         onPressed: () => _addTaskSheet(context),
-        icon:  const Icon(LucideIcons.plus),
+        icon: const Icon(LucideIcons.plus),
         label: const Text('Add task'),
       ),
     ]);
   }
 
   void _addTaskSheet(BuildContext ctx) {
-    final titleCtrl    = TextEditingController();
+    final titleCtrl = TextEditingController();
     final durationCtrl = TextEditingController();
     String selectedPriority = 'medium';
     DateTime? dueDate;
     final t = ctx.tokens;
 
     const priorities = [
-      ('low',    'Low'),
+      ('low', 'Low'),
       ('medium', 'Medium'),
-      ('high',   'High'),
+      ('high', 'High'),
       ('urgent', 'Urgent'),
     ];
 
@@ -4414,16 +4536,16 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
       isScrollControlled: true,
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.x2l))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (context, setModal) {
           final kb = MediaQuery.viewInsetsOf(context).bottom;
           return DraggableScrollableSheet(
             expand: false,
             initialChildSize: 0.75,
-            minChildSize:     0.4,
-            maxChildSize:     0.92,
+            minChildSize: 0.4,
+            maxChildSize: 0.92,
             builder: (_, scrollCtrl) => Column(children: [
               const SizedBox(height: 14),
               const SheetHandle(),
@@ -4433,8 +4555,8 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
                 child: Text(
                   'Add Task',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                        fontWeight: FontWeight.w800,
+                      ),
                 ),
               ),
               Expanded(
@@ -4446,116 +4568,119 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
                     const SizedBox(height: 6),
                     PremiumInputField(
                       controller: titleCtrl,
-                      hint:      'e.g. Research and outline key concepts',
+                      hint: 'e.g. Research and outline key concepts',
                     ),
                     const SizedBox(height: 14),
 
                     // Priority + Due date (side by side)
-                    Row(crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                      Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          _SheetLabel('Priority'),
-                          const SizedBox(height: 6),
-                          DropdownButtonFormField<String>(
-                            initialValue: selectedPriority,
-                            isDense: true,
-                            decoration: InputDecoration(
-                              filled:   true,
-                              fillColor: t.backgroundSubtle,
-                              border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.md),
-                                borderSide: BorderSide(color: t.border),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.md),
-                                borderSide: BorderSide(color: t.border),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.md),
-                                borderSide:
-                                    BorderSide(color: t.primary, width: 1.5),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 14),
-                            ),
-                            items: priorities
-                                .map((p) => DropdownMenuItem(
-                                      value: p.$1,
-                                      child: Text(p.$2),
-                                    ))
-                                .toList(),
-                            onChanged: (v) => setModal(
-                                () => selectedPriority = v ?? 'medium'),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _SheetLabel('Priority'),
+                                  const SizedBox(height: 6),
+                                  DropdownButtonFormField<String>(
+                                    initialValue: selectedPriority,
+                                    isDense: true,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: t.backgroundSubtle,
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        borderSide: BorderSide(color: t.border),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        borderSide: BorderSide(color: t.border),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        borderSide: BorderSide(
+                                            color: t.primary, width: 1.5),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 14),
+                                    ),
+                                    items: priorities
+                                        .map((p) => DropdownMenuItem(
+                                              value: p.$1,
+                                              child: Text(p.$2),
+                                            ))
+                                        .toList(),
+                                    onChanged: (v) => setModal(
+                                        () => selectedPriority = v ?? 'medium'),
+                                  ),
+                                ]),
                           ),
-                        ]),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          _SheetLabel('Due date'),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: dueDate ?? DateTime.now(),
-                                firstDate: DateTime.now()
-                                    .subtract(const Duration(days: 1)),
-                                lastDate: DateTime.now()
-                                    .add(const Duration(days: 3650)),
-                              );
-                              if (picked != null) {
-                                setModal(() => dueDate = picked);
-                              }
-                            },
-                            child: Container(
-                              height: 50,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10),
-                              decoration: BoxDecoration(
-                                color:        t.backgroundSubtle,
-                                borderRadius: BorderRadius.circular(
-                                    AppRadius.md),
-                                border: Border.all(color: t.border),
-                              ),
-                              child: Row(children: [
-                                Icon(LucideIcons.calendarDays,
-                                    size: 15, color: t.textMuted),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    dueDate == null
-                                        ? 'Pick date'
-                                        : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: dueDate == null
-                                          ? t.textMuted : t.textPrimary,
-                                      fontSize: 13,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _SheetLabel('Due date'),
+                                  const SizedBox(height: 6),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: dueDate ?? DateTime.now(),
+                                        firstDate: DateTime.now()
+                                            .subtract(const Duration(days: 1)),
+                                        lastDate: DateTime.now()
+                                            .add(const Duration(days: 3650)),
+                                      );
+                                      if (picked != null) {
+                                        setModal(() => dueDate = picked);
+                                      }
+                                    },
+                                    child: Container(
+                                      height: 50,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        color: t.backgroundSubtle,
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        border: Border.all(color: t.border),
+                                      ),
+                                      child: Row(children: [
+                                        Icon(LucideIcons.calendarDays,
+                                            size: 15, color: t.textMuted),
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            dueDate == null
+                                                ? 'Pick date'
+                                                : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: dueDate == null
+                                                  ? t.textMuted
+                                                  : t.textPrimary,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ]),
                                     ),
                                   ),
-                                ),
-                              ]),
-                            ),
+                                ]),
                           ),
                         ]),
-                      ),
-                    ]),
                     const SizedBox(height: 14),
 
                     _SheetLabel('Est. duration (minutes)'),
                     const SizedBox(height: 6),
                     PremiumInputField(
-                      controller:   durationCtrl,
-                      hint:         'e.g. 45',
+                      controller: durationCtrl,
+                      hint: 'e.g. 45',
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 24),
@@ -4567,11 +4692,12 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
                         if (title.isEmpty) return;
                         final mId = int.tryParse(widget.missionId) ?? 0;
                         Navigator.of(sheetCtx).pop();
-                        await ref.read(repositoryProvider)
+                        await ref
+                            .read(repositoryProvider)
                             .createTask(
                               missionId: mId,
-                              title:     title,
-                              priority:  selectedPriority,
+                              title: title,
+                              priority: selectedPriority,
                               description: dueDate != null
                                   ? 'Due: ${dueDate!.day}/${dueDate!.month}/${dueDate!.year}'
                                   : '',
@@ -4600,25 +4726,31 @@ class _InsightsTab extends ConsumerStatefulWidget {
 
 class _InsightsTabState extends ConsumerState<_InsightsTab> {
   String? _insight;
-  bool    _loading = false;
+  bool _loading = false;
 
   Future<void> _fetch() async {
-    setState(() { _loading = true; _insight = null; });
+    setState(() {
+      _loading = true;
+      _insight = null;
+    });
     try {
       final result = await ref.read(repositoryProvider).runAgent(
-        agentType:   'COACH',
-        userInput:   'Give strategic insights for: ${widget.missionTitle}',
+        agentType: 'COACH',
+        userInput: 'Give strategic insights for: ${widget.missionTitle}',
         contextData: {'missionTitle': widget.missionTitle},
       );
       if (!mounted) return;
       setState(() {
-        _insight = result['output']?.toString() ??
-            'No insights available right now.';
+        _insight =
+            result['output']?.toString() ?? 'No insights available right now.';
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _insight = 'Error: $e'; _loading = false; });
+      setState(() {
+        _insight = 'Error: $e';
+        _loading = false;
+      });
     }
   }
 
@@ -4626,32 +4758,32 @@ class _InsightsTabState extends ConsumerState<_InsightsTab> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return ListView(padding: const EdgeInsets.all(16), children: [
-      if (_loading)
-        Center(child: CircularProgressIndicator(color: t.primary)),
+      if (_loading) Center(child: CircularProgressIndicator(color: t.primary)),
       if (_insight != null)
-        PremiumCard(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
+        PremiumCard(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(LucideIcons.wandSparkles, color: t.primary, size: 18),
             const SizedBox(width: 8),
-            Text('AI Insights',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text('AI Insights', style: Theme.of(context).textTheme.titleLarge),
           ]),
           const SizedBox(height: 12),
           Text(_insight!,
               style: TextStyle(color: t.textSecondary, height: 1.6)),
         ])),
       if (_insight == null && !_loading)
-        Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(height: 32),
           EmptyStateOrb(icon: LucideIcons.sparkles, size: 72, iconSize: 28),
           const SizedBox(height: 20),
           Text(
             'Get AI insights',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize:   17,
-            ),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -4664,9 +4796,7 @@ class _InsightsTabState extends ConsumerState<_InsightsTab> {
           ),
           const SizedBox(height: 24),
           PremiumButton(
-              label: 'Generate insights',
-              onPressed: _fetch,
-              minWidth: 200),
+              label: 'Generate insights', onPressed: _fetch, minWidth: 200),
         ])),
     ]);
   }
@@ -4683,8 +4813,8 @@ class TasksScreen extends ConsumerStatefulWidget {
 }
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
-  bool   _loading     = false;
-  bool   _searchOpen  = false;
+  bool _loading = false;
+  bool _searchOpen = false;
 
   @override
   void initState() {
@@ -4697,22 +4827,25 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   Future<void> _loadTasks() async {
     setState(() => _loading = true);
     try {
-      final repo     = ref.read(repositoryProvider);
-      var missions   = ref.read(missionsProvider);
+      final repo = ref.read(repositoryProvider);
+      var missions = ref.read(missionsProvider);
       if (missions.isEmpty) {
         final rawM = await repo.missions();
-        missions   = rawM.map(MissionData.fromJson).toList();
+        missions = rawM.map(MissionData.fromJson).toList();
         ref.read(missionsProvider.notifier).state = missions;
       }
-      if (missions.isEmpty) { setState(() => _loading = false); return; }
+      if (missions.isEmpty) {
+        setState(() => _loading = false);
+        return;
+      }
       final results = await Future.wait(
-        missions.take(5).map((m) =>
-            repo.tasks(missionId: m.id)
-                .catchError((_) => <Map<String, dynamic>>[])),
+        missions.take(5).map((m) => repo
+            .tasks(missionId: m.id)
+            .catchError((_) => <Map<String, dynamic>>[])),
       );
       ref.read(tasksProvider.notifier).state = results.indexed
-          .expand((item) => item.$2
-              .map((t) => TaskData.fromJson(t, missions[item.$1].title)))
+          .expand((item) =>
+              item.$2.map((t) => TaskData.fromJson(t, missions[item.$1].title)))
           .toList();
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -4731,26 +4864,31 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     // Group active tasks by mission title
     final groups = <String, List<TaskData>>{};
     for (final task in active) {
-      groups.putIfAbsent(task.missionTitle.isEmpty
-          ? 'Uncategorised' : task.missionTitle, () => []).add(task);
+      groups
+          .putIfAbsent(
+              task.missionTitle.isEmpty ? 'Uncategorised' : task.missionTitle,
+              () => [])
+          .add(task);
     }
 
     var globalIdx = 0;
     for (final entry in groups.entries) {
       items.add(_GroupedSectionHeader(
         entry.key,
-        count:      entry.value.length,
+        count: entry.value.length,
         topPadding: globalIdx == 0 ? 4 : 20,
       ));
       for (final task in entry.value) {
         items.add(_OptimisticTaskRow(
-          key:        ValueKey('task_${task.id}'),
-          task:       task,
-          index:      globalIdx,
-          onToggle:   () => _optimisticToggle(task, ref),
-          onDelete:   () async {
-            await ref.read(repositoryProvider)
-                .deleteTask(task.id).catchError((_) {});
+          key: ValueKey('task_${task.id}'),
+          task: task,
+          index: globalIdx,
+          onToggle: () => _optimisticToggle(task, ref),
+          onDelete: () async {
+            await ref
+                .read(repositoryProvider)
+                .deleteTask(task.id)
+                .catchError((_) {});
             _loadTasks();
           },
         ));
@@ -4762,18 +4900,17 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     if (done.isNotEmpty) {
       items.add(
         GestureDetector(
-          onTap: () => ref
-              .read(completedTasksExpandedProvider.notifier)
-              .state = !completedExpanded,
+          onTap: () => ref.read(completedTasksExpandedProvider.notifier).state =
+              !completedExpanded,
           child: Padding(
             padding: const EdgeInsets.only(top: 20, bottom: 8),
             child: Row(children: [
               Text(
                 'COMPLETED (${done.length})',
                 style: TextStyle(
-                  color:         t.textSecondary,
-                  fontSize:      11,
-                  fontWeight:    FontWeight.w700,
+                  color: t.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
                 ),
               ),
@@ -4781,10 +4918,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               Expanded(child: Divider(color: t.border, height: 1)),
               const SizedBox(width: 8),
               AnimatedRotation(
-                turns:    completedExpanded ? 0.5 : 0.0,
+                turns: completedExpanded ? 0.5 : 0.0,
                 duration: const Duration(milliseconds: 200),
-                child: Icon(LucideIcons.chevronDown,
-                    size: 14, color: t.textMuted),
+                child:
+                    Icon(LucideIcons.chevronDown, size: 14, color: t.textMuted),
               ),
             ]),
           ),
@@ -4793,13 +4930,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       if (completedExpanded) {
         for (final task in done) {
           items.add(_OptimisticTaskRow(
-            key:      ValueKey('done_${task.id}'),
-            task:     task,
-            index:    globalIdx,
+            key: ValueKey('done_${task.id}'),
+            task: task,
+            index: globalIdx,
             onToggle: () => _optimisticToggle(task, ref),
             onDelete: () async {
-              await ref.read(repositoryProvider)
-                  .deleteTask(task.id).catchError((_) {});
+              await ref
+                  .read(repositoryProvider)
+                  .deleteTask(task.id)
+                  .catchError((_) {});
               _loadTasks();
             },
           ));
@@ -4813,16 +4952,17 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
   /// Optimistic task toggle â€” flips done locally, reverts on API error.
   void _optimisticToggle(TaskData task, WidgetRef ref) {
-    final prev  = task.done;
+    final prev = task.done;
     final tasks = List<TaskData>.from(ref.read(tasksProvider));
-    final idx   = tasks.indexWhere((t) => t.id == task.id);
+    final idx = tasks.indexWhere((t) => t.id == task.id);
     if (idx < 0) return;
 
     // Flip immediately
     tasks[idx].done = !prev;
     ref.read(tasksProvider.notifier).state = List.from(tasks);
 
-    ref.read(repositoryProvider)
+    ref
+        .read(repositoryProvider)
         .setTaskStatus(task.id, !prev ? 'COMPLETED' : 'PENDING')
         .catchError((_) {
       // Revert on failure
@@ -4845,33 +4985,38 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allTasks         = ref.watch(tasksProvider);
-    final query            = ref.watch(tasksSearchProvider).toLowerCase().trim();
-    final completedExpanded= ref.watch(completedTasksExpandedProvider);
-    final t                = context.tokens;
+    final allTasks = ref.watch(tasksProvider);
+    final query = ref.watch(tasksSearchProvider).toLowerCase().trim();
+    final completedExpanded = ref.watch(completedTasksExpandedProvider);
+    final t = context.tokens;
 
     // Apply search
     final searched = query.isEmpty
         ? allTasks
-        : allTasks.where((task) =>
-            task.title.toLowerCase().contains(query) ||
-            task.missionTitle.toLowerCase().contains(query)).toList();
+        : allTasks
+            .where((task) =>
+                task.title.toLowerCase().contains(query) ||
+                task.missionTitle.toLowerCase().contains(query))
+            .toList();
 
     final activeTasks = searched.where((t) => !t.done).toList();
-    final doneTasks   = searched.where((t) =>  t.done).toList();
+    final doneTasks = searched.where((t) => t.done).toList();
 
     final stats = [
-      (allTasks.length,
-          allTasks.where((t) => t.status == 'In Progress').length,
-          allTasks.where((t) => t.priority == 'high' ||
-                                t.priority == 'urgent').length,
-          allTasks.where((t) => t.done).length),
+      (
+        allTasks.length,
+        allTasks.where((t) => t.status == 'In Progress').length,
+        allTasks
+            .where((t) => t.priority == 'high' || t.priority == 'urgent')
+            .length,
+        allTasks.where((t) => t.done).length
+      ),
     ];
     final statItems = [
-      (allTasks.length,                        'Total',        t.primary),
-      (stats[0].$2,                            'In Progress',  t.info),
-      (stats[0].$3,                            'High Priority',t.warning),
-      (stats[0].$4,                            'Done',         t.success),
+      (allTasks.length, 'Total', t.primary),
+      (stats[0].$2, 'In Progress', t.info),
+      (stats[0].$3, 'High Priority', t.warning),
+      (stats[0].$4, 'Done', t.success),
     ];
 
     return Scaffold(
@@ -4890,9 +5035,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         ref.read(tasksSearchProvider.notifier).state = '';
                       }
                     },
-                    icon: Icon(
-                      _searchOpen ? LucideIcons.x : LucideIcons.search,
-                      size: 18, color: t.textSecondary),
+                    icon: Icon(_searchOpen ? LucideIcons.x : LucideIcons.search,
+                        size: 18, color: t.textSecondary),
                   ),
                   IconButton(
                     onPressed: _loadTasks,
@@ -4903,8 +5047,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
             // Animated search bar
             _SearchBar(
-              visible:   _searchOpen,
-              hint:      'Search tasksâ€¦',
+              visible: _searchOpen,
+              hint: 'Search tasksâ€¦',
               onChanged: (v) =>
                   ref.read(tasksSearchProvider.notifier).state = v,
               onDismiss: () {
@@ -4920,66 +5064,69 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: statItems.indexed.map((item) => SizedBox(
-                        width: 115,
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                              right: 10, bottom: 2),
-                          child: PremiumCard(
-                            radius:  AppRadius.lg,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  '${item.$2.$1}',
-                                  style: TextStyle(
-                                    fontSize:   22,
-                                    fontWeight: FontWeight.w800,
-                                    color:      item.$2.$3,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                item.$2.$2,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize:   10,
-                                  fontWeight: FontWeight.w700,
-                                  color:      t.textSecondary,
-                                ),
-                              ),
-                            ]),
-                          ).staggered(item.$1),
-                        ),
-                      )).toList(),
+                  children: statItems.indexed
+                      .map((item) => SizedBox(
+                            width: 115,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.only(right: 10, bottom: 2),
+                              child: PremiumCard(
+                                radius: AppRadius.lg,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          '${item.$2.$1}',
+                                          style: TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w800,
+                                            color: item.$2.$3,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        item.$2.$2,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: t.textSecondary,
+                                        ),
+                                      ),
+                                    ]),
+                              ).staggered(item.$1),
+                            ),
+                          ))
+                      .toList(),
                 ),
               ),
             const SizedBox(height: 8),
 
             if (_loading)
               LinearProgressIndicator(
-                  color: t.primary, minHeight: 2,
+                  color: t.primary,
+                  minHeight: 2,
                   backgroundColor: t.backgroundSubtle),
 
             Expanded(
               child: allTasks.isEmpty
                   ? Center(
                       child: Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 32),
-                        child: Column(
-                            mainAxisSize: MainAxisSize.min, children: [
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
                           EmptyStateOrb(
-                              icon:     LucideIcons.squareCheck,
-                              size:     72,
+                              icon: LucideIcons.squareCheck,
+                              size: 72,
                               iconSize: 32),
                           const SizedBox(height: 20),
                           Text(
@@ -4990,7 +5137,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                 .headlineMedium
                                 ?.copyWith(
                                   fontWeight: FontWeight.w700,
-                                  fontSize:   17,
+                                  fontSize: 17,
                                 ),
                           ),
                           const SizedBox(height: 8),
@@ -4999,14 +5146,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                             'tasks will appear here automatically.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color:    t.textMuted,
+                              color: t.textMuted,
                               fontSize: 13,
-                              height:   1.6,
+                              height: 1.6,
                             ),
                           ),
                           const SizedBox(height: 20),
                           PremiumButton(
-                            label:    'Go to Missions',
+                            label: 'Go to Missions',
                             minWidth: 200,
                             onPressed: () => context.go('/missions'),
                           ),
@@ -5015,29 +5162,31 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                     )
                   : searched.isEmpty && query.isNotEmpty
                       ? Center(
-                          child: Column(
-                              mainAxisSize: MainAxisSize.min, children: [
+                          child:
+                              Column(mainAxisSize: MainAxisSize.min, children: [
                             Icon(LucideIcons.searchX,
                                 size: 32, color: t.textMuted),
                             const SizedBox(height: 12),
                             Text(
                               'No results for "$query"',
                               style: TextStyle(
-                                color:      t.textMuted,
-                                fontSize:   14,
-                                fontWeight: FontWeight.w500),
+                                  color: t.textMuted,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500),
                             ),
                           ]),
                         )
                       : RefreshIndicator(
                           onRefresh: _loadTasks,
-                          color:     t.primary,
+                          color: t.primary,
                           child: ListView(
-                            padding: const EdgeInsets.fromLTRB(
-                                16, 4, 16, 120),
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                             children: _buildGroupedItems(
-                              activeTasks, doneTasks, t,
-                              completedExpanded, ref,
+                              activeTasks,
+                              doneTasks,
+                              t,
+                              completedExpanded,
+                              ref,
                             ),
                           ),
                         ),
@@ -5046,9 +5195,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
           // Floating quick-action bar
           _QuickActionBar(
-            onAddTask:    () => _addTaskSheet(context, allTasks),
+            onAddTask: () => _addTaskSheet(context, allTasks),
             onNewMission: () => context.go('/missions'),
-            onAskAI:      () => context.go('/ai-coach'),
+            onAskAI: () => context.go('/ai-coach'),
           ),
         ]),
       ),
@@ -5056,18 +5205,18 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 
   void _addTaskSheet(BuildContext ctx, List<TaskData> tasks) {
-    final titleCtrl    = TextEditingController();
+    final titleCtrl = TextEditingController();
     final durationCtrl = TextEditingController();
-    final missions     = ref.read(missionsProvider);
-    int?   selectedMissionId = missions.isNotEmpty ? missions.first.id : null;
-    String selectedPriority  = 'medium';
+    final missions = ref.read(missionsProvider);
+    int? selectedMissionId = missions.isNotEmpty ? missions.first.id : null;
+    String selectedPriority = 'medium';
     DateTime? dueDate;
     final t = ctx.tokens;
 
     const priorities = [
-      ('low',    'Low'),
+      ('low', 'Low'),
       ('medium', 'Medium'),
-      ('high',   'High'),
+      ('high', 'High'),
       ('urgent', 'Urgent'),
     ];
 
@@ -5076,16 +5225,16 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       isScrollControlled: true,
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.x2l))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
       builder: (sheetCtx) => StatefulBuilder(
         builder: (context, setModal) {
           final kb = MediaQuery.viewInsetsOf(context).bottom;
           return DraggableScrollableSheet(
             expand: false,
             initialChildSize: 0.85,
-            minChildSize:     0.5,
-            maxChildSize:     0.95,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
             builder: (_, scrollCtrl) => Column(children: [
               const SizedBox(height: 14),
               const SheetHandle(),
@@ -5094,9 +5243,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                 child: Row(children: [
                   Container(
-                    width: 32, height: 32,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
-                      gradient:     AppGradients.lifekit,
+                      gradient: AppGradients.lifekit,
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                     child: const Icon(LucideIcons.squareCheck,
@@ -5106,8 +5256,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   Text(
                     'New Task',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                          fontWeight: FontWeight.w800,
+                        ),
                   ),
                 ]),
               ),
@@ -5121,7 +5271,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                     const SizedBox(height: 6),
                     PremiumInputField(
                       controller: titleCtrl,
-                      hint:      'e.g. Complete React advanced patterns module',
+                      hint: 'e.g. Complete React advanced patterns module',
                     ),
                     const SizedBox(height: 14),
 
@@ -5132,7 +5282,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       DropdownButtonFormField<int>(
                         initialValue: selectedMissionId,
                         decoration: InputDecoration(
-                          filled:   true,
+                          filled: true,
                           fillColor: t.backgroundSubtle,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -5157,119 +5307,121 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                       overflow: TextOverflow.ellipsis),
                                 ))
                             .toList(),
-                        onChanged: (v) =>
-                            setModal(() => selectedMissionId = v),
+                        onChanged: (v) => setModal(() => selectedMissionId = v),
                       ),
                       const SizedBox(height: 14),
                     ],
 
                     // Priority + Due date (side by side)
-                    Row(crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                      Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          _SheetLabel('Priority'),
-                          const SizedBox(height: 6),
-                          DropdownButtonFormField<String>(
-                            initialValue: selectedPriority,
-                            isDense: true,
-                            decoration: InputDecoration(
-                              filled:   true,
-                              fillColor: t.backgroundSubtle,
-                              border: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.md),
-                                borderSide: BorderSide(color: t.border),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.md),
-                                borderSide: BorderSide(color: t.border),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.md),
-                                borderSide:
-                                    BorderSide(color: t.primary, width: 1.5),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 14),
-                            ),
-                            items: priorities
-                                .map((p) => DropdownMenuItem(
-                                      value: p.$1,
-                                      child: Text(p.$2),
-                                    ))
-                                .toList(),
-                            onChanged: (v) => setModal(
-                                () => selectedPriority = v ?? 'medium'),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _SheetLabel('Priority'),
+                                  const SizedBox(height: 6),
+                                  DropdownButtonFormField<String>(
+                                    initialValue: selectedPriority,
+                                    isDense: true,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: t.backgroundSubtle,
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        borderSide: BorderSide(color: t.border),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        borderSide: BorderSide(color: t.border),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        borderSide: BorderSide(
+                                            color: t.primary, width: 1.5),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 14),
+                                    ),
+                                    items: priorities
+                                        .map((p) => DropdownMenuItem(
+                                              value: p.$1,
+                                              child: Text(p.$2),
+                                            ))
+                                        .toList(),
+                                    onChanged: (v) => setModal(
+                                        () => selectedPriority = v ?? 'medium'),
+                                  ),
+                                ]),
                           ),
-                        ]),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          _SheetLabel('Due date'),
-                          const SizedBox(height: 6),
-                          GestureDetector(
-                            onTap: () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: dueDate ?? DateTime.now(),
-                                firstDate: DateTime.now()
-                                    .subtract(const Duration(days: 1)),
-                                lastDate: DateTime.now()
-                                    .add(const Duration(days: 3650)),
-                              );
-                              if (picked != null) {
-                                setModal(() => dueDate = picked);
-                              }
-                            },
-                            child: Container(
-                              height: 50,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10),
-                              decoration: BoxDecoration(
-                                color:        t.backgroundSubtle,
-                                borderRadius: BorderRadius.circular(
-                                    AppRadius.md),
-                                border: Border.all(color: t.border),
-                              ),
-                              child: Row(children: [
-                                Icon(LucideIcons.calendarDays,
-                                    size: 15, color: t.textMuted),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    dueDate == null
-                                        ? 'Pick date'
-                                        : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: dueDate == null
-                                          ? t.textMuted : t.textPrimary,
-                                      fontSize: 13,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _SheetLabel('Due date'),
+                                  const SizedBox(height: 6),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: dueDate ?? DateTime.now(),
+                                        firstDate: DateTime.now()
+                                            .subtract(const Duration(days: 1)),
+                                        lastDate: DateTime.now()
+                                            .add(const Duration(days: 3650)),
+                                      );
+                                      if (picked != null) {
+                                        setModal(() => dueDate = picked);
+                                      }
+                                    },
+                                    child: Container(
+                                      height: 50,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        color: t.backgroundSubtle,
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        border: Border.all(color: t.border),
+                                      ),
+                                      child: Row(children: [
+                                        Icon(LucideIcons.calendarDays,
+                                            size: 15, color: t.textMuted),
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            dueDate == null
+                                                ? 'Pick date'
+                                                : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: dueDate == null
+                                                  ? t.textMuted
+                                                  : t.textPrimary,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ]),
                                     ),
                                   ),
-                                ),
-                              ]),
-                            ),
+                                ]),
                           ),
                         ]),
-                      ),
-                    ]),
                     const SizedBox(height: 14),
 
                     // Estimated duration
                     _SheetLabel('Est. duration (minutes)'),
                     const SizedBox(height: 6),
                     PremiumInputField(
-                      controller:   durationCtrl,
-                      hint:         'e.g. 60',
+                      controller: durationCtrl,
+                      hint: 'e.g. 60',
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 24),
@@ -5282,11 +5434,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         final mId = selectedMissionId!;
                         final dur = int.tryParse(durationCtrl.text.trim());
                         Navigator.of(sheetCtx).pop();
-                        await ref.read(repositoryProvider)
+                        await ref
+                            .read(repositoryProvider)
                             .createTask(
-                              missionId:   mId,
-                              title:       title,
-                              priority:    selectedPriority,
+                              missionId: mId,
+                              title: title,
+                              priority: selectedPriority,
                               description: dueDate != null
                                   ? 'Due: ${dueDate!.day}/${dueDate!.month}/${dueDate!.year}'
                                   : '',
@@ -5295,7 +5448,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         // If a duration was provided, patch the task
                         if (dur != null && dur > 0) {
                           // best-effort update â€” ignore error
-                          ref.read(repositoryProvider)
+                          ref
+                              .read(repositoryProvider)
                               .tasks(missionId: mId)
                               .then((list) {
                             if (list.isNotEmpty) {
@@ -5379,22 +5533,23 @@ class _OptimisticTaskRowState extends State<_OptimisticTaskRow>
         child: child,
       ),
       child: Dismissible(
-        key:       widget.key ?? ValueKey(widget.task.id),
+        key: widget.key ?? ValueKey(widget.task.id),
         direction: DismissDirection.endToStart,
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 20),
           decoration: BoxDecoration(
-            color:        t.destructive,
+            color: t.destructive,
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(LucideIcons.trash2, color: Colors.white, size: 18),
-            const SizedBox(height: 2),
-            const Text('Delete',
+          child: Column(mainAxisSize: MainAxisSize.min, children: const [
+            Icon(LucideIcons.trash2, color: Colors.white, size: 18),
+            SizedBox(height: 2),
+            Text('Delete',
                 style: TextStyle(
-                  color: Colors.white, fontSize: 10,
-                  fontWeight: FontWeight.w600)),
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600)),
           ]),
         ),
         confirmDismiss: (_) async {
@@ -5402,8 +5557,8 @@ class _OptimisticTaskRowState extends State<_OptimisticTaskRow>
           return false; // We handle removal ourselves
         },
         child: _PremiumTaskRow(
-          task:     widget.task,
-          index:    widget.index,
+          task: widget.task,
+          index: widget.index,
           onToggle: widget.onToggle,
         ),
       ),
@@ -5430,13 +5585,15 @@ class AiCoachScreen extends ConsumerStatefulWidget {
 }
 
 class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
-  final _input  = TextEditingController();
+  final _input = TextEditingController();
   final _scroll = ScrollController();
   bool _sending = false;
 
   @override
   void dispose() {
-    _input.dispose(); _scroll.dispose(); super.dispose();
+    _input.dispose();
+    _scroll.dispose();
+    super.dispose();
   }
 
   Future<void> _send(String text) async {
@@ -5444,25 +5601,27 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
     if (value.isEmpty || _sending) return;
     _input.clear();
     ref.read(chatProvider.notifier).state = [
-      ...ref.read(chatProvider), ChatMessage(value, true),
+      ...ref.read(chatProvider),
+      ChatMessage(value, true),
     ];
     setState(() => _sending = true);
     _scrollToBottom();
 
     try {
       final missions = ref.read(missionsProvider);
-      final result   = await ref.read(repositoryProvider).runAgent(
-        agentType:   'COACH',
-        userInput:   value,
-        contextData: missions.isEmpty ? {}
-            : {'missionTitle': missions.first.title},
-      );
-      final ok    = result['success'] != false;
+      final result = await ref.read(repositoryProvider).runAgent(
+            agentType: 'COACH',
+            userInput: value,
+            contextData:
+                missions.isEmpty ? {} : {'missionTitle': missions.first.title},
+          );
+      final ok = result['success'] != false;
       final reply = result['output']?.toString() ??
           'I\'m here to help. Ask me about your missions or goals.';
       if (!ok) throw Exception(reply);
       ref.read(chatProvider.notifier).state = [
-        ...ref.read(chatProvider), ChatMessage(reply, false),
+        ...ref.read(chatProvider),
+        ChatMessage(reply, false),
       ];
     } catch (_) {
       ref.read(chatProvider.notifier).state = [
@@ -5475,17 +5634,17 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
   }
 
   void _scrollToBottom() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (_scroll.hasClients) {
-      _scroll.animateTo(_scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut);
-    }
-  });
+        if (_scroll.hasClients) {
+          _scroll.animateTo(_scroll.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut);
+        }
+      });
 
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(chatProvider);
-    final t        = context.tokens;
+    final t = context.tokens;
 
     return MeshBackground(
       child: Scaffold(
@@ -5504,44 +5663,49 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                   // Pulsing bot avatar
                   PulseGlow(
                     child: Container(
-                      width: 32, height: 32,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
-                        gradient:     AppGradients.lifekit,
+                        gradient: AppGradients.lifekit,
                         borderRadius: BorderRadius.circular(AppRadius.sm),
-                        boxShadow:    AppShadows.greenSm,
+                        boxShadow: AppShadows.greenSm,
                       ),
                       child: const Icon(LucideIcons.bot,
                           size: 16, color: Colors.white),
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start,
+                  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Text('AI Coach',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    // Online chip
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 1),
-                      decoration: BoxDecoration(
-                        color:        t.statusActiveBg,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Container(width: 5, height: 5,
-                            decoration: BoxDecoration(
-                              color: t.statusActiveFg,
-                              shape: BoxShape.circle,
-                            )),
-                        const SizedBox(width: 4),
-                        Text('Online',
-                            style: TextStyle(
-                              color: t.statusActiveFg, fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                            )),
+                        Text('AI Coach',
+                            style: Theme.of(context).textTheme.titleMedium),
+                        // Online chip
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: t.statusActiveBg,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Container(
+                                width: 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: t.statusActiveFg,
+                                  shape: BoxShape.circle,
+                                )),
+                            const SizedBox(width: 4),
+                            Text('Online',
+                                style: TextStyle(
+                                  color: t.statusActiveFg,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                )),
+                          ]),
+                        ),
                       ]),
-                    ),
-                  ]),
                 ]),
                 actions: [
                   if (messages.isNotEmpty)
@@ -5565,20 +5729,20 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
               if (m.isEmpty) return const SizedBox.shrink();
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 child: Row(children: [
                   GlassCard(
-                    radius:  AppRadius.full,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    radius: AppRadius.full,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(LucideIcons.target, size: 12,
-                          color: t.primary),
+                      Icon(LucideIcons.target, size: 12, color: t.primary),
                       const SizedBox(width: 6),
                       Text(m.first.title,
                           style: TextStyle(
-                            color: t.textPrimary, fontSize: 12,
+                            color: t.textPrimary,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                           )),
                     ]),
@@ -5586,14 +5750,15 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                   const SizedBox(width: 8),
                   GlassCard(
                     radius: AppRadius.full,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(LucideIcons.brain, size: 12, color: t.info),
                       const SizedBox(width: 6),
                       Text('Memory active',
                           style: TextStyle(
-                            color: t.textPrimary, fontSize: 12,
+                            color: t.textPrimary,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                           )),
                     ]),
@@ -5608,8 +5773,8 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                   ? _SuggestedPrompts(onTap: _send)
                   : ListView.builder(
                       controller: _scroll,
-                      padding:    const EdgeInsets.all(16),
-                      itemCount:  messages.length + (_sending ? 1 : 0),
+                      padding: const EdgeInsets.all(16),
+                      itemCount: messages.length + (_sending ? 1 : 0),
                       itemBuilder: (_, i) {
                         if (_sending && i == messages.length) {
                           return _TypingBubble(tokens: t);
@@ -5626,35 +5791,33 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   decoration: BoxDecoration(
-                    color:  t.surface.withValues(alpha: 0.9),
-                    border: Border(
-                        top: BorderSide(color: t.border)),
+                    color: t.surface.withValues(alpha: 0.9),
+                    border: Border(top: BorderSide(color: t.border)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Expanded(
                         child: Container(
-                          constraints:
-                              const BoxConstraints(maxHeight: 120),
+                          constraints: const BoxConstraints(maxHeight: 120),
                           decoration: BoxDecoration(
-                            color:        t.backgroundSubtle,
+                            color: t.backgroundSubtle,
                             borderRadius: BorderRadius.circular(AppRadius.lg),
-                            border:       Border.all(color: t.border),
+                            border: Border.all(color: t.border),
                           ),
                           child: TextField(
                             controller: _input,
-                            minLines:   1,
-                            maxLines:   5,
+                            minLines: 1,
+                            maxLines: 5,
                             decoration: InputDecoration(
-                              hintText:       'Ask your AI Coachâ€¦',
-                              border:         InputBorder.none,
-                              enabledBorder:  InputBorder.none,
-                              focusedBorder:  InputBorder.none,
+                              hintText: 'Ask your AI Coachâ€¦',
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 12),
-                              hintStyle: TextStyle(
-                                  color: t.textMuted, fontSize: 14),
+                              hintStyle:
+                                  TextStyle(color: t.textMuted, fontSize: 14),
                             ),
                             onSubmitted: _send,
                             textInputAction: TextInputAction.send,
@@ -5665,28 +5828,25 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                       // Send button
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        width: 44, height: 44,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          gradient:     _sending
-                              ? null : AppGradients.lifekit,
-                          color:        _sending
-                              ? t.backgroundSubtle : null,
-                          shape:        BoxShape.circle,
-                          boxShadow:    _sending
-                              ? null : AppShadows.greenSm,
+                          gradient: _sending ? null : AppGradients.lifekit,
+                          color: _sending ? t.backgroundSubtle : null,
+                          shape: BoxShape.circle,
+                          boxShadow: _sending ? null : AppShadows.greenSm,
                         ),
                         child: Material(
-                          color:  Colors.transparent,
-                          shape:  const CircleBorder(),
-                          child:  InkWell(
+                          color: Colors.transparent,
+                          shape: const CircleBorder(),
+                          child: InkWell(
                             customBorder: const CircleBorder(),
-                            onTap: _sending
-                                ? null
-                                : () => _send(_input.text),
+                            onTap: _sending ? null : () => _send(_input.text),
                             child: Center(
                               child: _sending
                                   ? SizedBox(
-                                      width: 18, height: 18,
+                                      width: 18,
+                                      height: 18,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: t.primary,
@@ -5726,13 +5886,13 @@ class _ChatBubble extends StatelessWidget {
         children: [
           if (!isUser) ...[
             Container(
-              width: 28, height: 28,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
                 gradient: AppGradients.lifekit,
-                shape:    BoxShape.circle,
+                shape: BoxShape.circle,
               ),
-              child: const Icon(LucideIcons.bot,
-                  size: 14, color: Colors.white),
+              child: const Icon(LucideIcons.bot, size: 14, color: Colors.white),
             ),
             const SizedBox(width: 8),
           ],
@@ -5743,30 +5903,28 @@ class _ChatBubble extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              gradient:     isUser ? AppGradients.lifekit : null,
-              color:        isUser ? null : tokens.surface,
+              gradient: isUser ? AppGradients.lifekit : null,
+              color: isUser ? null : tokens.surface,
               borderRadius: BorderRadius.only(
-                topLeft:     Radius.circular(isUser ? AppRadius.xl : 4),
-                topRight:    Radius.circular(isUser ? 4 : AppRadius.xl),
-                bottomLeft:  const Radius.circular(AppRadius.xl),
+                topLeft: Radius.circular(isUser ? AppRadius.xl : 4),
+                topRight: Radius.circular(isUser ? 4 : AppRadius.xl),
+                bottomLeft: const Radius.circular(AppRadius.xl),
                 bottomRight: const Radius.circular(AppRadius.xl),
               ),
-              border:     isUser ? null
-                  : Border.all(color: tokens.cardBorder),
-              boxShadow:  isUser ? AppShadows.greenSm : AppShadows.card,
+              border: isUser ? null : Border.all(color: tokens.cardBorder),
+              boxShadow: isUser ? AppShadows.greenSm : AppShadows.card,
             ),
             child: Text(
               message.text,
               style: TextStyle(
-                color:  isUser ? Colors.white : tokens.textPrimary,
-                height: 1.55, fontSize: 14,
+                color: isUser ? Colors.white : tokens.textPrimary,
+                height: 1.55,
+                fontSize: 14,
               ),
             ),
-          ).animate()
-              .fadeIn(duration: 250.ms)
-              .slideX(
+          ).animate().fadeIn(duration: 250.ms).slideX(
                 begin: isUser ? 0.08 : -0.08,
-                end:   0,
+                end: 0,
                 duration: 250.ms,
               ),
           if (isUser) const SizedBox(width: 4),
@@ -5783,35 +5941,39 @@ class _TypingBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Align(
         alignment: Alignment.centerLeft,
-        child: Row(mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(
-              gradient: AppGradients.lifekit, shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.bot,
-                size: 14, color: Colors.white),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            margin:  const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(
-                horizontal: 18, vertical: 14),
-            decoration: BoxDecoration(
-              color:        tokens.surface,
-              borderRadius: const BorderRadius.only(
-                topLeft:     Radius.circular(4),
-                topRight:    Radius.circular(AppRadius.xl),
-                bottomLeft:  Radius.circular(AppRadius.xl),
-                bottomRight: Radius.circular(AppRadius.xl),
+        child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  gradient: AppGradients.lifekit,
+                  shape: BoxShape.circle,
+                ),
+                child:
+                    const Icon(LucideIcons.bot, size: 14, color: Colors.white),
               ),
-              border: Border.all(color: tokens.cardBorder),
-              boxShadow: AppShadows.card,
-            ),
-            child: BouncingDots(color: tokens.primary),
-          ),
-        ]),
+              const SizedBox(width: 8),
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: tokens.surface,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(AppRadius.xl),
+                    bottomLeft: Radius.circular(AppRadius.xl),
+                    bottomRight: Radius.circular(AppRadius.xl),
+                  ),
+                  border: Border.all(color: tokens.cardBorder),
+                  boxShadow: AppShadows.card,
+                ),
+                child: BouncingDots(color: tokens.primary),
+              ),
+            ]),
       );
 }
 
@@ -5836,12 +5998,11 @@ class _SuggestedPrompts extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient:     AppGradients.lifekit,
-              shape:        BoxShape.circle,
-              boxShadow:    AppShadows.green,
+              gradient: AppGradients.lifekit,
+              shape: BoxShape.circle,
+              boxShadow: AppShadows.green,
             ),
-            child: const Icon(LucideIcons.bot,
-                size: 36, color: Colors.white),
+            child: const Icon(LucideIcons.bot, size: 36, color: Colors.white),
           ).animate().scale(
                 begin: const Offset(0.8, 0.8),
                 duration: 400.ms,
@@ -5862,21 +6023,21 @@ class _SuggestedPrompts extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: GlassCard(
                   radius: AppRadius.lg,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: GestureDetector(
                     onTap: () => onTap(item.$2),
                     behavior: HitTestBehavior.opaque,
                     child: Row(children: [
-                      Icon(LucideIcons.sparkles,
-                          size: 14, color: t.primary),
+                      Icon(LucideIcons.sparkles, size: 14, color: t.primary),
                       const SizedBox(width: 10),
-                      Expanded(child: Text(item.$2,
-                          style: TextStyle(
-                            color: t.textPrimary,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 13,
-                          ))),
+                      Expanded(
+                          child: Text(item.$2,
+                              style: TextStyle(
+                                color: t.textPrimary,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                              ))),
                       Icon(LucideIcons.arrowRight,
                           size: 14, color: t.textMuted),
                     ]),
@@ -5904,14 +6065,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _loading = true;
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
       final p = await ref.read(repositoryProvider).profile();
       if (!mounted) return;
-      setState(() { _profile = p; _loading = false; });
+      setState(() {
+        _profile = p;
+        _loading = false;
+      });
       ref.read(profileProvider.notifier).state = p;
     } catch (_) {
       if (!mounted) return;
@@ -5921,7 +6088,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   String get _initials {
     final name = (_profile['fullName'] ?? _profile['full_name'] ?? 'U')
-        .toString().trim();
+        .toString()
+        .trim();
     final parts = name.split(' ');
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
@@ -5931,12 +6099,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t        = context.tokens;
+    final t = context.tokens;
     final missions = ref.watch(missionsProvider);
-    final tasks    = ref.watch(tasksProvider);
-    final name     = (_profile['fullName'] ??
-        _profile['full_name'] ?? 'User').toString();
-    final email    = (_profile['email'] ?? '').toString();
+    final tasks = ref.watch(tasksProvider);
+    final name =
+        (_profile['fullName'] ?? _profile['full_name'] ?? 'User').toString();
+    final email = (_profile['email'] ?? '').toString();
 
     if (_loading) {
       return Scaffold(
@@ -5976,42 +6144,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               PremiumCard(
                 child: Column(children: [
                   Container(
-                    width: 76, height: 76,
+                    width: 76,
+                    height: 76,
                     decoration: BoxDecoration(
-                      gradient:    AppGradients.lifekit,
-                      shape:       BoxShape.circle,
-                      boxShadow:   AppShadows.greenSm,
+                      gradient: AppGradients.lifekit,
+                      shape: BoxShape.circle,
+                      boxShadow: AppShadows.greenSm,
                     ),
                     child: Center(
                       child: Text(_initials,
                           style: const TextStyle(
-                            color: Colors.white, fontSize: 26,
+                            color: Colors.white,
+                            fontSize: 26,
                             fontWeight: FontWeight.w800,
                           )),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(name,
-                      style: Theme.of(context).textTheme.headlineLarge),
+                  Text(name, style: Theme.of(context).textTheme.headlineLarge),
                   const SizedBox(height: 4),
                   Text(email,
-                      style: TextStyle(
-                          color: t.textMuted, fontSize: 13)),
+                      style: TextStyle(color: t.textMuted, fontSize: 13)),
                 ]),
               ).pageEntrance(),
               const SizedBox(height: 16),
 
               // Stat row
               Row(children: [
-                Expanded(child: _StatCard(
-                    '${missions.length}', 'Missions', LucideIcons.target)),
+                Expanded(
+                    child: _StatCard(
+                        '${missions.length}', 'Missions', LucideIcons.target)),
                 const SizedBox(width: 10),
-                Expanded(child: _StatCard(
-                    '${tasks.length}', 'Tasks', LucideIcons.squareCheck)),
+                Expanded(
+                    child: _StatCard(
+                        '${tasks.length}', 'Tasks', LucideIcons.squareCheck)),
                 const SizedBox(width: 10),
-                Expanded(child: _StatCard(
-                    '${tasks.where((t) => t.done).length}', 'Done',
-                    LucideIcons.checkCheck)),
+                Expanded(
+                    child: _StatCard('${tasks.where((t) => t.done).length}',
+                        'Done', LucideIcons.checkCheck)),
               ]).staggered(1),
               const SizedBox(height: 16),
 
@@ -6019,23 +6189,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               PremiumCard(
                 padding: EdgeInsets.zero,
                 child: Column(children: [
-                  _NavTile(LucideIcons.target,     'Missions',
+                  _NavTile(LucideIcons.target, 'Missions',
                       () => context.go('/missions')),
-                  _NavTile(LucideIcons.bot,         'AI Coach',
+                  _NavTile(LucideIcons.bot, 'AI Coach',
                       () => context.go('/ai-coach')),
-                  _NavTile(LucideIcons.brain,        'Memory',
+                  _NavTile(LucideIcons.brain, 'Memory',
                       () => context.push('/memory')),
-                  _NavTile(LucideIcons.telescope,    'Opportunities',
+                  _NavTile(LucideIcons.telescope, 'Opportunities',
                       () => context.push('/opportunities')),
-                  _NavTile(LucideIcons.store,        'Marketplace',
+                  _NavTile(LucideIcons.store, 'Marketplace',
                       () => context.push('/marketplace')),
-                  _NavTile(LucideIcons.barChart2,    'Analytics',
+                  _NavTile(LucideIcons.barChart2, 'Analytics',
                       () => context.push('/analytics')),
-                  _NavTile(LucideIcons.calendarRange,'Planner',
+                  _NavTile(LucideIcons.calendarRange, 'Planner',
                       () => context.push('/planner')),
-                  _NavTile(LucideIcons.users,        'Agents',
+                  _NavTile(LucideIcons.users, 'Agents',
                       () => context.push('/agents')),
-                  _NavTile(LucideIcons.settings,     'Settings',
+                  _NavTile(LucideIcons.settings, 'Settings',
                       () => context.push('/settings')),
                 ]),
               ).staggered(2),
@@ -6050,21 +6220,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: Container(
                   height: 52,
                   decoration: BoxDecoration(
-                    color:        t.destructiveSurface,
+                    color: t.destructiveSurface,
                     borderRadius: BorderRadius.circular(AppRadius.full),
-                    border: Border.all(
-                        color: t.destructive.withValues(alpha: 0.4)),
+                    border:
+                        Border.all(color: t.destructive.withValues(alpha: 0.4)),
                   ),
                   child: Center(
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(LucideIcons.logOut,
-                          size: 16, color: t.destructive),
+                      Icon(LucideIcons.logOut, size: 16, color: t.destructive),
                       const SizedBox(width: 8),
                       Text('Sign out',
                           style: TextStyle(
-                            color:      t.destructive,
+                            color: t.destructive,
                             fontWeight: FontWeight.w700,
-                            fontSize:   14,
+                            fontSize: 14,
                           )),
                     ]),
                   ),
@@ -6087,22 +6256,22 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return PremiumCard(
-      radius:  AppRadius.lg,
+      radius: AppRadius.lg,
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       child: Column(children: [
         Icon(icon, color: t.primary, size: 18),
         const SizedBox(height: 8),
         Text(value,
             style: TextStyle(
-              fontSize:    20,
-              fontWeight:  FontWeight.w800,
-              color:       t.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: t.textPrimary,
             )),
         const SizedBox(height: 2),
         Text(label,
             style: TextStyle(
-              fontSize:  10,
-              color:     t.textMuted,
+              fontSize: 10,
+              color: t.textMuted,
               fontWeight: FontWeight.w600,
             )),
       ]),
@@ -6120,15 +6289,15 @@ class _NavTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return ListTile(
-      leading:  Icon(icon, color: t.primary, size: 20),
-      title:    Text(label,
+      leading: Icon(icon, color: t.primary, size: 20),
+      title: Text(label,
           style: TextStyle(
-            color: t.textPrimary, fontWeight: FontWeight.w500,
+            color: t.textPrimary,
+            fontWeight: FontWeight.w500,
             fontSize: 14,
           )),
-      trailing: Icon(LucideIcons.chevronRight,
-          size: 16, color: t.textMuted),
-      onTap:    onTap,
+      trailing: Icon(LucideIcons.chevronRight, size: 16, color: t.textMuted),
+      onTap: onTap,
     );
   }
 }
@@ -6144,15 +6313,18 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 }
 
 class _OnboardingState extends ConsumerState<OnboardingScreen> {
-  int    _step     = 0;
+  int _step = 0;
   String _userType = 'Professional';
-  final  _focuses  = <String>{'Career'};
-  final  _goalCtrl = TextEditingController();
-  double _hours    = 8;
-  bool   _saving   = false;
+  final _focuses = <String>{'Career'};
+  final _goalCtrl = TextEditingController();
+  double _hours = 8;
+  bool _saving = false;
 
   @override
-  void dispose() { _goalCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _goalCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -6172,10 +6344,8 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
                     height: 4,
                     margin: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
-                      gradient: i <= _step
-                          ? AppGradients.lifekit : null,
-                      color: i <= _step
-                          ? null : t.backgroundSubtle,
+                      gradient: i <= _step ? AppGradients.lifekit : null,
+                      color: i <= _step ? null : t.backgroundSubtle,
                       borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                   ),
@@ -6187,9 +6357,9 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               child: SingleChildScrollView(
-                key:     ValueKey(_step),
+                key: ValueKey(_step),
                 padding: const EdgeInsets.all(24),
-                child:   _stepWidget(),
+                child: _stepWidget(),
               ),
             ),
           ),
@@ -6201,15 +6371,15 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
                 if (_step > 0)
                   TextButton(
                     onPressed: () => setState(() => _step--),
-                    child: Text('Back',
-                        style: TextStyle(color: t.textSecondary)),
+                    child:
+                        Text('Back', style: TextStyle(color: t.textSecondary)),
                   ),
                 const Spacer(),
                 PremiumButton(
-                  label:     _step == 6 ? 'Launch my mission' : 'Continue',
-                  loading:   _saving,
+                  label: _step == 6 ? 'Launch my mission' : 'Continue',
+                  loading: _saving,
                   onPressed: _next,
-                  minWidth:  160,
+                  minWidth: 160,
                 ),
               ]),
             ),
@@ -6219,21 +6389,20 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
   }
 
   Widget _stepWidget() => switch (_step) {
-    0 => _OnboardWelcome(),
-    1 => _OnboardUserType(
-        selected: _userType,
-        onSelect: (v) => setState(() => _userType = v)),
-    2 => _OnboardFocus(
-        selected: _focuses,
-        onToggle: (v, on) =>
-            setState(() => on ? _focuses.add(v) : _focuses.remove(v))),
-    3 => _OnboardGoal(ctrl: _goalCtrl),
-    4 => _OnboardPrefs(
-        hours:         _hours,
-        onHoursChange: (v) => setState(() => _hours = v)),
-    5 => const _OnboardAnalysis(),
-    _ => _OnboardPreview(goal: _goalCtrl.text),
-  };
+        0 => _OnboardWelcome(),
+        1 => _OnboardUserType(
+            selected: _userType,
+            onSelect: (v) => setState(() => _userType = v)),
+        2 => _OnboardFocus(
+            selected: _focuses,
+            onToggle: (v, on) =>
+                setState(() => on ? _focuses.add(v) : _focuses.remove(v))),
+        3 => _OnboardGoal(ctrl: _goalCtrl),
+        4 => _OnboardPrefs(
+            hours: _hours, onHoursChange: (v) => setState(() => _hours = v)),
+        5 => const _OnboardAnalysis(),
+        _ => _OnboardPreview(goal: _goalCtrl.text),
+      };
 
   Future<void> _next() async {
     if (_step == 5) return;
@@ -6241,7 +6410,8 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
       setState(() => _saving = true);
       final goal = _goalCtrl.text.trim();
       if (goal.isNotEmpty) {
-        await ref.read(repositoryProvider)
+        await ref
+            .read(repositoryProvider)
             .createMission(title: goal, description: goal)
             .catchError((_) => <String, dynamic>{});
       }
@@ -6263,7 +6433,7 @@ class _OnboardWelcome extends StatelessWidget {
     final t = context.tokens;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       GradientCard(
-        radius:  AppRadius.x2l,
+        radius: AppRadius.x2l,
         padding: const EdgeInsets.all(24),
         child: const Icon(LucideIcons.leaf, color: Colors.white, size: 48),
       ),
@@ -6299,33 +6469,31 @@ class _OnboardUserType extends StatelessWidget {
       const SizedBox(height: 24),
       GridView.count(
         shrinkWrap: true,
-        physics:    const NeverScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         crossAxisCount: 2,
         childAspectRatio: 1.4,
-        mainAxisSpacing:  12,
+        mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        children: ['Professional','Student','Founder','Family']
+        children: ['Professional', 'Student', 'Founder', 'Family']
             .map((type) => GestureDetector(
                   onTap: () => onSelect(type),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
-                      color:        selected == type
-                          ? t.primarySurface : t.surface,
+                      color: selected == type ? t.primarySurface : t.surface,
                       borderRadius: BorderRadius.circular(AppRadius.xl),
                       border: Border.all(
                         color: selected == type ? t.primary : t.border,
                         width: selected == type ? 2.0 : 1.0,
                       ),
-                      boxShadow: selected == type
-                          ? AppShadows.greenSm : AppShadows.xs,
+                      boxShadow:
+                          selected == type ? AppShadows.greenSm : AppShadows.xs,
                     ),
                     child: Center(
                       child: Text(type,
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            color: selected == type
-                                ? t.primary : t.textPrimary,
+                            color: selected == type ? t.primary : t.textPrimary,
                           )),
                     ),
                   ),
@@ -6353,13 +6521,19 @@ class _OnboardFocus extends StatelessWidget {
       const SizedBox(height: 24),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final f in [
-          'Career','Education','Business','Finance',
-          'Health','Technology','Lifestyle','Relationships'
+          'Career',
+          'Education',
+          'Business',
+          'Finance',
+          'Health',
+          'Technology',
+          'Lifestyle',
+          'Relationships'
         ])
           _PremiumFilterChip(
-            label:    f,
+            label: f,
             selected: selected.contains(f),
-            onTap:    () => onToggle(f, !selected.contains(f)),
+            onTap: () => onToggle(f, !selected.contains(f)),
           ),
       ]),
     ]);
@@ -6382,8 +6556,9 @@ class _OnboardGoal extends StatelessWidget {
       const SizedBox(height: 24),
       PremiumInputField(
         controller: ctrl,
-        hint:       'I want toâ€¦',
-        maxLines:   6, minLines: 4,
+        hint: 'I want toâ€¦',
+        maxLines: 6,
+        minLines: 4,
       ),
     ]);
   }
@@ -6398,19 +6573,19 @@ class _OnboardPrefs extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Shape your plan',
-          style: Theme.of(context).textTheme.displayMedium),
+      Text('Shape your plan', style: Theme.of(context).textTheme.displayMedium),
       const SizedBox(height: 8),
       Text('Choose a pace that feels sustainable.',
           style: TextStyle(color: t.textMuted)),
       const SizedBox(height: 24),
       Text('${hours.round()} hours per week',
-          style: TextStyle(
-            fontWeight: FontWeight.w700, color: t.textPrimary)),
+          style: TextStyle(fontWeight: FontWeight.w700, color: t.textPrimary)),
       Slider(
-        value:     hours,
-        min: 1, max: 40, divisions: 39,
-        onChanged:   onHoursChange,
+        value: hours,
+        min: 1,
+        max: 40,
+        divisions: 39,
+        onChanged: onHoursChange,
       ),
     ]);
   }
@@ -6431,11 +6606,12 @@ class _OnboardAnalysis extends StatelessWidget {
       Center(
         child: PulseGlow(
           child: Container(
-            width: 80, height: 80,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
-              gradient:     AppGradients.lifekit,
-              shape:        BoxShape.circle,
-              boxShadow:    AppShadows.green,
+              gradient: AppGradients.lifekit,
+              shape: BoxShape.circle,
+              boxShadow: AppShadows.green,
             ),
             child: const Icon(LucideIcons.wandSparkles,
                 color: Colors.white, size: 32),
@@ -6443,8 +6619,9 @@ class _OnboardAnalysis extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 24),
-      Center(child: Text('This will only take a momentâ€¦',
-          style: TextStyle(color: t.textMuted))),
+      Center(
+          child: Text('This will only take a momentâ€¦',
+              style: TextStyle(color: t.textMuted))),
     ]);
   }
 }
@@ -6468,21 +6645,25 @@ class _OnboardPreview extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color:        Colors.white.withValues(alpha: 0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
             child: const Text('MISSION PREVIEW',
                 style: TextStyle(
-                  color: Colors.white, fontSize: 10,
-                  fontWeight: FontWeight.w700, letterSpacing: 0.8,
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
                 )),
           ),
           const SizedBox(height: 12),
           Text(
-            goal.isEmpty ? 'Your first mission'
+            goal.isEmpty
+                ? 'Your first mission'
                 : (goal.length > 60 ? '${goal.substring(0, 60)}â€¦' : goal),
             style: const TextStyle(
-              color: Colors.white, fontSize: 18,
+              color: Colors.white,
+              fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -6515,31 +6696,43 @@ class FeatureScreen extends ConsumerStatefulWidget {
 
 class _FeatureScreenState extends ConsumerState<FeatureScreen> {
   List<Map<String, dynamic>> _items = [];
-  bool   _loading = false;
+  bool _loading = false;
   String? _error;
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final repo  = ref.read(repositoryProvider);
+      final repo = ref.read(repositoryProvider);
       final items = await switch (widget.path) {
-        '/memory'          => repo.memories(),
-        '/opportunities'   => repo.opportunities(),
-        '/marketplace'     => repo.marketplace(),
-        '/notifications'   => repo.notifications(),
-        '/agents'          => repo.agents(),
-        '/planner'         => repo.plans(),
+        '/memory' => repo.memories(),
+        '/opportunities' => repo.opportunities(),
+        '/marketplace' => repo.marketplace(),
+        '/notifications' => repo.notifications(),
+        '/agents' => repo.agents(),
+        '/planner' => repo.plans(),
         '/recommendations' => repo.recommendations(),
         _ => Future.value(const <Map<String, dynamic>>[]),
       };
       if (!mounted) return;
-      setState(() { _items = items; _loading = false; });
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
@@ -6552,7 +6745,12 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
   @override
   Widget build(BuildContext context) {
     if (widget.path == '/analytics') return const _AnalyticsScreen();
-    if (widget.path == '/settings')  return const _SettingsScreen();
+    if (widget.path == '/settings') return const _SettingsScreen();
+    if (widget.path == '/memory') return const MemoryScreen();
+    if (widget.path == '/notifications') return const NotificationsScreen();
+    if (widget.path == '/opportunities') return const OpportunitiesScreen();
+    if (widget.path == '/agents') return const AgentsScreen();
+    if (widget.path == '/planner') return const PlannerScreen();
 
     final t = context.tokens;
     return Scaffold(
@@ -6560,9 +6758,9 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
       appBar: AppBar(title: Text(_title)),
       floatingActionButton: widget.path == '/memory'
           ? FloatingActionButton.extended(
-              onPressed:       () => _addMemorySheet(context),
-              icon:            const Icon(LucideIcons.plus),
-              label:           const Text('Add Memory'),
+              onPressed: () => _addMemorySheet(context),
+              icon: const Icon(LucideIcons.plus),
+              label: const Text('Add Memory'),
               backgroundColor: t.primary,
               foregroundColor: Colors.white,
             )
@@ -6575,15 +6773,15 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
                   child: _ApiErrorBanner(error: _error!, onRetry: _load))
               : RefreshIndicator(
                   onRefresh: _load,
-                  color:     t.primary,
+                  color: t.primary,
                   child: _items.isEmpty
                       ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                          child:
+                              Column(mainAxisSize: MainAxisSize.min, children: [
                             EmptyStateOrb(
                                 icon: LucideIcons.inbox,
-                                size: 72, iconSize: 30),
+                                size: 72,
+                                iconSize: 30),
                             const SizedBox(height: 20),
                             Text(
                               'No ${_title.toLowerCase()} yet',
@@ -6603,20 +6801,20 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 10),
                           itemBuilder: (_, i) => _ItemCard(
-                            _items[i], widget.path,
-                            index:    i,
+                            _items[i],
+                            widget.path,
+                            index: i,
                             onDelete: () async {
-                              final id = _parseInt(
-                                  _items[i]['id'] ??
+                              final id = _parseInt(_items[i]['id'] ??
                                   _items[i]['memory_id'] ??
                                   _items[i]['notification_id']);
                               if (id == 0) return;
                               final repo = ref.read(repositoryProvider);
                               if (widget.path == '/memory') {
-                                await repo.deleteMemory(id)
-                                    .catchError((_) {});
+                                await repo.deleteMemory(id).catchError((_) {});
                               } else if (widget.path == '/notifications') {
-                                await repo.deleteNotification(id)
+                                await repo
+                                    .deleteNotification(id)
                                     .catchError((_) {});
                               }
                               _load();
@@ -6629,16 +6827,17 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
 
   void _addMemorySheet(BuildContext ctx) {
     final ctrl = TextEditingController();
-    final t    = ctx.tokens;
+    final t = ctx.tokens;
     showModalBottomSheet(
-      context: ctx, isScrollControlled: true,
+      context: ctx,
+      isScrollControlled: true,
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.x2l))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
       builder: (sheetCtx) => Padding(
-        padding: EdgeInsets.fromLTRB(24, 16, 24,
-            MediaQuery.viewInsetsOf(sheetCtx).bottom + 24),
+        padding: EdgeInsets.fromLTRB(
+            24, 16, 24, MediaQuery.viewInsetsOf(sheetCtx).bottom + 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -6648,24 +6847,26 @@ class _FeatureScreenState extends ConsumerState<FeatureScreen> {
             Text(
               'Add Memory',
               style: Theme.of(sheetCtx).textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
             const SizedBox(height: 16),
             PremiumInputField(
               controller: ctrl,
-              label:      'What do you want to remember?',
-              maxLines:   4, minLines: 3,
-              autofocus:  true,
+              label: 'What do you want to remember?',
+              maxLines: 4,
+              minLines: 3,
+              autofocus: true,
             ),
             const SizedBox(height: 16),
             PremiumButton(
-              label:     'Save memory',
+              label: 'Save memory',
               onPressed: () async {
                 if (ctrl.text.trim().isEmpty) return;
                 final content = ctrl.text.trim();
                 Navigator.of(sheetCtx).pop();
-                await ref.read(repositoryProvider)
+                await ref
+                    .read(repositoryProvider)
                     .createMemory(content: content)
                     .catchError((_) => <String, dynamic>{});
                 _load();
@@ -6692,7 +6893,7 @@ class _ItemCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   String _title() {
-    for (final k in ['title','content','name','message']) {
+    for (final k in ['title', 'content', 'name', 'message']) {
       final v = item[k];
       if (v is String && v.isNotEmpty) return v;
     }
@@ -6700,7 +6901,7 @@ class _ItemCard extends StatelessWidget {
   }
 
   String _subtitle() {
-    for (final k in ['description','body','domain','category','type']) {
+    for (final k in ['description', 'body', 'domain', 'category', 'type']) {
       final v = item[k];
       if (v is String && v.isNotEmpty) return v;
     }
@@ -6714,16 +6915,16 @@ class _ItemCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(children: [
         Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               _title(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontWeight:    FontWeight.w700,
-                fontSize:      14,
-                color:         t.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: t.textPrimary,
                 letterSpacing: -0.2,
               ),
             ),
@@ -6734,9 +6935,9 @@ class _ItemCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color:    t.textMuted,
+                  color: t.textMuted,
                   fontSize: 12,
-                  height:   1.5,
+                  height: 1.5,
                 ),
               ),
             ],
@@ -6754,9 +6955,9 @@ class _ItemCard extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ANALYTICS SCREEN
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════
+// ANALYTICS SCREEN  — real data from providers
+// ══════════════════════════════════════════════════════════════
 
 class _AnalyticsScreen extends ConsumerWidget {
   const _AnalyticsScreen();
@@ -6764,95 +6965,307 @@ class _AnalyticsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final missions = ref.watch(missionsProvider);
-    final tasks    = ref.watch(tasksProvider);
-    final done     = tasks.where((t) => t.done).length;
-    final rate     = tasks.isEmpty ? 0 : (done * 100 ~/ tasks.length);
-    final t        = context.tokens;
+    final tasks = ref.watch(tasksProvider);
+    final t = context.tokens;
+
+    final total = tasks.length;
+    final done = tasks.where((tk) => tk.done).length;
+    final pending = total - done;
+    final rate = total == 0 ? 0 : (done * 100 ~/ total);
+
+    final activeMissions = missions.where((m) => m.status == 'Active').length;
+    final completedMissions =
+        missions.where((m) => m.status == 'Completed').length;
+
+    // Priority breakdown
+    final urgent = tasks.where((tk) => tk.priority == 'urgent').length;
+    final high = tasks.where((tk) => tk.priority == 'high').length;
+    final medium = tasks.where((tk) => tk.priority == 'medium').length;
+    final low = tasks
+        .where((tk) => !['urgent', 'high', 'medium'].contains(tk.priority))
+        .length;
 
     return Scaffold(
       backgroundColor: t.background,
       appBar: AppBar(title: const Text('Analytics')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        Row(children: [
-          Expanded(child: PremiumCard(child: Column(children: [
-            Text('$rate%',
-                style: Theme.of(context).textTheme.displayMedium
-                    ?.copyWith(color: t.primary)),
-            Text('Completion', style: TextStyle(color: t.textMuted)),
-          ]))),
-          const SizedBox(width: 12),
-          Expanded(child: PremiumCard(child: Column(children: [
-            Text('${tasks.length}',
-                style: Theme.of(context).textTheme.displayMedium
-                    ?.copyWith(color: t.primary)),
-            Text('Total tasks', style: TextStyle(color: t.textMuted)),
-          ]))),
-        ]),
-        const SizedBox(height: 16),
-        PremiumCard(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Task completion',
-              style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 180,
-            child: BarChart(BarChartData(
-              gridData:    const FlGridData(show: false),
-              titlesData:  const FlTitlesData(show: false),
-              borderData:  FlBorderData(show: false),
-              barGroups: [
-                for (var i = 0; i < 7; i++)
-                  BarChartGroupData(x: i, barRods: [
-                    BarChartRodData(
-                      toY: (i < tasks.length
-                              ? (tasks[i].done ? 1.0 : 0.5)
-                              : 0.2) * 10,
-                      gradient: AppGradients.lifekit,
-                      width: 16,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ]),
+      body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: [
+            // ── Summary stat grid ────────────────────────────────
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.5,
+              children: [
+                _AnalyticsTile(
+                    label: 'Completion',
+                    value: '$rate%',
+                    icon: LucideIcons.chartNoAxesCombined,
+                    color: t.primary),
+                _AnalyticsTile(
+                    label: 'Total tasks',
+                    value: '$total',
+                    icon: LucideIcons.squareCheck,
+                    color: t.info),
+                _AnalyticsTile(
+                    label: 'Done',
+                    value: '$done',
+                    icon: LucideIcons.checkCheck,
+                    color: t.success),
+                _AnalyticsTile(
+                    label: 'Pending',
+                    value: '$pending',
+                    icon: LucideIcons.clock3,
+                    color: t.warning),
               ],
-            )),
-          ),
-        ])),
-        const SizedBox(height: 16),
-        if (missions.isNotEmpty)
-          PremiumCard(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Mission progress',
-                style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 12),
-            ...missions.take(5).map((m) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Missions summary ─────────────────────────────────
+            PremiumCard(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text('Missions',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    _MiniStat('Active', '$activeMissions', t.primary, t),
+                    const SizedBox(width: 8),
+                    _MiniStat('Total', '${missions.length}', t.info, t),
+                    const SizedBox(width: 8),
+                    _MiniStat('Completed', '$completedMissions', t.success, t),
+                  ]),
+                ])),
+
+            const SizedBox(height: 16),
+
+            // ── Task priority breakdown ──────────────────────────
+            if (total > 0)
+              PremiumCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Row(children: [
-                      Expanded(child: Text(m.title,
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: t.textPrimary,
-                          ))),
-                      Text('${(m.progress * 100).round()}%',
-                          style: TextStyle(
-                            color: t.primary, fontWeight: FontWeight.w700,
-                          )),
-                    ]),
+                    Text('Tasks by priority',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    _PriorityBar(
+                        label: 'Urgent',
+                        count: urgent,
+                        total: total,
+                        color: t.priorityUrgentFg),
+                    _PriorityBar(
+                        label: 'High',
+                        count: high,
+                        total: total,
+                        color: t.priorityHighFg),
+                    _PriorityBar(
+                        label: 'Medium',
+                        count: medium,
+                        total: total,
+                        color: t.priorityMedFg),
+                    _PriorityBar(
+                        label: 'Low',
+                        count: low,
+                        total: total,
+                        color: t.textMuted),
+                  ])),
+
+            if (total > 0) const SizedBox(height: 16),
+
+            // ── Mission progress bars ────────────────────────────
+            if (missions.isNotEmpty)
+              PremiumCard(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text('Mission progress',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 12),
+                    ...missions.take(6).map((m) => Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(children: [
+                                  Expanded(
+                                      child: Text(m.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: t.textPrimary))),
+                                  const SizedBox(width: 8),
+                                  Text('${(m.progress * 100).round()}%',
+                                      style: TextStyle(
+                                          color: t.primary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13)),
+                                ]),
+                                const SizedBox(height: 6),
+                                PremiumProgressBar(value: m.progress),
+                              ]),
+                        )),
+                  ])),
+
+            if (missions.isEmpty && total == 0)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    EmptyStateOrb(icon: LucideIcons.chartNoAxesCombined),
+                    const SizedBox(height: 16),
+                    Text('No data yet',
+                        style: TextStyle(
+                            color: t.textMuted, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
-                    PremiumProgressBar(value: m.progress),
+                    Text('Create missions and tasks to see your analytics.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: t.textMuted, fontSize: 13)),
                   ]),
-                )),
-          ])),
+                ),
+              ),
+          ]),
+    );
+  }
+}
+
+class _AnalyticsTile extends StatelessWidget {
+  const _AnalyticsTile(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.color});
+  final String label, value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return PremiumCard(
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, color: color, size: 18),
+        const Spacer(),
+        Text(value,
+            style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: t.textPrimary)),
+        const SizedBox(height: 2),
+        Text(label,
+            style: TextStyle(
+                fontSize: 11, color: t.textMuted, fontWeight: FontWeight.w500)),
       ]),
     );
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// SETTINGS SCREEN
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+class _MiniStat extends StatelessWidget {
+  const _MiniStat(this.label, this.value, this.color, this.t);
+  final String label, value;
+  final Color color;
+  final AppTokens t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(children: [
+          Text(value,
+              style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.w800, color: color)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10,
+                  color: t.textMuted,
+                  fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _PriorityBar extends StatelessWidget {
+  const _PriorityBar(
+      {required this.label,
+      required this.count,
+      required this.total,
+      required this.color});
+  final String label;
+  final int count, total;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final frac = total == 0 ? 0.0 : count / total;
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          SizedBox(
+            width: 52,
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: t.textSecondary,
+                    fontWeight: FontWeight.w600)),
+          ),
+          Expanded(
+              child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: LinearProgressIndicator(
+              value: frac,
+              backgroundColor: t.backgroundSubtle,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 8,
+            ),
+          )),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 24,
+            child: Text('$count',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: t.textMuted,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ]),
+      ]),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SETTINGS SCREEN  — functional switches + navigation tiles
+// ══════════════════════════════════════════════════════════════
+
+final _aiMemoryEnabledProvider = StateProvider<bool>((ref) => true);
+final _autoSuggestEnabledProvider = StateProvider<bool>((ref) => true);
 
 class _SettingsScreen extends ConsumerWidget {
   const _SettingsScreen();
@@ -6860,99 +7273,1870 @@ class _SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
+    final themeMode = ref.watch(themeModeProvider);
+    final aiMemory = ref.watch(_aiMemoryEnabledProvider);
+    final autoSuggest = ref.watch(_autoSuggestEnabledProvider);
+
     return Scaffold(
       backgroundColor: t.background,
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        PremiumCard(padding: EdgeInsets.zero, child: Column(children: [
-          ListTile(
-            leading: Icon(LucideIcons.languages, color: t.primary, size: 20),
-            title:   const Text('Language'),
-            trailing: Text('English',
-                style: TextStyle(color: t.textMuted, fontSize: 13)),
-          ),
-          Divider(color: t.border, height: 1),
-          ListTile(
-            leading: Icon(LucideIcons.indianRupee, color: t.primary, size: 20),
-            title:   const Text('Currency'),
-            trailing: Text('INR',
-                style: TextStyle(color: t.textMuted, fontSize: 13)),
-          ),
-          Divider(color: t.border, height: 1),
-          ListTile(
-            leading: Icon(LucideIcons.palette, color: t.primary, size: 20),
-            title:   const Text('Appearance'),
-            trailing: DropdownButton<ThemeMode>(
-              value:     ref.watch(themeModeProvider),
-              underline: const SizedBox(),
-              items: const [
-                DropdownMenuItem(value: ThemeMode.system,
-                    child: Text('System')),
-                DropdownMenuItem(value: ThemeMode.light,
-                    child: Text('Light')),
-                DropdownMenuItem(value: ThemeMode.dark,
-                    child: Text('Dark')),
-              ],
-              onChanged: (v) {
-                if (v != null) {
-                  ref.read(themeModeProvider.notifier).state = v;
-                }
+      body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: [
+            // ── Preferences ──────────────────────────────────────
+            _SettingsSectionLabel('Preferences'),
+            PremiumCard(
+                padding: EdgeInsets.zero,
+                child: Column(children: [
+                  ListTile(
+                    leading:
+                        Icon(LucideIcons.palette, color: t.primary, size: 20),
+                    title: const Text('Appearance'),
+                    trailing: DropdownButton<ThemeMode>(
+                      value: themeMode,
+                      underline: const SizedBox(),
+                      style: TextStyle(color: t.textPrimary, fontSize: 13),
+                      items: const [
+                        DropdownMenuItem(
+                            value: ThemeMode.system, child: Text('System')),
+                        DropdownMenuItem(
+                            value: ThemeMode.light, child: Text('Light')),
+                        DropdownMenuItem(
+                            value: ThemeMode.dark, child: Text('Dark')),
+                      ],
+                      onChanged: (v) {
+                        if (v != null)
+                          ref.read(themeModeProvider.notifier).state = v;
+                      },
+                    ),
+                  ),
+                  Divider(color: t.border, height: 1),
+                  ListTile(
+                    leading:
+                        Icon(LucideIcons.languages, color: t.primary, size: 20),
+                    title: const Text('Language'),
+                    trailing: Text('English',
+                        style: TextStyle(color: t.textMuted, fontSize: 13)),
+                  ),
+                  Divider(color: t.border, height: 1),
+                  ListTile(
+                    leading: Icon(LucideIcons.indianRupee,
+                        color: t.primary, size: 20),
+                    title: const Text('Currency'),
+                    trailing: Text('INR',
+                        style: TextStyle(color: t.textMuted, fontSize: 13)),
+                  ),
+                ])),
+
+            const SizedBox(height: 12),
+
+            // ── AI ───────────────────────────────────────────────
+            _SettingsSectionLabel('AI & Personalisation'),
+            PremiumCard(
+                padding: EdgeInsets.zero,
+                child: Column(children: [
+                  SwitchListTile(
+                    value: aiMemory,
+                    onChanged: (v) =>
+                        ref.read(_aiMemoryEnabledProvider.notifier).state = v,
+                    activeThumbColor: t.primary,
+                    title: const Text('AI Memory'),
+                    subtitle:
+                        const Text('Use saved context for better coaching'),
+                  ),
+                  Divider(color: t.border, height: 1),
+                  SwitchListTile(
+                    value: autoSuggest,
+                    onChanged: (v) => ref
+                        .read(_autoSuggestEnabledProvider.notifier)
+                        .state = v,
+                    activeThumbColor: t.primary,
+                    title: const Text('Auto-suggestions'),
+                    subtitle:
+                        const Text('Proactively surface relevant insights'),
+                  ),
+                ])),
+
+            const SizedBox(height: 12),
+
+            // ── Account ──────────────────────────────────────────
+            _SettingsSectionLabel('Account'),
+            PremiumCard(
+                padding: EdgeInsets.zero,
+                child: Column(children: [
+                  ListTile(
+                    leading: Icon(LucideIcons.user, color: t.primary, size: 20),
+                    title: const Text('Edit profile'),
+                    trailing: Icon(LucideIcons.chevronRight,
+                        size: 16, color: t.textMuted),
+                    onTap: () => context.push('/settings/profile'),
+                  ),
+                  Divider(color: t.border, height: 1),
+                  ListTile(
+                    leading: Icon(LucideIcons.shieldCheck,
+                        color: t.primary, size: 20),
+                    title: const Text('Privacy & security'),
+                    trailing: Icon(LucideIcons.chevronRight,
+                        size: 16, color: t.textMuted),
+                    onTap: () => context.push('/settings/security'),
+                  ),
+                  Divider(color: t.border, height: 1),
+                  ListTile(
+                    leading: Icon(LucideIcons.creditCard,
+                        color: t.primary, size: 20),
+                    title: const Text('Subscription & billing'),
+                    trailing: Icon(LucideIcons.chevronRight,
+                        size: 16, color: t.textMuted),
+                    onTap: () => context.push('/settings/subscription'),
+                  ),
+                  Divider(color: t.border, height: 1),
+                  ListTile(
+                    leading: Icon(LucideIcons.bell, color: t.primary, size: 20),
+                    title: const Text('Notifications'),
+                    trailing: Icon(LucideIcons.chevronRight,
+                        size: 16, color: t.textMuted),
+                    onTap: () => context.push('/notifications'),
+                  ),
+                ])),
+
+            const SizedBox(height: 12),
+
+            // ── Support ──────────────────────────────────────────
+            _SettingsSectionLabel('Support'),
+            PremiumCard(
+                padding: EdgeInsets.zero,
+                child: Column(children: [
+                  ListTile(
+                    leading: Icon(LucideIcons.messageCircle,
+                        color: t.primary, size: 20),
+                    title: const Text('Help & support'),
+                    trailing: Icon(LucideIcons.chevronRight,
+                        size: 16, color: t.textMuted),
+                    onTap: () => context.push('/support'),
+                  ),
+                ])),
+
+            const SizedBox(height: 16),
+
+            // ── Sign out ─────────────────────────────────────────
+            GestureDetector(
+              onTap: () async {
+                await ref.read(authProvider.notifier).signOut();
+                if (context.mounted) context.go('/auth/sign-in');
               },
+              child: Container(
+                height: 52,
+                decoration: BoxDecoration(
+                  color: t.destructiveSurface,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  border:
+                      Border.all(color: t.destructive.withValues(alpha: 0.4)),
+                ),
+                child: Center(
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(LucideIcons.logOut, size: 16, color: t.destructive),
+                  const SizedBox(width: 8),
+                  Text('Sign out',
+                      style: TextStyle(
+                          color: t.destructive,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14)),
+                ])),
+              ),
             ),
-          ),
-        ])),
-        const SizedBox(height: 12),
-        PremiumCard(padding: EdgeInsets.zero, child: Column(children: [
-          SwitchListTile(
-            value:    true,
-            onChanged: null,
-            title:    const Text('AI Memory'),
-            subtitle: const Text('Use saved context for better coaching'),
-            activeThumbColor: t.primary,
-          ),
-          Divider(color: t.border, height: 1),
-          SwitchListTile(
-            value:    true,
-            onChanged: null,
-            title:    const Text('Auto-suggestions'),
-            activeThumbColor: t.primary,
-          ),
-          Divider(color: t.border, height: 1),
-          ListTile(
-            leading: Icon(LucideIcons.shieldCheck, color: t.primary, size: 20),
-            title:   const Text('Privacy & security'),
-            trailing: Icon(LucideIcons.chevronRight,
-                size: 16, color: t.textMuted),
-          ),
-        ])),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () async {
-            await ref.read(authProvider.notifier).signOut();
-            if (context.mounted) context.go('/auth/sign-in');
-          },
-          child: Container(
-            height: 52,
-            decoration: BoxDecoration(
-              color:        t.destructiveSurface,
-              borderRadius: BorderRadius.circular(AppRadius.full),
-              border: Border.all(
-                  color: t.destructive.withValues(alpha: 0.4)),
-            ),
-            child: Center(child: Row(
-                mainAxisSize: MainAxisSize.min, children: [
-              Icon(LucideIcons.logOut,
-                  size: 16, color: t.destructive),
-              const SizedBox(width: 8),
-              Text('Sign out',
-                  style: TextStyle(
-                    color: t.destructive, fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  )),
-            ])),
-          ),
+          ]),
+    );
+  }
+}
+
+class _SettingsSectionLabel extends StatelessWidget {
+  const _SettingsSectionLabel(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 6, top: 4),
+      child: Text(text.toUpperCase(),
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: t.textMuted,
+              letterSpacing: 1.2)),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// MEMORY SCREEN
+// Full parity with web /memory page:
+//   - search by content/tags
+//   - filter by category chip row
+//   - add memory bottom sheet (content + type)
+//   - swipe-to-delete + icon button delete
+//   - category colour badges
+// ══════════════════════════════════════════════════════════════
+
+class MemoryScreen extends ConsumerStatefulWidget {
+  const MemoryScreen({super.key});
+  @override
+  ConsumerState<MemoryScreen> createState() => _MemoryScreenState();
+}
+
+class _MemoryScreenState extends ConsumerState<MemoryScreen> {
+  List<Map<String, dynamic>> _all = [];
+  bool _loading = false;
+  String? _error;
+  String _search = '';
+  String _category = 'all';
+  bool _searchOpen = false;
+
+  static const _categories = [
+    'all',
+    'goal',
+    'preference',
+    'decision',
+    'feedback',
+    'achievement',
+    'constraint',
+    'context',
+  ];
+
+  static Color _catColor(String cat, AppTokens t) => switch (cat) {
+        'goal' => const Color(0xFF7C3AED),
+        'preference' => const Color(0xFF2563EB),
+        'decision' => const Color(0xFFD97706),
+        'feedback' => const Color(0xFF0D9488),
+        'achievement' => const Color(0xFF16A34A),
+        'constraint' => const Color(0xFFDC2626),
+        _ => const Color(0xFF6B7280),
+      };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final items = await ref.read(repositoryProvider).memories(
+            query: _search.isEmpty ? null : _search,
+          );
+      if (!mounted) return;
+      setState(() {
+        _all = items;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    return _all.where((m) {
+      final content = (m['content'] ?? '').toString().toLowerCase();
+      final tags = (m['tags'] as List?)
+              ?.map((t) => t.toString().toLowerCase())
+              .join(' ') ??
+          '';
+      final cat = (m['category'] ?? m['type'] ?? '').toString().toLowerCase();
+      final matchQ = _search.isEmpty ||
+          content.contains(_search.toLowerCase()) ||
+          tags.contains(_search.toLowerCase());
+      final matchCat = _category == 'all' || cat == _category;
+      return matchQ && matchCat;
+    }).toList();
+  }
+
+  Future<void> _delete(int id) async {
+    await ref.read(repositoryProvider).deleteMemory(id).catchError((_) {});
+    setState(() =>
+        _all.removeWhere((m) => _parseInt(m['id'] ?? m['memory_id']) == id));
+  }
+
+  void _addSheet() {
+    final ctrl = TextEditingController();
+    String type = 'note';
+    final t = context.tokens;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: t.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSt) => Padding(
+          padding: EdgeInsets.fromLTRB(
+              24, 16, 24, MediaQuery.viewInsetsOf(ctx).bottom + 24),
+          child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SheetHandle(),
+                const SizedBox(height: 16),
+                Text('Add Memory',
+                    style: Theme.of(ctx)
+                        .textTheme
+                        .headlineLarge
+                        ?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 16),
+                PremiumInputField(
+                    controller: ctrl,
+                    label: 'What do you want to remember?',
+                    maxLines: 4,
+                    minLines: 3,
+                    autofocus: true),
+                const SizedBox(height: 12),
+                // Type selector
+                Wrap(
+                    spacing: 8,
+                    children: [
+                      'note',
+                      'goal',
+                      'preference',
+                      'context',
+                      'feedback'
+                    ]
+                        .map(
+                          (tp) => GestureDetector(
+                            onTap: () => setSt(() => type = tp),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color:
+                                    type == tp ? t.primary : t.backgroundSubtle,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full),
+                                border: Border.all(
+                                    color: type == tp ? t.primary : t.border),
+                              ),
+                              child: Text(tp,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: type == tp
+                                        ? Colors.white
+                                        : t.textSecondary,
+                                  )),
+                            ),
+                          ),
+                        )
+                        .toList()),
+                const SizedBox(height: 16),
+                PremiumButton(
+                  label: 'Save memory',
+                  onPressed: () async {
+                    if (ctrl.text.trim().isEmpty) return;
+                    Navigator.of(ctx).pop();
+                    await ref
+                        .read(repositoryProvider)
+                        .createMemory(content: ctrl.text.trim(), type: type)
+                        .catchError((_) => <String, dynamic>{});
+                    _load();
+                  },
+                ),
+              ]),
         ),
-      ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final filtered = _filtered;
+
+    return Scaffold(
+      backgroundColor: t.background,
+      body: SafeArea(
+        child: Stack(children: [
+          Column(children: [
+            _PageHeading('Life Memory',
+                subtitle: '${_all.length} saved',
+                actions: [
+                  IconButton(
+                    onPressed: () => setState(() => _searchOpen = !_searchOpen),
+                    icon: Icon(_searchOpen ? LucideIcons.x : LucideIcons.search,
+                        size: 18, color: t.textSecondary),
+                  ),
+                ]).pageEntrance(),
+
+            _SearchBar(
+              visible: _searchOpen,
+              hint: 'Search memories…',
+              onChanged: (v) => setState(() => _search = v),
+              onDismiss: () => setState(() {
+                _searchOpen = false;
+                _search = '';
+              }),
+            ),
+
+            // Category chips
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: _categories
+                    .map((cat) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _PremiumFilterChip(
+                            label: cat == 'all' ? 'All' : cat,
+                            selected: _category == cat,
+                            onTap: () => setState(() => _category = cat),
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+
+            const SizedBox(height: 4),
+            if (_loading)
+              LinearProgressIndicator(
+                  color: t.primary,
+                  minHeight: 2,
+                  backgroundColor: t.backgroundSubtle),
+
+            Expanded(
+              child: _error != null
+                  ? _InlineErrorState(title: "Couldn't load memories")
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      color: t.primary,
+                      child: filtered.isEmpty
+                          ? _MemoryEmptyState(onAdd: _addSheet)
+                          : ListView.builder(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 4, 16, 120),
+                              itemCount: filtered.length,
+                              itemBuilder: (_, i) {
+                                final m = filtered[i];
+                                final id = _parseInt(m['id'] ?? m['memory_id']);
+                                final cat =
+                                    (m['category'] ?? m['type'] ?? 'context')
+                                        .toString()
+                                        .toLowerCase();
+                                final col = _catColor(cat, t);
+                                return Dismissible(
+                                  key: ValueKey('mem_$id'),
+                                  direction: DismissDirection.endToStart,
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 20),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          t.destructive.withValues(alpha: 0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadius.xl),
+                                    ),
+                                    child: Icon(LucideIcons.trash2,
+                                        color: t.destructive, size: 20),
+                                  ),
+                                  confirmDismiss: (_) async {
+                                    await _delete(id);
+                                    return false; // we manage removal ourselves
+                                  },
+                                  child: PremiumCard(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Category dot
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            margin:
+                                                const EdgeInsets.only(top: 4),
+                                            decoration: BoxDecoration(
+                                                color: col,
+                                                shape: BoxShape.circle),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    (m['content'] ?? '')
+                                                        .toString(),
+                                                    style: TextStyle(
+                                                        color: t.textPrimary,
+                                                        fontSize: 14,
+                                                        height: 1.5),
+                                                    maxLines: 4,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Row(children: [
+                                                    Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 3),
+                                                      decoration: BoxDecoration(
+                                                        color: col.withValues(
+                                                            alpha: 0.1),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(
+                                                                    AppRadius
+                                                                        .full),
+                                                        border: Border.all(
+                                                            color:
+                                                                col.withValues(
+                                                                    alpha:
+                                                                        0.25)),
+                                                      ),
+                                                      child: Text(cat,
+                                                          style: TextStyle(
+                                                              color: col,
+                                                              fontSize: 10,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700)),
+                                                    ),
+                                                    const Spacer(),
+                                                    if ((m['tags'] as List?)
+                                                            ?.isNotEmpty ==
+                                                        true)
+                                                      Text(
+                                                        (m['tags'] as List)
+                                                            .take(2)
+                                                            .map((x) => '#$x')
+                                                            .join(' '),
+                                                        style: TextStyle(
+                                                            color: t.textMuted,
+                                                            fontSize: 11),
+                                                      ),
+                                                  ]),
+                                                ]),
+                                          ),
+                                          IconButton(
+                                            onPressed: () => _delete(id),
+                                            icon: Icon(LucideIcons.trash2,
+                                                size: 15, color: t.textMuted),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(
+                                                minWidth: 32, minHeight: 32),
+                                          ),
+                                        ]),
+                                  ).staggered(i),
+                                );
+                              },
+                            ),
+                    ),
+            ),
+          ]),
+
+          // FAB
+          Positioned(
+            right: 16,
+            bottom: 16 + MediaQuery.of(context).padding.bottom,
+            child: FloatingActionButton.extended(
+              onPressed: _addSheet,
+              icon: const Icon(LucideIcons.plus),
+              label: const Text('Add Memory'),
+              backgroundColor: t.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  static int _parseInt(dynamic v) {
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '') ?? 0;
+  }
+}
+
+class _MemoryEmptyState extends StatelessWidget {
+  const _MemoryEmptyState({required this.onAdd});
+  final VoidCallback onAdd;
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          EmptyStateOrb(icon: LucideIcons.brain),
+          const SizedBox(height: 16),
+          Text('No memories yet',
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: t.textPrimary)),
+          const SizedBox(height: 6),
+          Text(
+              'Save goals, preferences, decisions, and insights so your AI Coach can personalise its guidance.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.6)),
+          const SizedBox(height: 24),
+          PremiumButton(
+              label: 'Add your first memory', onPressed: onAdd, minWidth: 200),
+        ]).animate().fadeIn(duration: 300.ms),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// NOTIFICATIONS SCREEN
+// Full parity with web /notifications page:
+//   - unread dot indicator per item
+//   - type colour badges (7 types)
+//   - tap item → mark as read
+//   - mark all read action button
+//   - swipe / icon delete
+// ══════════════════════════════════════════════════════════════
+
+class NotificationsScreen extends ConsumerStatefulWidget {
+  const NotificationsScreen({super.key});
+  @override
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  List<Map<String, dynamic>> _items = [];
+  bool _loading = false;
+  String? _error;
+
+  // Web TYPE_COLORS ported to Flutter brand colours
+  static Color _typeColor(String type) => switch (type) {
+        'task-reminder' => const Color(0xFF2563EB),
+        'deadline-warning' => const Color(0xFFD97706),
+        'milestone-completion' => const Color(0xFF16A34A),
+        'ai-recommendation' => const Color(0xFF7C3AED),
+        'opportunity-match' => const Color(0xFF0891B2),
+        'marketplace-update' => const Color(0xFFEA580C),
+        'payment-update' => const Color(0xFF4F46E5),
+        _ => const Color(0xFF6B7280),
+      };
+
+  int get _unreadCount =>
+      _items.where((n) => n['isRead'] != true && n['is_read'] != true).length;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final items = await ref.read(repositoryProvider).notifications();
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
+      // Sync unread badge
+      ref.read(notifCountProvider.notifier).state = _unreadCount;
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _markRead(int id) async {
+    await ref
+        .read(repositoryProvider)
+        .markNotificationRead(id)
+        .catchError((_) {});
+    setState(() {
+      for (final n in _items) {
+        if (_parseInt(n['id'] ?? n['notification_id']) == id) {
+          n['isRead'] = true;
+          n['is_read'] = true;
+        }
+      }
+    });
+    ref.read(notifCountProvider.notifier).state = _unreadCount;
+  }
+
+  Future<void> _markAllRead() async {
+    final unread = _items
+        .where((n) => n['isRead'] != true && n['is_read'] != true)
+        .toList();
+    await Future.wait(unread.map((n) {
+      final id = _parseInt(n['id'] ?? n['notification_id']);
+      return ref
+          .read(repositoryProvider)
+          .markNotificationRead(id)
+          .catchError((_) {});
+    }));
+    setState(() {
+      for (final n in _items) {
+        n['isRead'] = true;
+        n['is_read'] = true;
+      }
+    });
+    ref.read(notifCountProvider.notifier).state = 0;
+  }
+
+  Future<void> _delete(int id) async {
+    await ref
+        .read(repositoryProvider)
+        .deleteNotification(id)
+        .catchError((_) {});
+    setState(() => _items
+        .removeWhere((n) => _parseInt(n['id'] ?? n['notification_id']) == id));
+    ref.read(notifCountProvider.notifier).state = _unreadCount;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final unread = _unreadCount;
+
+    return Scaffold(
+      backgroundColor: t.background,
+      body: SafeArea(
+        child: Column(children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(56, 18, 12, 12),
+            child: Row(children: [
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Notifications',
+                          style: Theme.of(context)
+                              .textTheme
+                              .displaySmall
+                              ?.copyWith(
+                                  color: t.textPrimary,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -1.0)),
+                      const SizedBox(height: 3),
+                      Text(
+                        unread > 0 ? '$unread unread' : 'All caught up',
+                        style: TextStyle(color: t.textMuted, fontSize: 13),
+                      ),
+                    ]),
+              ),
+              if (unread > 0)
+                TextButton.icon(
+                  onPressed: _markAllRead,
+                  icon:
+                      Icon(LucideIcons.checkCheck, size: 14, color: t.primary),
+                  label: Text('Mark all read',
+                      style: TextStyle(
+                          color: t.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                ),
+            ]).pageEntrance(),
+          ),
+
+          if (_loading)
+            LinearProgressIndicator(
+                color: t.primary,
+                minHeight: 2,
+                backgroundColor: t.backgroundSubtle),
+
+          Expanded(
+            child: _error != null
+                ? _InlineErrorState(title: "Couldn't load notifications")
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    color: t.primary,
+                    child: _items.isEmpty && !_loading
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 40, vertical: 48),
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    EmptyStateOrb(icon: LucideIcons.bellOff),
+                                    const SizedBox(height: 16),
+                                    Text("You're all caught up!",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
+                                            color: t.textPrimary)),
+                                    const SizedBox(height: 6),
+                                    Text('No notifications right now.',
+                                        style: TextStyle(
+                                            color: t.textMuted, fontSize: 13)),
+                                  ]).animate().fadeIn(duration: 300.ms),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                            itemCount: _items.length,
+                            separatorBuilder: (_, __) =>
+                                Divider(color: t.border, height: 1),
+                            itemBuilder: (_, i) {
+                              final n = _items[i];
+                              final id =
+                                  _parseInt(n['id'] ?? n['notification_id']);
+                              final isRead =
+                                  n['isRead'] == true || n['is_read'] == true;
+                              final type = (n['type'] ?? 'system').toString();
+                              final typeCol = _typeColor(type);
+                              final title =
+                                  (n['title'] ?? n['message'] ?? '').toString();
+                              final body = (n['body'] ??
+                                      n['content'] ??
+                                      n['description'] ??
+                                      '')
+                                  .toString();
+                              final time =
+                                  (n['createdAt'] ?? n['created_at'] ?? '')
+                                      .toString();
+
+                              return Dismissible(
+                                key: ValueKey('notif_$id'),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  color: t.destructive.withValues(alpha: 0.12),
+                                  child: Icon(LucideIcons.trash2,
+                                      color: t.destructive, size: 20),
+                                ),
+                                confirmDismiss: (_) async {
+                                  await _delete(id);
+                                  return false;
+                                },
+                                child: InkWell(
+                                  onTap: isRead ? null : () => _markRead(id),
+                                  child: Container(
+                                    color: isRead
+                                        ? Colors.transparent
+                                        : t.primarySurface
+                                            .withValues(alpha: 0.4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
+                                    child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Unread dot
+                                          Container(
+                                            margin: const EdgeInsets.only(
+                                                top: 5, right: 10),
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: isRead
+                                                  ? Colors.transparent
+                                                  : t.primary,
+                                            ),
+                                          ),
+                                          Expanded(
+                                              child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                // Type badge
+                                                Container(
+                                                  margin: const EdgeInsets.only(
+                                                      bottom: 4),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: typeCol.withValues(
+                                                        alpha: 0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            AppRadius.full),
+                                                    border: Border.all(
+                                                        color:
+                                                            typeCol.withValues(
+                                                                alpha: 0.25)),
+                                                  ),
+                                                  child: Text(
+                                                    type.replaceAll('-', ' '),
+                                                    style: TextStyle(
+                                                        color: typeCol,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w700),
+                                                  ),
+                                                ),
+                                                if (title.isNotEmpty)
+                                                  Text(title,
+                                                      style: TextStyle(
+                                                        color: t.textPrimary,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 14,
+                                                        letterSpacing: -0.2,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow
+                                                          .ellipsis),
+                                                if (body.isNotEmpty) ...[
+                                                  const SizedBox(height: 2),
+                                                  Text(body,
+                                                      style: TextStyle(
+                                                          color:
+                                                              t.textSecondary,
+                                                          fontSize: 13,
+                                                          height: 1.4),
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow
+                                                          .ellipsis),
+                                                ],
+                                                if (time.isNotEmpty) ...[
+                                                  const SizedBox(height: 5),
+                                                  Text(_relativeTime(time),
+                                                      style: TextStyle(
+                                                          color: t.textMuted,
+                                                          fontSize: 11)),
+                                                ],
+                                              ])),
+                                          IconButton(
+                                            onPressed: () => _delete(id),
+                                            icon: Icon(LucideIcons.trash2,
+                                                size: 15, color: t.textMuted),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(
+                                                minWidth: 32, minHeight: 32),
+                                          ),
+                                        ]),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  static String _relativeTime(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  static int _parseInt(dynamic v) {
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '') ?? 0;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// OPPORTUNITIES SCREEN
+// Full parity with web /opportunities page:
+//   - search by title / org
+//   - type filter (job / internship / scholarship / course / event / grant / challenge / service / all)
+//   - match score badge (colour-coded)
+//   - tap → detail bottom sheet with full description, requirements, CTA
+//   - saved-only toggle
+// ══════════════════════════════════════════════════════════════
+
+class OpportunitiesScreen extends ConsumerStatefulWidget {
+  const OpportunitiesScreen({super.key});
+  @override
+  ConsumerState<OpportunitiesScreen> createState() =>
+      _OpportunitiesScreenState();
+}
+
+class _OpportunitiesScreenState extends ConsumerState<OpportunitiesScreen> {
+  List<Map<String, dynamic>> _all = [];
+  bool _loading = false;
+  String? _error;
+  String _search = '';
+  String _type = 'all';
+  bool _savedOnly = false;
+  bool _searchOpen = false;
+
+  static const _types = [
+    'all',
+    'job',
+    'internship',
+    'scholarship',
+    'course',
+    'event',
+    'grant',
+    'challenge',
+    'service',
+  ];
+
+  static Color _typeColor(String type) => switch (type) {
+        'job' => const Color(0xFF2563EB),
+        'internship' => const Color(0xFF7C3AED),
+        'scholarship' => const Color(0xFFEA580C),
+        'course' => const Color(0xFF16A34A),
+        'event' => const Color(0xFF0891B2),
+        'grant' => const Color(0xFFD97706),
+        'challenge' => const Color(0xFFDB2777),
+        _ => const Color(0xFF6B7280),
+      };
+
+  static Color _matchColor(int score) {
+    if (score >= 80) return const Color(0xFF16A34A);
+    if (score >= 60) return const Color(0xFFD97706);
+    return const Color(0xFF6B7280);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final items = await ref.read(repositoryProvider).opportunities();
+      if (!mounted) return;
+      setState(() {
+        _all = items;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    return _all.where((o) {
+      final title = (o['title'] ?? '').toString().toLowerCase();
+      final org = (o['organisation'] ?? o['organization'] ?? '')
+          .toString()
+          .toLowerCase();
+      final type = (o['type'] ?? '').toString().toLowerCase();
+      final saved = o['isSaved'] == true || o['is_saved'] == true;
+      final matchQ = _search.isEmpty ||
+          title.contains(_search.toLowerCase()) ||
+          org.contains(_search.toLowerCase());
+      final matchType = _type == 'all' || type == _type;
+      final matchSave = !_savedOnly || saved;
+      return matchQ && matchType && matchSave;
+    }).toList();
+  }
+
+  void _showDetail(Map<String, dynamic> opp) {
+    final t = context.tokens;
+    final type = (opp['type'] ?? 'opportunity').toString().toLowerCase();
+    final typeCol = _typeColor(type);
+    final score =
+        (opp['matchScore'] ?? opp['match_score'] as num?)?.toInt() ?? 0;
+    final scoreCol = _matchColor(score);
+    final desc =
+        (opp['description'] ?? opp['eligibilitySummary'] ?? '').toString();
+    final url =
+        (opp['applicationUrl'] ?? opp['application_url'] ?? '').toString();
+    final deadline = (opp['deadline'] ?? '').toString();
+    final reqs = opp['requirements'] as List? ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: t.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        maxChildSize: 0.92,
+        minChildSize: 0.4,
+        builder: (_, sc) => ListView(
+            controller: sc,
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            children: [
+              const SheetHandle(),
+              const SizedBox(height: 16),
+              Row(children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: typeCol.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    border: Border.all(color: typeCol.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(type,
+                      style: TextStyle(
+                          color: typeCol,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700)),
+                ),
+                const Spacer(),
+                if (score > 0)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: scoreCol.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      border:
+                          Border.all(color: scoreCol.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(LucideIcons.sparkles, size: 11, color: scoreCol),
+                      const SizedBox(width: 4),
+                      Text('$score% match',
+                          style: TextStyle(
+                              color: scoreCol,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
+                    ]),
+                  ),
+              ]),
+              const SizedBox(height: 12),
+              Text((opp['title'] ?? '').toString(),
+                  style: Theme.of(ctx)
+                      .textTheme
+                      .headlineLarge
+                      ?.copyWith(fontWeight: FontWeight.w800)),
+              if ((opp['organisation'] ?? opp['organization'] ?? '')
+                  .toString()
+                  .isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                      (opp['organisation'] ?? opp['organization'] ?? '')
+                          .toString(),
+                      style: TextStyle(color: t.textMuted, fontSize: 13)),
+                ),
+              if (deadline.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  Icon(LucideIcons.calendar, size: 13, color: t.textMuted),
+                  const SizedBox(width: 5),
+                  Text('Deadline: $deadline',
+                      style: TextStyle(color: t.textMuted, fontSize: 12)),
+                ]),
+              ],
+              if (desc.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text('About',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: t.textPrimary,
+                        fontSize: 14)),
+                const SizedBox(height: 6),
+                Text(desc,
+                    style: TextStyle(
+                        color: t.textSecondary, fontSize: 13, height: 1.6)),
+              ],
+              if (reqs.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text('Requirements',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: t.textPrimary,
+                        fontSize: 14)),
+                const SizedBox(height: 8),
+                ...reqs.map((r) {
+                  final label = r is Map
+                      ? (r['label'] ?? r['requirement'] ?? r.toString())
+                      : r.toString();
+                  final detail = r is Map ? (r['description'] ?? '') : '';
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(LucideIcons.check, size: 14, color: t.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: Text(
+                            detail.toString().isNotEmpty
+                                ? '$label — $detail'
+                                : label.toString(),
+                            style: TextStyle(
+                                color: t.textSecondary,
+                                fontSize: 13,
+                                height: 1.4),
+                          )),
+                        ]),
+                  );
+                }),
+              ],
+              const SizedBox(height: 24),
+              if (url.isNotEmpty)
+                PremiumButton(
+                  label: 'Apply now',
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+            ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final filtered = _filtered;
+
+    return Scaffold(
+      backgroundColor: t.background,
+      body: SafeArea(
+        child: Column(children: [
+          _PageHeading('Opportunities',
+              subtitle: '${_all.length} matched',
+              actions: [
+                IconButton(
+                  onPressed: () => setState(() {
+                    _searchOpen = !_searchOpen;
+                    if (!_searchOpen) _search = '';
+                  }),
+                  icon: Icon(_searchOpen ? LucideIcons.x : LucideIcons.search,
+                      size: 18, color: t.textSecondary),
+                ),
+                IconButton(
+                  onPressed: _load,
+                  icon: Icon(LucideIcons.refreshCw,
+                      size: 18, color: t.textSecondary),
+                ),
+              ]).pageEntrance(),
+
+          _SearchBar(
+            visible: _searchOpen,
+            hint: 'Search opportunities…',
+            onChanged: (v) => setState(() => _search = v),
+            onDismiss: () => setState(() {
+              _searchOpen = false;
+              _search = '';
+            }),
+          ),
+
+          // Type filter chips
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                ..._types.map((tp) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _PremiumFilterChip(
+                        label: tp == 'all' ? 'All' : tp,
+                        selected: _type == tp,
+                        onTap: () => setState(() => _type = tp),
+                      ),
+                    )),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _PremiumFilterChip(
+                    label: 'Saved',
+                    selected: _savedOnly,
+                    onTap: () => setState(() => _savedOnly = !_savedOnly),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 4),
+          if (_loading)
+            LinearProgressIndicator(
+                color: t.primary,
+                minHeight: 2,
+                backgroundColor: t.backgroundSubtle),
+
+          Expanded(
+            child: _error != null
+                ? _InlineErrorState(title: "Couldn't load opportunities")
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    color: t.primary,
+                    child: filtered.isEmpty && !_loading
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 40, vertical: 48),
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    EmptyStateOrb(icon: LucideIcons.compass),
+                                    const SizedBox(height: 16),
+                                    Text('No opportunities found',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
+                                            color: t.textPrimary)),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                        'Adjust filters or refresh to discover new matches.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            color: t.textMuted,
+                                            fontSize: 13,
+                                            height: 1.6)),
+                                  ]).animate().fadeIn(duration: 300.ms),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final opp = filtered[i];
+                              final type =
+                                  (opp['type'] ?? '').toString().toLowerCase();
+                              final typeCol = _typeColor(type);
+                              final score = (opp['matchScore'] ??
+                                          opp['match_score'] as num?)
+                                      ?.toInt() ??
+                                  0;
+                              final scoreCol = _matchColor(score);
+                              final org = (opp['organisation'] ??
+                                      opp['organization'] ??
+                                      '')
+                                  .toString();
+                              final deadline =
+                                  (opp['deadline'] ?? '').toString();
+                              final isRemote = opp['isRemote'] == true ||
+                                  opp['is_remote'] == true;
+
+                              return PremiumCard(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                onTap: () => _showDetail(opp),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(children: [
+                                        // Type badge
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                typeCol.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(
+                                                AppRadius.full),
+                                            border: Border.all(
+                                                color: typeCol.withValues(
+                                                    alpha: 0.25)),
+                                          ),
+                                          child: Text(type,
+                                              style: TextStyle(
+                                                  color: typeCol,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700)),
+                                        ),
+                                        if (isRemote) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: t.backgroundSubtle,
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      AppRadius.full),
+                                              border:
+                                                  Border.all(color: t.border),
+                                            ),
+                                            child: Text('Remote',
+                                                style: TextStyle(
+                                                    color: t.textMuted,
+                                                    fontSize: 10,
+                                                    fontWeight:
+                                                        FontWeight.w600)),
+                                          ),
+                                        ],
+                                        const Spacer(),
+                                        if (score > 0)
+                                          Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(LucideIcons.sparkles,
+                                                    size: 11, color: scoreCol),
+                                                const SizedBox(width: 3),
+                                                Text('$score%',
+                                                    style: TextStyle(
+                                                        color: scoreCol,
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w700)),
+                                              ]),
+                                      ]),
+                                      const SizedBox(height: 8),
+                                      Text((opp['title'] ?? '').toString(),
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
+                                              color: t.textPrimary,
+                                              letterSpacing: -0.3),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis),
+                                      if (org.isNotEmpty) ...[
+                                        const SizedBox(height: 3),
+                                        Text(org,
+                                            style: TextStyle(
+                                                color: t.textMuted,
+                                                fontSize: 12)),
+                                      ],
+                                      if (deadline.isNotEmpty) ...[
+                                        const SizedBox(height: 8),
+                                        Row(children: [
+                                          Icon(LucideIcons.calendar,
+                                              size: 12, color: t.textMuted),
+                                          const SizedBox(width: 4),
+                                          Text(deadline,
+                                              style: TextStyle(
+                                                  color: t.textMuted,
+                                                  fontSize: 12)),
+                                        ]),
+                                      ],
+                                    ]),
+                              ).staggered(i);
+                            },
+                          ),
+                  ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// AGENTS SCREEN
+// Shows available AI domain agents with their status/description
+// and a "Run" button that opens the AI Coach with context.
+// ══════════════════════════════════════════════════════════════
+
+class AgentsScreen extends ConsumerStatefulWidget {
+  const AgentsScreen({super.key});
+  @override
+  ConsumerState<AgentsScreen> createState() => _AgentsScreenState();
+}
+
+class _AgentsScreenState extends ConsumerState<AgentsScreen> {
+  List<Map<String, dynamic>> _agents = [];
+  bool _loading = false;
+  String? _error;
+
+  static IconData _agentIcon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('career')) return LucideIcons.briefcase;
+    if (n.contains('finance')) return LucideIcons.dollarSign;
+    if (n.contains('health')) return LucideIcons.heart;
+    if (n.contains('travel')) return LucideIcons.map;
+    if (n.contains('business')) return LucideIcons.building2;
+    if (n.contains('learn') || n.contains('study')) return LucideIcons.bookOpen;
+    return LucideIcons.bot;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final items = await ref.read(repositoryProvider).agents();
+      if (!mounted) return;
+      setState(() {
+        _agents = items;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+
+    return Scaffold(
+      backgroundColor: t.background,
+      body: SafeArea(
+        child: Column(children: [
+          _PageHeading('AI Agents',
+                  subtitle: 'Specialist agents powered by your context')
+              .pageEntrance(),
+          if (_loading)
+            LinearProgressIndicator(
+                color: t.primary,
+                minHeight: 2,
+                backgroundColor: t.backgroundSubtle),
+          Expanded(
+            child: _error != null
+                ? _InlineErrorState(title: "Couldn't load agents")
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    color: t.primary,
+                    child: _agents.isEmpty && !_loading
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 40, vertical: 48),
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    EmptyStateOrb(icon: LucideIcons.bot),
+                                    const SizedBox(height: 16),
+                                    Text('No agents available',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
+                                            color: t.textPrimary)),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                        'Domain agents will appear here once configured.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            color: t.textMuted,
+                                            fontSize: 13,
+                                            height: 1.6)),
+                                  ]).animate().fadeIn(duration: 300.ms),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                            itemCount: _agents.length,
+                            itemBuilder: (_, i) {
+                              final a = _agents[i];
+                              final name = (a['name'] ??
+                                      a['agentType'] ??
+                                      a['type'] ??
+                                      'Agent')
+                                  .toString();
+                              final desc =
+                                  (a['description'] ?? a['prompt'] ?? '')
+                                      .toString();
+                              final icon = _agentIcon(name);
+
+                              return PremiumCard(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                child: Row(children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: t.primarySurface,
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadius.md),
+                                    ),
+                                    child:
+                                        Icon(icon, color: t.primary, size: 20),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                      child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                        Text(name,
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                                color: t.textPrimary)),
+                                        if (desc.isNotEmpty) ...[
+                                          const SizedBox(height: 3),
+                                          Text(desc,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                  color: t.textMuted,
+                                                  fontSize: 12,
+                                                  height: 1.4)),
+                                        ],
+                                      ])),
+                                  const SizedBox(width: 10),
+                                  OutlinedButton(
+                                    onPressed: () => context.go('/ai-coach'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: t.primary,
+                                      side: BorderSide(color: t.primary),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 8),
+                                      textStyle: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600),
+                                      minimumSize: Size.zero,
+                                    ),
+                                    child: const Text('Run'),
+                                  ),
+                                ]),
+                              ).staggered(i);
+                            },
+                          ),
+                  ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PLANNER SCREEN
+// Shows AI-generated plans with structured steps.
+// ══════════════════════════════════════════════════════════════
+
+class PlannerScreen extends ConsumerStatefulWidget {
+  const PlannerScreen({super.key});
+  @override
+  ConsumerState<PlannerScreen> createState() => _PlannerScreenState();
+}
+
+class _PlannerScreenState extends ConsumerState<PlannerScreen> {
+  List<Map<String, dynamic>> _plans = [];
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final items = await ref.read(repositoryProvider).plans();
+      if (!mounted) return;
+      setState(() {
+        _plans = items;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+
+    return Scaffold(
+      backgroundColor: t.background,
+      body: SafeArea(
+        child: Column(children: [
+          _PageHeading('Planner',
+                  subtitle: 'AI-generated roadmaps for your missions')
+              .pageEntrance(),
+          if (_loading)
+            LinearProgressIndicator(
+                color: t.primary,
+                minHeight: 2,
+                backgroundColor: t.backgroundSubtle),
+          Expanded(
+            child: _error != null
+                ? _InlineErrorState(title: "Couldn't load plans")
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    color: t.primary,
+                    child: _plans.isEmpty && !_loading
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 40, vertical: 48),
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    EmptyStateOrb(
+                                        icon: LucideIcons.calendarRange),
+                                    const SizedBox(height: 16),
+                                    Text('No plans yet',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
+                                            color: t.textPrimary)),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                        'Ask your AI Coach to generate a plan for any mission.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            color: t.textMuted,
+                                            fontSize: 13,
+                                            height: 1.6)),
+                                    const SizedBox(height: 24),
+                                    PremiumButton(
+                                      label: 'Open AI Coach',
+                                      onPressed: () => context.go('/ai-coach'),
+                                      minWidth: 180,
+                                    ),
+                                  ]).animate().fadeIn(duration: 300.ms),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                            itemCount: _plans.length,
+                            itemBuilder: (_, i) {
+                              final p = _plans[i];
+                              final title =
+                                  (p['title'] ?? p['name'] ?? 'Plan ${i + 1}')
+                                      .toString();
+                              final desc = (p['description'] ?? p['goal'] ?? '')
+                                  .toString();
+                              final steps = p['steps'] as List? ??
+                                  p['tasks'] as List? ??
+                                  [];
+                              final mTitle = (p['missionTitle'] ??
+                                      p['mission_title'] ??
+                                      '')
+                                  .toString();
+
+                              return PremiumCard(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(children: [
+                                        Icon(LucideIcons.calendarRange,
+                                            size: 16, color: t.primary),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                            child: Text(title,
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 15,
+                                                    color: t.textPrimary,
+                                                    letterSpacing: -0.3),
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis)),
+                                      ]),
+                                      if (mTitle.isNotEmpty) ...[
+                                        const SizedBox(height: 3),
+                                        Text(mTitle,
+                                            style: TextStyle(
+                                                color: t.primary,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600)),
+                                      ],
+                                      if (desc.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Text(desc,
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                                color: t.textSecondary,
+                                                fontSize: 13,
+                                                height: 1.5)),
+                                      ],
+                                      if (steps.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        Divider(color: t.border, height: 1),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                            '${steps.length} step${steps.length == 1 ? '' : 's'}',
+                                            style: TextStyle(
+                                                color: t.textMuted,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 6),
+                                        ...steps.take(3).map((s) {
+                                          final st = s is Map
+                                              ? (s['title'] ??
+                                                  s['name'] ??
+                                                  s['step'] ??
+                                                  s.toString())
+                                              : s.toString();
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 4),
+                                            child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Icon(LucideIcons.circleDot,
+                                                      size: 11,
+                                                      color: t.primary),
+                                                  const SizedBox(width: 6),
+                                                  Expanded(
+                                                      child: Text(st.toString(),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: TextStyle(
+                                                              color: t
+                                                                  .textSecondary,
+                                                              fontSize: 12))),
+                                                ]),
+                                          );
+                                        }),
+                                        if (steps.length > 3)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 2),
+                                            child: Text(
+                                                '+ ${steps.length - 3} more',
+                                                style: TextStyle(
+                                                    color: t.textMuted,
+                                                    fontSize: 11)),
+                                          ),
+                                      ],
+                                    ]),
+                              ).staggered(i);
+                            },
+                          ),
+                  ),
+          ),
+        ]),
+      ),
     );
   }
 }

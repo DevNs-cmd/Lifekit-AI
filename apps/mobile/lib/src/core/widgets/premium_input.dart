@@ -56,18 +56,20 @@ class _PremiumInputFieldState extends State<PremiumInputField>
   late final FocusNode _focus = widget.focusNode ?? FocusNode();
   bool _isFocused = false;
 
-  late final AnimationController _borderCtrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 200),
-  );
+  late final AnimationController _borderCtrl;
 
   @override
   void initState() {
     super.initState();
+    _borderCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
     _focus.addListener(_onFocusChange);
   }
 
   void _onFocusChange() {
+    if (!mounted) return;
     setState(() => _isFocused = _focus.hasFocus);
     if (_focus.hasFocus) {
       _borderCtrl.forward();
@@ -78,6 +80,7 @@ class _PremiumInputFieldState extends State<PremiumInputField>
 
   @override
   void dispose() {
+    _focus.removeListener(_onFocusChange);
     if (widget.focusNode == null) _focus.dispose();
     _borderCtrl.dispose();
     super.dispose();
@@ -85,7 +88,7 @@ class _PremiumInputFieldState extends State<PremiumInputField>
 
   @override
   Widget build(BuildContext context) {
-    final t        = context.tokens;
+    final t = context.tokens;
     final hasError = widget.errorText != null;
 
     final borderColor = hasError
@@ -94,13 +97,13 @@ class _PremiumInputFieldState extends State<PremiumInputField>
             ? t.primary
             : t.border;
     final borderWidth = _isFocused || hasError ? 2.0 : 1.0;
-    final fillColor   = _isFocused ? t.primarySurface : t.surface;
+    final fillColor = _isFocused ? t.primarySurface : t.surface;
 
     // Focus glow: soft primary shadow when focused
     final glowShadow = _isFocused && !hasError
         ? [
             BoxShadow(
-              color:      t.primary.withValues(alpha: 0.20),
+              color: t.primary.withValues(alpha: 0.20),
               blurRadius: 8,
               spreadRadius: 0,
             ),
@@ -108,7 +111,7 @@ class _PremiumInputFieldState extends State<PremiumInputField>
         : hasError
             ? [
                 BoxShadow(
-                  color:      t.destructive.withValues(alpha: 0.18),
+                  color: t.destructive.withValues(alpha: 0.18),
                   blurRadius: 8,
                 ),
               ]
@@ -121,54 +124,54 @@ class _PremiumInputFieldState extends State<PremiumInputField>
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color:        fillColor,
+            color: fillColor,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border:       Border.all(color: borderColor, width: borderWidth),
-            boxShadow:    glowShadow,
+            border: Border.all(color: borderColor, width: borderWidth),
+            boxShadow: glowShadow,
           ),
           // Enforce minimum 52px height for single-line inputs
           constraints: widget.maxLines == 1
               ? const BoxConstraints(minHeight: 52)
               : const BoxConstraints(),
           child: TextField(
-            controller:      widget.controller,
-            focusNode:       _focus,
-            obscureText:     widget.obscureText,
-            keyboardType:    widget.keyboardType,
+            controller: widget.controller,
+            focusNode: _focus,
+            obscureText: widget.obscureText,
+            keyboardType: widget.keyboardType,
             textInputAction: widget.textInputAction,
-            onSubmitted:     widget.onSubmitted,
-            onChanged:       widget.onChanged,
-            autofocus:       widget.autofocus,
-            maxLines:        widget.maxLines,
-            minLines:        widget.minLines,
-            enabled:         widget.enabled,
+            onSubmitted: widget.onSubmitted,
+            onChanged: widget.onChanged,
+            autofocus: widget.autofocus,
+            maxLines: widget.maxLines,
+            minLines: widget.minLines,
+            enabled: widget.enabled,
             style: TextStyle(
-              fontSize:   14,
-              color:      t.textPrimary,
+              fontSize: 14,
+              color: t.textPrimary,
               fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
-              hintText:   widget.hint,
-              labelText:  widget.label,
+              hintText: widget.hint,
+              labelText: widget.label,
               prefixIcon: widget.prefixIcon != null
                   ? IconTheme(
                       data: IconThemeData(color: t.textMuted, size: 18),
                       child: widget.prefixIcon!,
                     )
                   : null,
-              suffixIcon:     widget.suffixIcon,
-              border:         InputBorder.none,
-              enabledBorder:  InputBorder.none,
-              focusedBorder:  InputBorder.none,
-              errorBorder:    InputBorder.none,
+              suffixIcon: widget.suffixIcon,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
               disabledBorder: InputBorder.none,
               // Vertical padding gives the field its taller feel
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 16),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               hintStyle: TextStyle(color: t.textMuted, fontSize: 14),
               labelStyle: TextStyle(color: t.textSecondary, fontSize: 14),
               floatingLabelStyle: TextStyle(
-                color:    hasError ? t.destructive : t.primary,
+                color: hasError ? t.destructive : t.primary,
                 fontSize: 12,
               ),
               isDense: false,
@@ -183,8 +186,8 @@ class _PremiumInputFieldState extends State<PremiumInputField>
             child: Text(
               widget.errorText!,
               style: TextStyle(
-                color:      t.destructive,
-                fontSize:   12,
+                color: t.destructive,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -236,32 +239,31 @@ class _PremiumButtonState extends State<PremiumButton> {
     final isDisabled = widget.onPressed == null || widget.loading;
 
     return MouseRegion(
-      cursor: isDisabled
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
+      cursor: isDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
       child: GestureDetector(
-        onTap:       isDisabled ? null : widget.onPressed,
-        onTapDown:   isDisabled ? null : (_) => setState(() => _pressed = true),
-        onTapUp:     isDisabled ? null : (_) => setState(() => _pressed = false),
+        onTap: isDisabled ? null : widget.onPressed,
+        onTapDown: isDisabled ? null : (_) => setState(() => _pressed = true),
+        onTapUp: isDisabled ? null : (_) => setState(() => _pressed = false),
         onTapCancel: isDisabled ? null : () => setState(() => _pressed = false),
         child: AnimatedScale(
-          scale:    _pressed ? 0.97 : 1.0,
+          scale: _pressed ? 0.97 : 1.0,
           duration: const Duration(milliseconds: 120),
-          curve:    Curves.easeOut,
+          curve: Curves.easeOut,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             height: widget.height,
             constraints: BoxConstraints(minWidth: widget.minWidth),
             decoration: BoxDecoration(
-              gradient:     isDisabled ? null : widget.gradient,
-              color:        isDisabled ? const Color(0xFFD9DDD6) : null,
+              gradient: isDisabled ? null : widget.gradient,
+              color: isDisabled ? const Color(0xFFD9DDD6) : null,
               borderRadius: BorderRadius.circular(widget.borderRadius),
-              boxShadow:    isDisabled || _pressed ? [] : widget.shadows,
+              boxShadow: isDisabled || _pressed ? [] : widget.shadows,
             ),
             child: Center(
               child: widget.loading
                   ? SizedBox(
-                      width: 20, height: 20,
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: widget.textColor.withValues(alpha: 0.8),
@@ -281,9 +283,9 @@ class _PremiumButtonState extends State<PremiumButton> {
                         Text(
                           widget.label.toUpperCase(),
                           style: TextStyle(
-                            color:         widget.textColor,
-                            fontSize:      12,
-                            fontWeight:    FontWeight.w700,
+                            color: widget.textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 1.2,
                           ),
                         ),
@@ -325,8 +327,8 @@ class _SocialButtonState extends State<SocialButton> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return GestureDetector(
-      onTapDown:   (_) => setState(() => _pressed = true),
-      onTapUp:     (_) {
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
         setState(() => _pressed = false);
         widget.onTap();
       },
@@ -335,19 +337,19 @@ class _SocialButtonState extends State<SocialButton> {
         duration: const Duration(milliseconds: 120),
         height: 52,
         decoration: BoxDecoration(
-          color:        _pressed ? t.backgroundSubtle : t.surface,
+          color: _pressed ? t.backgroundSubtle : t.surface,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border:       Border.all(color: t.border),
-          boxShadow: _pressed
-              ? []
-              : AppElevation.level1(Theme.of(context).brightness),
+          border: Border.all(color: t.border),
+          boxShadow:
+              _pressed ? [] : AppElevation.level1(Theme.of(context).brightness),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             widget.loading
                 ? SizedBox(
-                    width: 16, height: 16,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: t.primary),
                   )
@@ -356,8 +358,8 @@ class _SocialButtonState extends State<SocialButton> {
             Text(
               widget.label,
               style: TextStyle(
-                color:      t.textPrimary,
-                fontSize:   13,
+                color: t.textPrimary,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),

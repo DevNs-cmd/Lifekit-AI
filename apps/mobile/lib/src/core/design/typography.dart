@@ -22,68 +22,100 @@ abstract final class AppTypography {
   static TextTheme textTheme([Color? baseColor]) => TextTheme(
         // Display
         displayLarge: _inter(
-          size: 32, weight: FontWeight.w900,
-          letterSpacing: -1.5, height: 1.1, color: baseColor,
+          size: 32,
+          weight: FontWeight.w900,
+          letterSpacing: -1.5,
+          height: 1.1,
+          color: baseColor,
         ),
         displayMedium: _inter(
-          size: 26, weight: FontWeight.w800,
-          letterSpacing: -1.0, height: 1.15, color: baseColor,
+          size: 26,
+          weight: FontWeight.w800,
+          letterSpacing: -1.0,
+          height: 1.15,
+          color: baseColor,
         ),
         displaySmall: _inter(
-          size: 22, weight: FontWeight.w700,
-          letterSpacing: -0.8, height: 1.2, color: baseColor,
+          size: 22,
+          weight: FontWeight.w700,
+          letterSpacing: -0.8,
+          height: 1.2,
+          color: baseColor,
         ),
         // Headline
         headlineLarge: _inter(
-          size: 20, weight: FontWeight.w700,
-          letterSpacing: -0.6, color: baseColor,
+          size: 20,
+          weight: FontWeight.w700,
+          letterSpacing: -0.6,
+          color: baseColor,
         ),
         headlineMedium: _inter(
-          size: 18, weight: FontWeight.w700,
-          letterSpacing: -0.4, color: baseColor,
+          size: 18,
+          weight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: baseColor,
         ),
         headlineSmall: _inter(
-          size: 16, weight: FontWeight.w600,
-          letterSpacing: -0.3, color: baseColor,
+          size: 16,
+          weight: FontWeight.w600,
+          letterSpacing: -0.3,
+          color: baseColor,
         ),
         // Title
         titleLarge: _inter(
-          size: 16, weight: FontWeight.w600,
-          letterSpacing: -0.2, color: baseColor,
+          size: 16,
+          weight: FontWeight.w600,
+          letterSpacing: -0.2,
+          color: baseColor,
         ),
         titleMedium: _inter(
-          size: 14, weight: FontWeight.w600,
-          letterSpacing: -0.1, color: baseColor,
+          size: 14,
+          weight: FontWeight.w600,
+          letterSpacing: -0.1,
+          color: baseColor,
         ),
         titleSmall: _inter(
-          size: 13, weight: FontWeight.w500,
+          size: 13,
+          weight: FontWeight.w500,
           color: baseColor,
         ),
         // Body
         bodyLarge: _inter(
-          size: 15, weight: FontWeight.w400,
-          height: 1.6, color: baseColor,
+          size: 15,
+          weight: FontWeight.w400,
+          height: 1.6,
+          color: baseColor,
         ),
         bodyMedium: _inter(
-          size: 14, weight: FontWeight.w400,
-          height: 1.55, color: baseColor,
+          size: 14,
+          weight: FontWeight.w400,
+          height: 1.55,
+          color: baseColor,
         ),
         bodySmall: _inter(
-          size: 13, weight: FontWeight.w400,
-          height: 1.5, color: baseColor,
+          size: 13,
+          weight: FontWeight.w400,
+          height: 1.5,
+          color: baseColor,
         ),
         // Label
         labelLarge: _inter(
-          size: 12, weight: FontWeight.w700,
-          letterSpacing: 0.8, color: baseColor,
+          size: 12,
+          weight: FontWeight.w700,
+          letterSpacing: 0.8,
+          color: baseColor,
         ),
         labelMedium: _inter(
-          size: 11, weight: FontWeight.w600,
-          letterSpacing: 0.6, color: baseColor,
+          size: 11,
+          weight: FontWeight.w600,
+          letterSpacing: 0.6,
+          color: baseColor,
         ),
         labelSmall: _inter(
-          size: 10, weight: FontWeight.w600,
-          letterSpacing: 0.4, color: baseColor,
+          size: 10,
+          weight: FontWeight.w600,
+          letterSpacing: 0.4,
+          color: baseColor,
         ),
       );
 
@@ -105,6 +137,8 @@ abstract final class AppTypography {
 
   // Pre-baked common styles
   static TextStyle get sectionLabel => _inter(
-        size: 11, weight: FontWeight.w700, letterSpacing: 1.0,
+        size: 11,
+        weight: FontWeight.w700,
+        letterSpacing: 1.0,
       );
 }

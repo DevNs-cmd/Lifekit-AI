@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -21,11 +21,11 @@ class SideNavItem {
 
 // Primary tabs (map 1:1 with StatefulShellRoute branches)
 const List<SideNavItem> kSideNavItems = [
-  SideNavItem(icon: LucideIcons.house,       label: 'Home'),
-  SideNavItem(icon: LucideIcons.target,      label: 'Missions'),
-  SideNavItem(icon: LucideIcons.bot,         label: 'AI Coach', isHighlight: true),
+  SideNavItem(icon: LucideIcons.house, label: 'Home'),
+  SideNavItem(icon: LucideIcons.target, label: 'Missions'),
+  SideNavItem(icon: LucideIcons.bot, label: 'AI Coach', isHighlight: true),
   SideNavItem(icon: LucideIcons.squareCheck, label: 'Tasks'),
-  SideNavItem(icon: LucideIcons.user,        label: 'Profile'),
+  SideNavItem(icon: LucideIcons.user, label: 'Profile'),
 ];
 
 // Secondary / feature pages reachable via side nav
@@ -41,14 +41,28 @@ class SideNavSecondaryItem {
 }
 
 const List<SideNavSecondaryItem> kSideNavSecondaryItems = [
-  SideNavSecondaryItem(icon: LucideIcons.calendarRange, label: 'Planner',       route: '/planner'),
-  SideNavSecondaryItem(icon: LucideIcons.users,         label: 'Agents',        route: '/agents'),
-  SideNavSecondaryItem(icon: LucideIcons.brain,         label: 'Memory',        route: '/memory'),
-  SideNavSecondaryItem(icon: LucideIcons.telescope,     label: 'Opportunities', route: '/opportunities'),
-  SideNavSecondaryItem(icon: LucideIcons.store,         label: 'Marketplace',   route: '/marketplace'),
-  SideNavSecondaryItem(icon: LucideIcons.barChart2,     label: 'Analytics',     route: '/analytics'),
-  SideNavSecondaryItem(icon: LucideIcons.bell,          label: 'Notifications', route: '/notifications'),
-  SideNavSecondaryItem(icon: LucideIcons.settings,      label: 'Settings',      route: '/settings'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.calendarRange, label: 'AI Planner', route: '/planner'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.users, label: 'Agents', route: '/agents'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.brain, label: 'Memory', route: '/memory'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.telescope,
+      label: 'Opportunities',
+      route: '/opportunities'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.store, label: 'Marketplace', route: '/marketplace'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.barChart2, label: 'Analytics', route: '/analytics'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.bell, label: 'Notifications', route: '/notifications'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.settings, label: 'Settings', route: '/settings'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.helpCircle, label: 'Support', route: '/support'),
+  SideNavSecondaryItem(
+      icon: LucideIcons.shieldCheck, label: 'Admin', route: '/admin'),
 ];
 
 // ─────────────────────────────────────────────
@@ -75,7 +89,6 @@ class PremiumSideNav extends StatefulWidget {
 }
 
 class _PremiumSideNavState extends State<PremiumSideNav> {
-
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
@@ -102,9 +115,10 @@ class _PremiumSideNavState extends State<PremiumSideNav> {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                 child: Row(children: [
                   Container(
-                    width: 34, height: 34,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
-                      gradient:     AppGradients.lifekit,
+                      gradient: AppGradients.lifekit,
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                     child: const Icon(LucideIcons.leaf,
@@ -113,9 +127,9 @@ class _PremiumSideNavState extends State<PremiumSideNav> {
                   const SizedBox(width: 10),
                   Text('LifeKit',
                       style: TextStyle(
-                        fontSize:    20,
-                        fontWeight:  FontWeight.w900,
-                        color:       t.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: t.textPrimary,
                         letterSpacing: -0.6,
                       )),
                 ]),
@@ -133,12 +147,12 @@ class _PremiumSideNavState extends State<PremiumSideNav> {
                     final item = kSideNavItems[i];
                     final isActive = widget.currentIndex == i;
                     return _SideNavTile(
-                      icon:       item.icon,
-                      label:      item.label,
-                      isActive:   isActive,
+                      icon: item.icon,
+                      label: item.label,
+                      isActive: isActive,
                       isHighlight: item.isHighlight,
-                      onTap:      () => widget.onTabTap(i),
-                      tokens:     t,
+                      onTap: () => widget.onTabTap(i),
+                      tokens: t,
                     );
                   }),
                 ),
@@ -148,11 +162,11 @@ class _PremiumSideNavState extends State<PremiumSideNav> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(children: [
-                  Text('MORE',
+                  Text('EXPLORE & MANAGE',
                       style: TextStyle(
-                        fontSize:    10,
-                        fontWeight:  FontWeight.w700,
-                        color:       t.textMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: t.textMuted,
                         letterSpacing: 1.2,
                       )),
                   const SizedBox(width: 8),
@@ -167,15 +181,17 @@ class _PremiumSideNavState extends State<PremiumSideNav> {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: kSideNavSecondaryItems.map((item) =>
-                      _SideNavTile(
-                        icon:     item.icon,
-                        label:    item.label,
-                        isActive: false,
-                        onTap:    () => widget.onSecondaryTap(item.route),
-                        tokens:   t,
-                      ),
-                    ).toList(),
+                    children: kSideNavSecondaryItems
+                        .map(
+                          (item) => _SideNavTile(
+                            icon: item.icon,
+                            label: item.label,
+                            isActive: false,
+                            onTap: () => widget.onSecondaryTap(item.route),
+                            tokens: t,
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ),
@@ -186,15 +202,17 @@ class _PremiumSideNavState extends State<PremiumSideNav> {
                 padding: EdgeInsets.fromLTRB(12, 10, 12, bottomPad + 10),
                 child: Row(children: [
                   Container(
-                    width: 34, height: 34,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
                       gradient: AppGradients.lifekit,
-                      shape:    BoxShape.circle,
+                      shape: BoxShape.circle,
                     ),
                     child: Center(
                       child: Text(widget.userInitials,
                           style: const TextStyle(
-                            color: Colors.white, fontSize: 13,
+                            color: Colors.white,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                           )),
                     ),
@@ -206,9 +224,9 @@ class _PremiumSideNavState extends State<PremiumSideNav> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color:      t.textPrimary,
+                        color: t.textPrimary,
                         fontWeight: FontWeight.w600,
-                        fontSize:   13,
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -217,8 +235,8 @@ class _PremiumSideNavState extends State<PremiumSideNav> {
                     icon: Icon(LucideIcons.settings,
                         size: 16, color: t.textMuted),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                        minWidth: 28, minHeight: 28),
+                    constraints:
+                        const BoxConstraints(minWidth: 28, minHeight: 28),
                   ),
                 ]),
               ),
@@ -276,7 +294,7 @@ class _SideNavTile extends StatelessWidget {
         duration: AppDurations.fast,
         curve: Curves.easeInOutCubic,
         decoration: BoxDecoration(
-          color:        bg,
+          color: bg,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: isActive
               ? Border.all(
@@ -285,7 +303,7 @@ class _SideNavTile extends StatelessWidget {
           boxShadow: isActive ? AppShadows.greenSm : null,
         ),
         child: Material(
-          color:        Colors.transparent,
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: InkWell(
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -297,23 +315,23 @@ class _SideNavTile extends StatelessWidget {
                 const SizedBox(width: 12),
                 Text(label,
                     style: TextStyle(
-                      color:      textColor,
-                      fontWeight: isActive
-                          ? FontWeight.w700 : FontWeight.w500,
-                      fontSize:   14,
+                      color: textColor,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 14,
                     )),
                 if (isHighlight && !isActive) ...[
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      gradient:     AppGradients.lifekit,
+                      gradient: AppGradients.lifekit,
                       borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                     child: const Text('AI',
                         style: TextStyle(
-                          color: Colors.white, fontSize: 9,
+                          color: Colors.white,
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
                         )),
                   ),
