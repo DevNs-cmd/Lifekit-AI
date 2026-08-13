@@ -231,7 +231,7 @@ class _ApiErrorBanner extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            msg.length > 120 ? '${msg.substring(0, 120)}â€¦' : msg,
+            msg.length > 120 ? '${msg.substring(0, 120)}...' : msg,
             style: TextStyle(color: t.destructive, fontSize: 12),
           ),
         ),
@@ -487,7 +487,7 @@ class _SearchBar extends StatefulWidget {
     required this.visible,
     required this.onChanged,
     required this.onDismiss,
-    this.hint = 'Searchâ€¦',
+    this.hint = 'Search...',
   });
   final bool visible;
   final ValueChanged<String> onChanged;
@@ -2225,7 +2225,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
         .showSnackBar(
           SnackBar(
             content: Text(
-              '"${m.title.length > 30 ? '${m.title.substring(0, 30)}â€¦' : m.title}" deleted',
+              '"${m.title.length > 30 ? '${m.title.substring(0, 30)}...' : m.title}" deleted',
             ),
             duration: const Duration(seconds: 4),
             behavior: SnackBarBehavior.floating,
@@ -2355,7 +2355,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
             // Animated search bar
             _SearchBar(
               visible: _searchOpen,
-              hint: 'Search missionsâ€¦',
+              hint: 'Search missions...',
               onChanged: (v) =>
                   ref.read(missionsSearchProvider.notifier).state = v,
               onDismiss: () {
@@ -2556,7 +2556,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
               const SizedBox(height: 12),
               PremiumInputField(
                 controller: titleCtrl,
-                hint: 'Task titleâ€¦',
+                hint: 'Task title...',
                 autofocus: true,
                 textInputAction: TextInputAction.done,
               ),
@@ -2623,11 +2623,11 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
   // â”€â”€ generation animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   int _genAnimStep = 0;
   static const _genMessages = [
-    'Understanding goalâ€¦',
-    'Identifying milestonesâ€¦',
-    'Calculating timelineâ€¦',
-    'Finding resourcesâ€¦',
-    'Preparing execution planâ€¦',
+    'Understanding goal...',
+    'Identifying milestones...',
+    'Calculating timeline...',
+    'Finding resources...',
+    'Preparing execution plan...',
   ];
 
   @override
@@ -2674,16 +2674,16 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
       // Parse whatever the agent returns
       final raw = result['output']?.toString() ?? '';
       final title = result['title']?.toString() ??
-          (goal.length > 50 ? '${goal.substring(0, 50)}â€¦' : goal);
+          (goal.length > 50 ? '${goal.substring(0, 50)}...' : goal);
 
       // Extract milestone lines from the output (lines starting with numbered bullets)
       final milestones = <String>[];
       for (final line in raw.split('\n')) {
         final trimmed = line.trim();
-        if (RegExp(r'^(\d+[\.\):]|[-â€¢*])').hasMatch(trimmed) &&
+        if (RegExp(r'^(\d+[\.\):]|[-•*])').hasMatch(trimmed) &&
             trimmed.length > 5) {
           milestones.add(
-              trimmed.replaceFirst(RegExp(r'^(\d+[\.\):\s]+|[-â€¢*]\s*)'), ''));
+              trimmed.replaceFirst(RegExp(r'^(\d+[\.\):\s]+|[-•*]\s*)'), ''));
         }
       }
       if (milestones.isEmpty && raw.isNotEmpty) {
@@ -2904,7 +2904,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
             child: PremiumInputField(
               controller: _goalCtrl,
               hint: 'e.g. I want to become a machine learning engineer '
-                  'within 6 months and land a jobâ€¦',
+                  'within 6 months and land a job...',
               maxLines: 4,
               minLines: 3,
               onChanged: (_) => setState(() => _goalTouched = true),
@@ -3105,7 +3105,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
                           const SizedBox(height: 6),
                           PremiumInputField(
                             controller: _constraintsCtrl,
-                            hint: 'e.g. Can only work on this on weekendsâ€¦',
+                            hint: 'e.g. Can only work on this on weekends...',
                             maxLines: 2,
                             minLines: 2,
                             textInputAction: TextInputAction.done,
@@ -3180,7 +3180,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
               child: const _SpinningIcon(),
             ),
             const SizedBox(height: 28),
-            Text('Building your mission planâ€¦',
+            Text('Building your mission plan...',
                 style: Theme.of(context).textTheme.headlineLarge,
                 textAlign: TextAlign.center),
             const SizedBox(height: 24),
@@ -3453,7 +3453,7 @@ class _MissionCreateFlowState extends State<_MissionCreateFlow> {
           ),
         ),
         const SizedBox(height: 20),
-        Text('Activating your missionâ€¦',
+        Text('Activating your mission...',
             style: Theme.of(context).textTheme.headlineLarge),
       ]),
     );
@@ -5048,7 +5048,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             // Animated search bar
             _SearchBar(
               visible: _searchOpen,
-              hint: 'Search tasksâ€¦',
+              hint: 'Search tasks...',
               onChanged: (v) =>
                   ref.read(tasksSearchProvider.notifier).state = v,
               onDismiss: () {
@@ -7076,7 +7076,7 @@ class _OnboardGoal extends StatelessWidget {
       const SizedBox(height: 24),
       PremiumInputField(
         controller: ctrl,
-        hint: 'I want toâ€¦',
+        hint: 'I want to...',
         maxLines: 6,
         minLines: 4,
       ),
@@ -7117,7 +7117,7 @@ class _OnboardAnalysis extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Building your roadmapâ€¦',
+      Text('Building your roadmap...',
           style: Theme.of(context).textTheme.displayMedium),
       const SizedBox(height: 8),
       Text('Analyzing your goals, schedule, and preferences.',
@@ -7140,7 +7140,7 @@ class _OnboardAnalysis extends StatelessWidget {
       ),
       const SizedBox(height: 24),
       Center(
-          child: Text('This will only take a momentâ€¦',
+          child: Text('This will only take a moment...',
               style: TextStyle(color: t.textMuted))),
     ]);
   }
@@ -7180,7 +7180,7 @@ class _OnboardPreview extends StatelessWidget {
           Text(
             goal.isEmpty
                 ? 'Your first mission'
-                : (goal.length > 60 ? '${goal.substring(0, 60)}â€¦' : goal),
+                : (goal.length > 60 ? '${goal.substring(0, 60)}...' : goal),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -7189,9 +7189,9 @@ class _OnboardPreview extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const Text(
-            'â—‹  Define your success criteria\n\n'
-            'â—‹  Break into weekly milestones\n\n'
-            'â—‹  Track daily progress',
+            '•  Define your success criteria\n\n'
+            '•  Break into weekly milestones\n\n'
+            '•  Track daily progress',
             style: TextStyle(color: Colors.white70, height: 1.6),
           ),
           const SizedBox(height: 14),
