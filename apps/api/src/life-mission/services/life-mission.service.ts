@@ -98,5 +98,9 @@ export class LifeMissionService {
     await this.findOne(id, userId); // verify ownership and existence
     return this.missionRepository.deleteMission(id);
   }
+
+  async getDistinctCategories(): Promise<string[]> {
+    return this.missionRepository.getDistinctCategories();
+  }
 }
 export { LifeMission };

@@ -5,42 +5,53 @@ import { Bot, Brain, Target, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AICoachPanel } from "@/components/ai/ai-coach-panel";
-import { RecentChatsSidebar, type ChatSession } from "@/components/shared/recent-chats-sidebar";
-import { useAICoachStore } from "@/stores/ai-coach-store";
+import { RecentChatsSidebar } from "@/components/shared/recent-chats-sidebar";
+import { useChatHistoryStore } from "@/stores/chat-history-store";
 import { ROUTES } from "@/constants/routes";
 import { useRouter } from "next/navigation";
 
-const INITIAL_CHATS: ChatSession[] = [
-  { id: "c1", title: "Career planning",        preview: "Help me plan my next 6 months",     timestamp: "Today" },
-  { id: "c2", title: "Mission review",         preview: "What should I focus on this week?", timestamp: "Yesterday" },
-  { id: "c3", title: "Resource finder",        preview: "Find React learning resources",      timestamp: "2 days ago" },
-];
-
 export default function AICoachPage() {
   const router = useRouter();
-  const { clearMessages } = useAICoachStore();
-  const [chats, setChats] = React.useState<ChatSession[]>(INITIAL_CHATS);
-  const [activeChatId, setActiveChatId] = React.useState<string | undefined>("c1");
+  const agentId = "ai-coach";
+  const [isHydrated, setIsHydrated] = React.useState(false);
+
+  const {
+    getSessionsForAgent,
+    getActiveSessionId,
+    setActiveSessionId,
+    createSession,
+    deleteSession,
+  } = useChatHistoryStore();
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  const chats = isHydrated ? getSessionsForAgent(agentId) : [];
+  const activeChatId = isHydrated ? getActiveSessionId(agentId) : undefined;
+
+  React.useEffect(() => {
+    if (!isHydrated) return;
+    const currentSessions = getSessionsForAgent(agentId);
+    if (currentSessions.length === 0) {
+      const newSess = createSession(agentId, "AI Coach Session", "AI Coach");
+      setActiveSessionId(agentId, newSess.id);
+    } else if (!activeChatId || !currentSessions.some(s => s.id === activeChatId)) {
+      setActiveSessionId(agentId, currentSessions[0].id);
+    }
+  }, [isHydrated, agentId, getSessionsForAgent, activeChatId, createSession, setActiveSessionId]);
 
   function handleSelectChat(id: string) {
-    setActiveChatId(id);
-    clearMessages();
+    setActiveSessionId(agentId, id);
   }
 
   function handleNewChat() {
-    const id = `c-${Date.now()}`;
-    const newChat: ChatSession = { id, title: "New chat", preview: "…", timestamp: "Just now" };
-    setChats(prev => [newChat, ...prev]);
-    setActiveChatId(id);
-    clearMessages();
+    const newSess = createSession(agentId, "New chat", "AI Coach");
+    setActiveSessionId(agentId, newSess.id);
   }
 
   function handleDeleteChat(id: string) {
-    setChats(prev => prev.filter(c => c.id !== id));
-    if (activeChatId === id) {
-      const remaining = chats.filter(c => c.id !== id);
-      setActiveChatId(remaining[0]?.id);
-    }
+    deleteSession(id);
   }
 
   return (
@@ -88,7 +99,7 @@ export default function AICoachPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Target className="h-4 w-4 text-[hsl(var(--primary))]" />
+                <Target className="h-4 w-4 text-[hsl(var(--text-primary))]" />
                 <p className="text-sm font-semibold text-[hsl(var(--text-primary))]">Active Context</p>
               </div>
               <div className="space-y-1.5">

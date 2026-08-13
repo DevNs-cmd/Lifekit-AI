@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useUIStore } from "@/stores/ui-store";
 import { useAICoachStore } from "@/stores/ai-coach-store";
+import { useChatHistoryStore } from "@/stores/chat-history-store";
 import { sendCoachMessage } from "@/lib/api/ai";
 import { generateId, cn } from "@/lib/utils";
 import type { ConversationMessage } from "@/types/ai";
@@ -23,24 +24,76 @@ function formatDividerTime(ts: string) {
 }
 
 export function AICoachPanel() {
+  const agentId = "ai-coach";
   const { setAiCoachPanelOpen } = useUIStore();
   const {
-    messages, addMessage, removeMessage,
     isGenerating, setIsGenerating,
-    suggestedPrompts, context, clearMessages,
+    suggestedPrompts, context,
   } = useAICoachStore();
+
+  const {
+    sessions,
+    getSessionsForAgent,
+    getActiveSessionId,
+    setActiveSessionId,
+    createSession,
+    addMessageToSession,
+    clearSessionMessages,
+  } = useChatHistoryStore();
+
   const [input, setInput] = React.useState("");
+  const [isHydrated, setIsHydrated] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  const activeChatId = isHydrated ? getActiveSessionId(agentId) : undefined;
+
+  React.useEffect(() => {
+    if (!isHydrated) return;
+    const currentSessions = getSessionsForAgent(agentId);
+    if (currentSessions.length === 0) {
+      const newSess = createSession(agentId, "AI Coach Session", "AI Coach");
+      setActiveSessionId(agentId, newSess.id);
+    } else if (!activeChatId || !currentSessions.some(s => s.id === activeChatId)) {
+      setActiveSessionId(agentId, currentSessions[0].id);
+    }
+  }, [isHydrated, agentId, getSessionsForAgent, activeChatId, createSession, setActiveSessionId]);
+
+  const activeSession = activeChatId ? sessions[activeChatId] : undefined;
+  const rawMessages = activeSession?.messages ?? [];
+
+  const displayMessages = isGenerating
+    ? [
+        ...rawMessages,
+        {
+          id: "loading-temp",
+          role: "assistant" as const,
+          content: "",
+          timestamp: new Date().toISOString(),
+          metadata: { loading: true },
+        },
+      ]
+    : rawMessages;
 
   // Auto-scroll to bottom on new messages
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [displayMessages]);
 
   async function handleSend(text?: string) {
     const msg = (text ?? input).trim();
     if (!msg || isGenerating) return;
     setInput("");
+
+    let currentSessionId = activeChatId;
+    if (!currentSessionId || !sessions[currentSessionId]) {
+      const newSess = createSession(agentId, "AI Coach Session", "AI Coach");
+      setActiveSessionId(agentId, newSess.id);
+      currentSessionId = newSess.id;
+    }
 
     const userMessage: ConversationMessage = {
       id: generateId(),
@@ -48,25 +101,14 @@ export function AICoachPanel() {
       content: msg,
       timestamp: new Date().toISOString(),
     };
-    addMessage(userMessage);
+    addMessageToSession(currentSessionId, userMessage);
     setIsGenerating(true);
-
-    const loadingId = generateId();
-    addMessage({
-      id: loadingId,
-      role: "assistant",
-      content: "",
-      timestamp: new Date().toISOString(),
-      metadata: { loading: true },
-    });
 
     try {
       const response = await sendCoachMessage(msg, { missionTitle: context.currentMissionTitle });
-      removeMessage(loadingId);
-      addMessage(response);
+      addMessageToSession(currentSessionId, response);
     } catch {
-      removeMessage(loadingId);
-      addMessage({
+      addMessageToSession(currentSessionId, {
         id: generateId(),
         role: "assistant",
         content: "Sorry, I ran into an issue. Please try again.",
@@ -78,6 +120,12 @@ export function AICoachPanel() {
     }
   }
 
+  function handleClearMessages() {
+    if (activeChatId) {
+      clearSessionMessages(activeChatId);
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -86,7 +134,7 @@ export function AICoachPanel() {
   }
 
   // Find last assistant message index for contextual prompts
-  const lastAssistantIdx = messages.reduce(
+  const lastAssistantIdx = displayMessages.reduce(
     (acc, m, i) => (m.role === "assistant" && !m.metadata?.loading ? i : acc),
     -1,
   );
@@ -120,7 +168,7 @@ export function AICoachPanel() {
         <div className="flex items-center gap-1">
           <button
             title="Clear conversation"
-            onClick={clearMessages}
+            onClick={handleClearMessages}
             aria-label="Clear conversation"
             className="flex h-7 w-7 items-center justify-center rounded-md text-[hsl(var(--text-secondary))] hover:text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--secondary))] transition-colors"
           >
@@ -156,7 +204,7 @@ export function AICoachPanel() {
       <ScrollArea className="flex-1 px-4 py-3">
 
         {/* Empty state */}
-        {messages.length === 0 ? (
+        {displayMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center gap-3 px-4 pb-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-full lifekit-gradient shadow-md">
               <Bot className="h-7 w-7 text-white" />
@@ -183,9 +231,9 @@ export function AICoachPanel() {
         ) : (
           <div className="space-y-1">
             <AnimatePresence initial={false}>
-              {messages.map((msg, idx) => {
-                const prevMsg = messages[idx - 1];
-                const nextMsg = messages[idx + 1];
+              {displayMessages.map((msg, idx) => {
+                const prevMsg = displayMessages[idx - 1];
+                const nextMsg = displayMessages[idx + 1];
 
                 // Show time divider if gap > 5 min from previous message
                 const showDivider = prevMsg && shouldShowDivider(prevMsg.timestamp, msg.timestamp);

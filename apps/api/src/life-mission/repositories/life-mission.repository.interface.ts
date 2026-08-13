@@ -25,4 +25,5 @@ export interface ILifeMissionRepository {
   ): Promise<PaginatedResult<LifeMission>>;
   updateMission(id: number, data: UpdateLifeMissionDto): Promise<LifeMission>;
   deleteMission(id: number): Promise<LifeMission>;
+  getDistinctCategories(): Promise<string[]>;
 }

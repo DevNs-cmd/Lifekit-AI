@@ -8,6 +8,12 @@ final repositoryProvider = Provider<LifeKitRepository>(
   (ref) => LifeKitRepository(ref.watch(dioProvider)),
 );
 
+/// Fetches distinct mission categories from the API.
+/// Falls back to the built-in list on any network error.
+final missionCategoriesProvider = FutureProvider<List<String>>((ref) async {
+  return ref.read(repositoryProvider).missionCategories();
+});
+
 // ─── Response helpers ────────────────────────────────────────────────────────
 Map<String, dynamic> _asMap(dynamic v) {
   if (v is Map<String, dynamic>) return v;
@@ -76,6 +82,33 @@ class LifeKitRepository {
       _localProfile.addAll(data);
       return _localProfile;
     }
+  }
+
+  // ── Mission Categories ─────────────────────────────────────────────────────
+  Future<List<String>> missionCategories() async {
+    try {
+      final res = await _dio.get<dynamic>('/life-missions/categories');
+      final raw = _unwrap(res.data);
+      if (raw is List && raw.isNotEmpty) {
+        return raw
+            .map((e) => e.toString())
+            .where((e) => e.trim().isNotEmpty)
+            .toList();
+      }
+    } catch (_) {}
+    // Fallback: well-known categories matching the web app constants
+    return const [
+      'Career',
+      'Finance',
+      'Health',
+      'Travel',
+      'Business',
+      'Education',
+      'Productivity',
+      'Personal-Development',
+      'Lifestyle',
+      'Family',
+    ];
   }
 
   // ── Life Missions ──────────────────────────────────────────────────────────

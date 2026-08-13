@@ -5576,6 +5576,72 @@ class ChatMessage {
   final bool isUser;
 }
 
+class ChatSession {
+  ChatSession({
+    required this.id,
+    required this.title,
+    required this.preview,
+    required this.timestamp,
+    required this.messages,
+  });
+
+  final String id;
+  final String title;
+  final String preview;
+  final String timestamp;
+  final List<ChatMessage> messages;
+
+  ChatSession copyWith({
+    String? title,
+    String? preview,
+    String? timestamp,
+    List<ChatMessage>? messages,
+  }) {
+    return ChatSession(
+      id: id,
+      title: title ?? this.title,
+      preview: preview ?? this.preview,
+      timestamp: timestamp ?? this.timestamp,
+      messages: messages ?? this.messages,
+    );
+  }
+}
+
+final initialChatSessions = <ChatSession>[
+  ChatSession(
+    id: 's1',
+    title: 'I want to become influencer',
+    preview: 'I want to become influencer',
+    timestamp: 'Just now',
+    messages: [
+      ChatMessage('I want to become influencer', true),
+      ChatMessage('Awesome goal! I can help you structure a personal brand, define target topics, and schedule weekly video production.', false),
+    ],
+  ),
+  ChatSession(
+    id: 's2',
+    title: 'Career roadmap',
+    preview: 'Help me plan my next 6 months',
+    timestamp: 'Yesterday',
+    messages: [
+      ChatMessage('Help me plan my next 6 months', true),
+      ChatMessage('I\'ve broken down your 6-month roadmap into 3 core sprints: Skill Mastery, Portfolio Launch, and Networking.', false),
+    ],
+  ),
+  ChatSession(
+    id: 's3',
+    title: 'Mission review',
+    preview: 'What should I focus on this week?',
+    timestamp: '2 days ago',
+    messages: [
+      ChatMessage('What should I focus on this week?', true),
+      ChatMessage('Your top priority is completing the MVP testing and getting feedback from early users.', false),
+    ],
+  ),
+];
+
+final chatSessionsProvider = StateProvider<List<ChatSession>>((ref) => initialChatSessions);
+final activeSessionIdProvider = StateProvider<String>((ref) => 's1');
 final chatProvider = StateProvider<List<ChatMessage>>((ref) => const []);
 
 class AiCoachScreen extends ConsumerStatefulWidget {
@@ -5596,14 +5662,95 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
     super.dispose();
   }
 
+  void _createNewChat() {
+    final newId = 's_${DateTime.now().millisecondsSinceEpoch}';
+    final newSession = ChatSession(
+      id: newId,
+      title: 'New chat',
+      preview: 'Ask your AI Coach...',
+      timestamp: 'Just now',
+      messages: [],
+    );
+
+    ref.read(chatSessionsProvider.notifier).state = [
+      newSession,
+      ...ref.read(chatSessionsProvider),
+    ];
+    ref.read(activeSessionIdProvider.notifier).state = newId;
+    ref.read(chatProvider.notifier).state = const [];
+  }
+
+  void _switchSession(String id) {
+    ref.read(activeSessionIdProvider.notifier).state = id;
+    final sessions = ref.read(chatSessionsProvider);
+    final selected = sessions.firstWhere(
+      (s) => s.id == id,
+      orElse: () => sessions.first,
+    );
+    ref.read(chatProvider.notifier).state = selected.messages;
+  }
+
+  void _deleteSession(String id) {
+    final sessions = ref.read(chatSessionsProvider);
+    final updated = sessions.where((s) => s.id != id).toList();
+
+    if (updated.isEmpty) {
+      final newId = 's_${DateTime.now().millisecondsSinceEpoch}';
+      final fresh = ChatSession(
+        id: newId,
+        title: 'New chat',
+        preview: 'Ask your AI Coach...',
+        timestamp: 'Just now',
+        messages: [],
+      );
+      ref.read(chatSessionsProvider.notifier).state = [fresh];
+      ref.read(activeSessionIdProvider.notifier).state = newId;
+      ref.read(chatProvider.notifier).state = const [];
+    } else {
+      ref.read(chatSessionsProvider.notifier).state = updated;
+      final activeId = ref.read(activeSessionIdProvider);
+      if (activeId == id) {
+        _switchSession(updated.first.id);
+      }
+    }
+  }
+
   Future<void> _send(String text) async {
     final value = text.trim();
     if (value.isEmpty || _sending) return;
     _input.clear();
-    ref.read(chatProvider.notifier).state = [
-      ...ref.read(chatProvider),
-      ChatMessage(value, true),
-    ];
+
+    final activeId = ref.read(activeSessionIdProvider);
+    final sessions = ref.read(chatSessionsProvider);
+    final activeSessionIndex = sessions.indexWhere((s) => s.id == activeId);
+
+    final userMsg = ChatMessage(value, true);
+    List<ChatMessage> currentMsgs = [];
+    if (activeSessionIndex != -1) {
+      currentMsgs = List.from(sessions[activeSessionIndex].messages)..add(userMsg);
+    } else {
+      currentMsgs = [userMsg];
+    }
+    ref.read(chatProvider.notifier).state = currentMsgs;
+
+    if (activeSessionIndex != -1) {
+      final curSession = sessions[activeSessionIndex];
+      final newTitle = (curSession.title == 'New chat' || curSession.title.isEmpty)
+          ? (value.length > 28 ? '${value.substring(0, 25)}...' : value)
+          : curSession.title;
+
+      final updatedSession = curSession.copyWith(
+        title: newTitle,
+        preview: value,
+        timestamp: 'Just now',
+        messages: currentMsgs,
+      );
+
+      final updatedList = List<ChatSession>.from(sessions);
+      updatedList[activeSessionIndex] = updatedSession;
+      ref.read(chatSessionsProvider.notifier).state = updatedList;
+    }
+
     setState(() => _sending = true);
     _scrollToBottom();
 
@@ -5619,15 +5766,26 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
       final reply = result['output']?.toString() ??
           'I\'m here to help. Ask me about your missions or goals.';
       if (!ok) throw Exception(reply);
-      ref.read(chatProvider.notifier).state = [
-        ...ref.read(chatProvider),
-        ChatMessage(reply, false),
-      ];
+
+      final botMsg = ChatMessage(reply, false);
+      final finalMsgs = List<ChatMessage>.from(ref.read(chatProvider))..add(botMsg);
+      ref.read(chatProvider.notifier).state = finalMsgs;
+
+      final latestSessions = ref.read(chatSessionsProvider);
+      final sIdx = latestSessions.indexWhere((s) => s.id == activeId);
+      if (sIdx != -1) {
+        final updatedSession = latestSessions[sIdx].copyWith(
+          preview: reply.length > 40 ? '${reply.substring(0, 37)}...' : reply,
+          messages: finalMsgs,
+        );
+        final updatedList = List<ChatSession>.from(latestSessions);
+        updatedList[sIdx] = updatedSession;
+        ref.read(chatSessionsProvider.notifier).state = updatedList;
+      }
     } catch (_) {
-      ref.read(chatProvider.notifier).state = [
-        ...ref.read(chatProvider),
-        ChatMessage('The AI service is currently unavailable.', false),
-      ];
+      final errMsg = ChatMessage('The AI service is currently unavailable.', false);
+      final finalMsgs = List<ChatMessage>.from(ref.read(chatProvider))..add(errMsg);
+      ref.read(chatProvider.notifier).state = finalMsgs;
     }
     if (mounted) setState(() => _sending = false);
     _scrollToBottom();
@@ -5641,10 +5799,242 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
         }
       });
 
+  void _showRecentChatsSheet(BuildContext ctx, AppTokens t) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: t.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.x2l)),
+      ),
+      builder: (sheetCtx) => Consumer(
+        builder: (context, ref, _) {
+          final sessions = ref.watch(chatSessionsProvider);
+          final activeId = ref.watch(activeSessionIdProvider);
+
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.65,
+            minChildSize: 0.4,
+            maxChildSize: 0.9,
+            builder: (_, scrollCtrl) => Column(children: [
+              const SizedBox(height: 14),
+              const SheetHandle(),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        gradient: AppGradients.lifekit,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: const Icon(LucideIcons.history, size: 16, color: Colors.white),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Recent Chat History',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: t.textPrimary,
+                            )),
+                        Text('${sessions.length} saved sessions',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: t.textMuted,
+                            )),
+                      ],
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () {
+                        Navigator.pop(sheetCtx);
+                        _createNewChat();
+                      },
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.lifekit,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(LucideIcons.plus, size: 14, color: Colors.white),
+                      ),
+                      tooltip: 'New Chat',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Divider(color: t.border, height: 1),
+              Expanded(
+                child: sessions.isEmpty
+                    ? Center(
+                        child: Text('No recent chat history',
+                            style: TextStyle(color: t.textMuted, fontSize: 13)),
+                      )
+                    : ListView.builder(
+                        controller: scrollCtrl,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: sessions.length,
+                        itemBuilder: (_, i) {
+                          final s = sessions[i];
+                          final isActive = s.id == activeId;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  Navigator.pop(sheetCtx);
+                                  _switchSession(s.id);
+                                },
+                                borderRadius: BorderRadius.circular(AppRadius.lg),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? t.primarySurface.withValues(alpha: 0.6)
+                                        : t.backgroundSubtle,
+                                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                                    border: Border.all(
+                                      color: isActive
+                                          ? t.primary.withValues(alpha: 0.4)
+                                          : t.border,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: isActive ? t.primary : t.surface,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: isActive ? t.primary : t.border,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          LucideIcons.messageSquare,
+                                          size: 16,
+                                          color: isActive ? Colors.white : t.textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    s.title,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: isActive
+                                                          ? FontWeight.w700
+                                                          : FontWeight.w600,
+                                                      color: isActive
+                                                          ? t.primary
+                                                          : t.textPrimary,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  s.timestamp,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: t.textMuted,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              s.preview,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: t.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (isActive)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          margin: const EdgeInsets.only(right: 6),
+                                          decoration: BoxDecoration(
+                                            color: t.statusActiveBg,
+                                            borderRadius:
+                                                BorderRadius.circular(AppRadius.full),
+                                          ),
+                                          child: Text('Active',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w700,
+                                                color: t.statusActiveFg,
+                                              )),
+                                        ),
+                                      IconButton(
+                                        onPressed: () => _deleteSession(s.id),
+                                        icon: Icon(LucideIcons.trash2,
+                                            size: 14, color: t.textMuted),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                            minWidth: 28, minHeight: 28),
+                                        tooltip: 'Delete Chat History',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ]),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final messages = ref.watch(chatProvider);
     final t = context.tokens;
+    final sessions = ref.watch(chatSessionsProvider);
+    final activeId = ref.watch(activeSessionIdProvider);
+
+    final activeSession = sessions.firstWhere(
+      (s) => s.id == activeId,
+      orElse: () => sessions.isNotEmpty
+          ? sessions.first
+          : ChatSession(
+              id: 'new',
+              title: 'New chat',
+              preview: '',
+              timestamp: 'Just now',
+              messages: [],
+            ),
+    );
+
+    final messages = activeSession.messages;
 
     return MeshBackground(
       child: Scaffold(
@@ -5708,12 +6098,32 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                       ]),
                 ]),
                 actions: [
+                  IconButton(
+                    onPressed: () => _showRecentChatsSheet(context, t),
+                    icon: Icon(LucideIcons.history,
+                        size: 18, color: t.textSecondary),
+                    tooltip: 'Recent Chat History',
+                  ),
+                  IconButton(
+                    onPressed: _createNewChat,
+                    icon: Icon(LucideIcons.plus, size: 18, color: t.primary),
+                    tooltip: 'New Chat',
+                  ),
                   if (messages.isNotEmpty)
                     IconButton(
-                      onPressed: () =>
-                          ref.read(chatProvider.notifier).state = const [],
+                      onPressed: () {
+                        final updatedSessions = sessions.map((s) {
+                          if (s.id == activeId) {
+                            return s.copyWith(messages: [], preview: 'No messages');
+                          }
+                          return s;
+                        }).toList();
+                        ref.read(chatSessionsProvider.notifier).state = updatedSessions;
+                        ref.read(chatProvider.notifier).state = const [];
+                      },
                       icon: Icon(LucideIcons.trash2,
                           size: 18, color: t.textSecondary),
+                      tooltip: 'Clear Chat',
                     ),
                 ],
               ),
@@ -5767,6 +6177,118 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
               );
             }),
 
+            // Recent Chat History horizontal quick-selector bar
+            Container(
+              height: 38,
+              margin: const EdgeInsets.only(bottom: 6),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                children: [
+                  // New Chat pill
+                  GestureDetector(
+                    onTap: _createNewChat,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        gradient: AppGradients.lifekit,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                        boxShadow: AppShadows.greenSm,
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.plus, size: 12, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text('New Chat',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              )),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Session pills
+                  ...sessions.map((s) {
+                    final isActive = s.id == activeId;
+                    return GestureDetector(
+                      onTap: () => _switchSession(s.id),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? t.primarySurface
+                              : t.surface.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                          border: Border.all(
+                            color: isActive
+                                ? t.primary
+                                : t.border,
+                            width: isActive ? 1.5 : 1,
+                          ),
+                          boxShadow: isActive ? AppShadows.greenSm : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              LucideIcons.messageSquare,
+                              size: 11,
+                              color: isActive ? t.primary : t.textMuted,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              s.title,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isActive
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isActive
+                                    ? t.primary
+                                    : t.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+
+                  // View All History pill button
+                  GestureDetector(
+                    onTap: () => _showRecentChatsSheet(context, t),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: t.backgroundSubtle,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                        border: Border.all(color: t.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.history, size: 11, color: t.textMuted),
+                          const SizedBox(width: 4),
+                          Text('History',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: t.textMuted,
+                              )),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             // Messages list
             Expanded(
               child: messages.isEmpty
@@ -5784,7 +6306,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                     ),
             ),
 
-            // Input bar â€” glass style
+            // Input bar — glass style
             ClipRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
@@ -5810,7 +6332,7 @@ class _AiCoachScreenState extends ConsumerState<AiCoachScreen> {
                             minLines: 1,
                             maxLines: 5,
                             decoration: InputDecoration(
-                              hintText: 'Ask your AI Coachâ€¦',
+                              hintText: 'Ask your AI Coach...',
                               border: InputBorder.none,
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,

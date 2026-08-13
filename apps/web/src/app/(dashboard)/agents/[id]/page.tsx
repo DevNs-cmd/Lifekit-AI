@@ -16,12 +16,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/shared/empty-state";
-import { RecentChatsSidebar, type ChatSession } from "@/components/shared/recent-chats-sidebar";
+import { RecentChatsSidebar } from "@/components/shared/recent-chats-sidebar";
 import { MOCK_AGENTS, sendCoachMessage } from "@/lib/api/ai";
 import { ROUTES } from "@/constants/routes";
 import { generateId, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ConversationMessage } from "@/types/ai";
+import { useChatHistoryStore } from "@/stores/chat-history-store";
 
 /* ── Domain config ─────────────────────────────────────── */
 const DOMAIN_CONFIG: Record<string, {
@@ -85,40 +86,82 @@ export default function AgentDetailPage() {
   const { id: agentId } = useParams<{ id: string }>();
   const router = useRouter();
   const agent = MOCK_AGENTS.find(a => a.id === agentId);
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Recent chats state — initialised per-agent so tabs feel independent
-  const [recentChats, setRecentChats] = useState<ChatSession[]>([
-    { id: "rc1", title: "First session", preview: "Start a new conversation…", timestamp: "Today", agentName: agent?.name },
-  ]);
-  const [activeChatId, setActiveChatId] = useState<string | undefined>("rc1");
+  const {
+    sessions,
+    getSessionsForAgent,
+    getActiveSessionId,
+    setActiveSessionId,
+    createSession,
+    addMessageToSession,
+    deleteSession,
+    clearSessionMessages,
+  } = useChatHistoryStore();
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  const recentChats = isHydrated && agentId ? getSessionsForAgent(agentId) : [];
+  const storedActiveId = isHydrated && agentId ? getActiveSessionId(agentId) : undefined;
+  const activeChatId = storedActiveId;
+
+  // Auto-initialize session if none exists for this agent
+  useEffect(() => {
+    if (!isHydrated || !agentId || !agent) return;
+    const currentSessions = getSessionsForAgent(agentId);
+    if (currentSessions.length === 0) {
+      const newSess = createSession(agentId, "First session", agent.name);
+      setActiveSessionId(agentId, newSess.id);
+    } else if (!storedActiveId || !currentSessions.some(s => s.id === storedActiveId)) {
+      setActiveSessionId(agentId, currentSessions[0].id);
+    }
+  }, [isHydrated, agentId, agent, getSessionsForAgent, storedActiveId, createSession, setActiveSessionId]);
+
+  const activeSession = activeChatId ? sessions[activeChatId] : undefined;
+  const rawMessages = activeSession?.messages ?? [];
+
+  const displayMessages = isGenerating
+    ? [
+        ...rawMessages,
+        {
+          id: "loading-temp",
+          role: "assistant" as const,
+          content: "",
+          timestamp: new Date().toISOString(),
+          metadata: { loading: true },
+        },
+      ]
+    : rawMessages;
 
   function handleSelectChat(chatId: string) {
-    setActiveChatId(chatId);
-    setMessages([]);
+    if (agentId) setActiveSessionId(agentId, chatId);
   }
 
   function handleNewChat() {
-    const chatId = `rc-${Date.now()}`;
-    setRecentChats(prev => [{ id: chatId, title: "New chat", preview: "…", timestamp: "Just now", agentName: agent?.name }, ...prev]);
-    setActiveChatId(chatId);
-    setMessages([]);
+    if (!agentId || !agent) return;
+    const newSess = createSession(agentId, "New chat", agent.name);
+    setActiveSessionId(agentId, newSess.id);
   }
 
   function handleDeleteChat(chatId: string) {
-    setRecentChats(prev => {
-      const remaining = prev.filter(c => c.id !== chatId);
-      if (activeChatId === chatId) setActiveChatId(remaining[0]?.id);
-      return remaining;
-    });
+    deleteSession(chatId);
+  }
+
+  function handleClearMessages() {
+    if (activeChatId) {
+      clearSessionMessages(activeChatId);
+      toast("Conversation cleared.");
+    }
   }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [displayMessages]);
 
   if (!agent) {
     return (
@@ -137,33 +180,30 @@ export default function AgentDetailPage() {
 
   async function handleSend(text?: string) {
     const msg = (text ?? input).trim();
-    if (!msg || isGenerating) return;
+    if (!msg || isGenerating || !agentId || !agent) return;
     setInput("");
+
+    let currentSessionId = activeChatId;
+    if (!currentSessionId || !sessions[currentSessionId]) {
+      const newSess = createSession(agentId, "New chat", agent.name);
+      setActiveSessionId(agentId, newSess.id);
+      currentSessionId = newSess.id;
+    }
 
     const userMsg: ConversationMessage = {
       id: generateId(), role: "user", content: msg,
       timestamp: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, userMsg]);
+    addMessageToSession(currentSessionId, userMsg);
     setIsGenerating(true);
-    setMessages(prev => [...prev, {
-      id: "loading", role: "assistant", content: "",
-      timestamp: new Date().toISOString(), metadata: { loading: true },
-    }]);
 
     try {
       const response = await sendCoachMessage(msg, {
-        agentDomain: agent!.domain,
-        agentName: agent!.name,
+        agentDomain: agent.domain,
+        agentName: agent.name,
       });
-      setMessages(prev => [...prev.filter(m => m.id !== "loading"), response]);
-
-      // Update the chat preview text in the sidebar
-      setRecentChats(prev => prev.map(c =>
-        c.id === activeChatId ? { ...c, title: msg.slice(0, 30) || c.title, preview: msg.slice(0, 50) } : c
-      ));
+      addMessageToSession(currentSessionId, response);
     } catch {
-      setMessages(prev => prev.filter(m => m.id !== "loading"));
       toast.error("Failed to get a response. Please try again.");
     } finally {
       setIsGenerating(false);
@@ -250,13 +290,13 @@ export default function AgentDetailPage() {
               </p>
             </div>
 
-            {messages.length > 0 && (
+            {rawMessages.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
                 className="w-full"
                 leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-                onClick={() => { setMessages([]); toast("Conversation cleared."); }}
+                onClick={handleClearMessages}
               >
                 Clear conversation
               </Button>
@@ -287,7 +327,7 @@ export default function AgentDetailPage() {
           </div>
           <Button
             variant="ghost" size="icon-sm"
-            onClick={() => { setMessages([]); toast("Conversation cleared."); }}
+            onClick={handleClearMessages}
             aria-label="Clear conversation"
           >
             <RefreshCw className="h-4 w-4" />
@@ -297,7 +337,7 @@ export default function AgentDetailPage() {
         {/* Messages */}
         <ScrollArea className="flex-1">
           <div className="p-4 sm:p-6">
-            {messages.length === 0 ? (
+            {displayMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[400px] text-center py-12">
                 <div className={cn("flex h-16 w-16 items-center justify-center rounded-2xl mb-4", cfg.bg)}>
                   <DomainIcon className={cn("h-8 w-8", cfg.color)} />
@@ -324,7 +364,7 @@ export default function AgentDetailPage() {
               </div>
             ) : (
               <div className="space-y-4 max-w-3xl mx-auto">
-                {messages.map(msg => (
+                {displayMessages.map(msg => (
                   <div
                     key={msg.id}
                     className={cn("flex gap-2.5", msg.role === "user" ? "justify-end" : "justify-start")}
@@ -371,6 +411,7 @@ export default function AgentDetailPage() {
             )}
           </div>
         </ScrollArea>
+
 
         {/* Input bar */}
         <div className="border-t border-[hsl(var(--border))] p-4 shrink-0 bg-[hsl(var(--card))]">

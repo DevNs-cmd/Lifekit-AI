@@ -200,6 +200,22 @@ export class LifeMissionRepository implements ILifeMissionRepository {
       handlePrismaError(error);
     }
   }
+
+  async getDistinctCategories(): Promise<string[]> {
+    try {
+      const rows = await this.prisma.missions.findMany({
+        where: { category: { not: null } },
+        select: { category: true },
+        distinct: ["category"],
+        orderBy: { category: "asc" },
+      });
+      return rows
+        .map((r) => r.category as string)
+        .filter((c) => c && c.trim().length > 0);
+    } catch (error) {
+      handlePrismaError(error);
+    }
+  }
 }
 
 function mapPrismaMissionToEntity(m: any): LifeMission {

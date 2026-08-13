@@ -13,9 +13,80 @@ import '../../core/widgets/premium_input.dart';
 import '../dashboard/screens.dart';
 
 // ─────────────────────────────────────────────
+//  CATEGORY METADATA HELPERS
+//  Icon + colour resolved client-side from the
+//  category string returned by the API.
+// ─────────────────────────────────────────────
+
+/// Maps a category label (case-insensitive) to a display-friendly title.
+String _categoryLabel(String raw) {
+  final key = raw.toLowerCase().replaceAll('-', ' ').trim();
+  const labels = <String, String>{
+    'career': 'Career',
+    'finance': 'Finance',
+    'health': 'Health',
+    'travel': 'Travel',
+    'business': 'Business',
+    'education': 'Education',
+    'productivity': 'Productivity',
+    'personal development': 'Personal Growth',
+    'lifestyle': 'Lifestyle',
+    'family': 'Family',
+  };
+  return labels[key] ?? _toTitleCase(raw);
+}
+
+String _toTitleCase(String s) => s
+    .replaceAll('-', ' ')
+    .split(' ')
+    .map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
+    .join(' ');
+
+IconData _categoryIcon(String raw) {
+  final key = raw.toLowerCase().replaceAll('-', ' ').trim();
+  const icons = <String, IconData>{
+    'career': LucideIcons.briefcase,
+    'finance': LucideIcons.indianRupee,
+    'health': LucideIcons.heart,
+    'travel': LucideIcons.globe,
+    'business': LucideIcons.building2,
+    'education': LucideIcons.bookOpen,
+    'productivity': LucideIcons.zap,
+    'personal development': LucideIcons.sparkles,
+    'lifestyle': LucideIcons.coffee,
+    'family': LucideIcons.users,
+  };
+  return icons[key] ?? LucideIcons.target;
+}
+
+Color _categoryColor(String raw) {
+  final key = raw.toLowerCase().replaceAll('-', ' ').trim();
+  const colors = <String, Color>{
+    'career': Color(0xFF2563EB),
+    'finance': Color(0xFFD97706),
+    'health': Color(0xFF16A34A),
+    'travel': Color(0xFF0891B2),
+    'business': Color(0xFFEA580C),
+    'education': Color(0xFF0891B2),
+    'productivity': Color(0xFF4F46E5),
+    'personal development': Color(0xFF7C3AED),
+    'lifestyle': Color(0xFF7C3AED),
+    'family': Color(0xFFDB2777),
+  };
+  // Deterministic colour for unknown categories using hashCode
+  if (!colors.containsKey(key)) {
+    const palette = [
+      Color(0xFF2563EB), Color(0xFF16A34A), Color(0xFFD97706),
+      Color(0xFF0891B2), Color(0xFFEA580C), Color(0xFF7C3AED),
+      Color(0xFFDB2777), Color(0xFF4F46E5),
+    ];
+    return palette[key.hashCode.abs() % palette.length];
+  }
+  return colors[key]!;
+}
+
+// ─────────────────────────────────────────────
 //  CREATE MISSION WIZARD SCREEN
-//  A premium, breathing 2-step wizard that
-//  matches the website's mission-creation flow.
 // ─────────────────────────────────────────────
 class CreateMissionWizardScreen extends ConsumerStatefulWidget {
   const CreateMissionWizardScreen({super.key});
@@ -27,31 +98,15 @@ class CreateMissionWizardScreen extends ConsumerStatefulWidget {
 
 class _CreateMissionWizardScreenState
     extends ConsumerState<CreateMissionWizardScreen> {
-  final _titleCtrl    = TextEditingController();
-  final _descCtrl     = TextEditingController();
-  String  _category   = 'Career';
+  final _titleCtrl = TextEditingController();
+  final _descCtrl  = TextEditingController();
+  String?  _category;          // null until categories load
   DateTime _targetDate = DateTime.now().add(const Duration(days: 90));
-  bool _submitting    = false;
-  bool _titleTouched  = false;
+  bool _submitting   = false;
+  bool _titleTouched = false;
 
-  // Category metadata
-  static const _categories = [
-    ('Career',        LucideIcons.briefcase,    Color(0xFF2563EB)),
-    ('Finance',       LucideIcons.indianRupee,  Color(0xFFD97706)),
-    ('Health',        LucideIcons.heart,         Color(0xFF16A34A)),
-    ('Lifestyle',     LucideIcons.coffee,        Color(0xFF7C3AED)),
-    ('Education',     LucideIcons.bookOpen,      Color(0xFF0891B2)),
-    ('Business',      LucideIcons.building2,     Color(0xFFEA580C)),
-    ('Productivity',  LucideIcons.zap,           Color(0xFF4F46E5)),
-    ('Family',        LucideIcons.users,         Color(0xFFDB2777)),
-  ];
-
-  Color get _selectedCatColor {
-    for (final c in _categories) {
-      if (c.$1 == _category) return c.$3;
-    }
-    return const Color(0xFF217C45);
-  }
+  Color get _selectedCatColor =>
+      _category != null ? _categoryColor(_category!) : const Color(0xFF217C45);
 
   @override
   void dispose() {
@@ -63,13 +118,14 @@ class _CreateMissionWizardScreenState
   Future<void> _submit() async {
     setState(() => _titleTouched = true);
     if (_titleCtrl.text.trim().isEmpty) return;
+    if (_category == null) return;
     setState(() => _submitting = true);
     try {
       final repo = ref.read(repositoryProvider);
       await repo.createMission(
         title:       _titleCtrl.text.trim(),
         description: _descCtrl.text.trim(),
-        category:    _category,
+        category:    _category!,
         targetDate:  _targetDate.toIso8601String(),
       );
       final updated = await repo.missions();
@@ -84,31 +140,28 @@ class _CreateMissionWizardScreenState
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    // Watch the async categories provider
+    final categoriesAsync = ref.watch(missionCategoriesProvider);
+
     return Scaffold(
       backgroundColor: t.background,
       body: SafeArea(
         child: Column(children: [
-          // ── App bar ────────────────────────────────────────
           _WizardAppBar(
-            onSave:      _submit,
-            submitting:  _submitting,
-            catColor:    _selectedCatColor,
+            onSave:     _submit,
+            submitting: _submitting,
+            catColor:   _selectedCatColor,
           ),
-
-          // ── Progress strip ─────────────────────────────────
           _ProgressStrip(catColor: _selectedCatColor),
-
-          // ── Scrollable form ────────────────────────────────
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Step 1: Core details ──────────────────
+                  // ── Step 1: Core details ──────────────────────────────
                   _SectionHeader(
-                    step:  1,
-                    label: 'Mission Details',
+                    step: 1, label: 'Mission Details',
                     color: _selectedCatColor,
                   ).staggered(0),
                   const SizedBox(height: 16),
@@ -134,9 +187,10 @@ class _CreateMissionWizardScreenState
                         const SizedBox(height: 8),
                         PremiumInputField(
                           controller: _descCtrl,
-                          hint:       'Describe the core outcome and success criteria…',
-                          maxLines:   4,
-                          minLines:   3,
+                          hint:
+                              'Describe the core outcome and success criteria…',
+                          maxLines: 4,
+                          minLines: 3,
                           textInputAction: TextInputAction.done,
                         ),
                       ],
@@ -145,88 +199,41 @@ class _CreateMissionWizardScreenState
 
                   const SizedBox(height: 24),
 
-                  // ── Step 2: Category ──────────────────────
+                  // ── Step 2: Category (dynamic from API) ───────────────
                   _SectionHeader(
-                    step:  2,
-                    label: 'Category',
+                    step: 2, label: 'Category',
                     color: _selectedCatColor,
                   ).staggered(2),
                   const SizedBox(height: 16),
 
-                  GridView.count(
-                    shrinkWrap:   true,
-                    physics:      const NeverScrollableScrollPhysics(),
-                    crossAxisCount:   4,
-                    mainAxisSpacing:  10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 0.85,
-                    children: _categories.indexed.map((item) {
-                      final (label, icon, color) = item.$2;
-                      final selected = _category == label;
-                      return GestureDetector(
-                        onTap: () => setState(() => _category = label),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? color.withValues(alpha: 0.12)
-                                : t.surface,
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.xl),
-                            border: Border.all(
-                              color: selected ? color : t.border,
-                              width: selected ? 2.0 : 1.0,
-                            ),
-                            boxShadow: selected
-                                ? [
-                                    BoxShadow(
-                                      color:      color.withValues(alpha: 0.2),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ]
-                                : AppShadows.xs,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(icon,
-                                  size:  20,
-                                  color: selected ? color : t.textMuted),
-                              const SizedBox(height: 4),
-                              Text(
-                                label,
-                                textAlign: TextAlign.center,
-                                maxLines:  1,
-                                overflow:  TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize:   9,
-                                  fontWeight: FontWeight.w700,
-                                  color: selected ? color : t.textSecondary,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ).animate(
-                              delay: Duration(
-                                  milliseconds: 120 + item.$1 * 30))
-                          .fadeIn(duration: 220.ms)
-                          .scale(
-                            begin: const Offset(0.92, 0.92),
-                            duration: 220.ms,
-                            curve: Curves.easeOutBack,
-                          );
-                    }).toList(),
+                  categoriesAsync.when(
+                    loading: () => _CategoryLoadingGrid(
+                        catColor: _selectedCatColor),
+                    error: (_, __) => _CategoryErrorBanner(
+                      onRetry: () => ref.invalidate(missionCategoriesProvider),
+                    ),
+                    data: (categories) {
+                      // Auto-select first category once loaded
+                      if (_category == null && categories.isNotEmpty) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() => _category = categories.first);
+                          }
+                        });
+                      }
+                      return _CategoryGrid(
+                        categories:  categories,
+                        selected:    _category,
+                        onSelect:    (c) => setState(() => _category = c),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 24),
 
-                  // ── Step 3: Target date ───────────────────
+                  // ── Step 3: Target date ───────────────────────────────
                   _SectionHeader(
-                    step:  3,
-                    label: 'Timeline',
+                    step: 3, label: 'Timeline',
                     color: _selectedCatColor,
                   ).staggered(3),
                   const SizedBox(height: 16),
@@ -256,11 +263,11 @@ class _CreateMissionWizardScreenState
                       padding: const EdgeInsets.all(18),
                       child: Row(children: [
                         Container(
-                          width:  44,
-                          height: 44,
+                          width: 44, height: 44,
                           decoration: BoxDecoration(
-                            color:        _selectedCatColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            color: _selectedCatColor.withValues(alpha: 0.1),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md),
                             border: Border.all(
                               color: _selectedCatColor.withValues(alpha: 0.25),
                             ),
@@ -283,10 +290,11 @@ class _CreateMissionWizardScreenState
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '${_targetDate.day} / ${_targetDate.month} / ${_targetDate.year}',
+                                '${_targetDate.day} / ${_targetDate.month}'
+                                ' / ${_targetDate.year}',
                                 style: TextStyle(
-                                  color:   _selectedCatColor,
-                                  fontSize: 13,
+                                  color:      _selectedCatColor,
+                                  fontSize:   13,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -301,18 +309,20 @@ class _CreateMissionWizardScreenState
 
                   const SizedBox(height: 32),
 
-                  // ── CTA ───────────────────────────────────
+                  // ── CTA ───────────────────────────────────────────────
                   PremiumButton(
-                    label:     'Create Mission Blueprint',
-                    loading:   _submitting,
-                    icon:      const Icon(LucideIcons.target, size: 18),
-                    gradient:  LinearGradient(
+                    label:   'Create Mission Blueprint',
+                    loading: _submitting,
+                    icon:    const Icon(LucideIcons.target, size: 18),
+                    gradient: LinearGradient(
                       colors: [
                         _selectedCatColor,
                         _selectedCatColor.withValues(alpha: 0.75),
                       ],
                     ),
-                    onPressed: _submitting ? null : _submit,
+                    onPressed: (_submitting || _category == null)
+                        ? null
+                        : _submit,
                   ).staggered(5),
                 ],
               ),
@@ -320,6 +330,183 @@ class _CreateMissionWizardScreenState
           ),
         ]),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  CATEGORY GRID  (built from dynamic list)
+// ─────────────────────────────────────────────
+class _CategoryGrid extends StatelessWidget {
+  const _CategoryGrid({
+    required this.categories,
+    required this.selected,
+    required this.onSelect,
+  });
+  final List<String> categories;
+  final String?      selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return GridView.count(
+      shrinkWrap:      true,
+      physics:         const NeverScrollableScrollPhysics(),
+      crossAxisCount:  4,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 0.85,
+      children: categories.indexed.map((item) {
+        final (idx, raw) = item;
+        final label    = _categoryLabel(raw);
+        final icon     = _categoryIcon(raw);
+        final color    = _categoryColor(raw);
+        final isSelected = selected?.toLowerCase() == raw.toLowerCase();
+
+        return GestureDetector(
+          onTap: () => onSelect(raw),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? color.withValues(alpha: 0.12)
+                  : t.surface,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              border: Border.all(
+                color: isSelected ? color : t.border,
+                width: isSelected ? 2.0 : 1.0,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color:      color.withValues(alpha: 0.2),
+                        blurRadius: 10,
+                        offset:     const Offset(0, 4),
+                      ),
+                    ]
+                  : AppShadows.xs,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon,
+                    size:  20,
+                    color: isSelected ? color : t.textMuted),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines:  1,
+                  overflow:  TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize:      9,
+                    fontWeight:    FontWeight.w700,
+                    color:         isSelected ? color : t.textSecondary,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
+            .animate(delay: Duration(milliseconds: 120 + idx * 30))
+            .fadeIn(duration: 220.ms)
+            .scale(
+              begin:    const Offset(0.92, 0.92),
+              duration: 220.ms,
+              curve:    Curves.easeOutBack,
+            );
+      }).toList(),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  CATEGORY LOADING SKELETON
+// ─────────────────────────────────────────────
+class _CategoryLoadingGrid extends StatelessWidget {
+  const _CategoryLoadingGrid({required this.catColor});
+  final Color catColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return GridView.count(
+      shrinkWrap:       true,
+      physics:          const NeverScrollableScrollPhysics(),
+      crossAxisCount:   4,
+      mainAxisSpacing:  10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 0.85,
+      children: List.generate(8, (i) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color:        t.surface,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border:       Border.all(color: t.border),
+            boxShadow:    AppShadows.xs,
+          ),
+          child: Center(
+            child: SizedBox(
+              width: 18, height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: catColor.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+        )
+            .animate(delay: Duration(milliseconds: i * 40))
+            .fadeIn(duration: 300.ms);
+      }),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  CATEGORY ERROR BANNER
+// ─────────────────────────────────────────────
+class _CategoryErrorBanner extends StatelessWidget {
+  const _CategoryErrorBanner({required this.onRetry});
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color:        const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border:       Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Row(children: [
+        const Icon(LucideIcons.alertCircle,
+            size: 18, color: Color(0xFFDC2626)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Could not load categories.',
+            style: TextStyle(
+              fontSize: 13, color: t.textPrimary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: onRetry,
+          child: const Text(
+            'Retry',
+            style: TextStyle(
+              color: Color(0xFFDC2626),
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ]),
     );
   }
 }

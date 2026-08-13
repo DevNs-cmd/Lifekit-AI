@@ -74,6 +74,22 @@ export class LifeMissionController {
     return this.lifeMissionService.findAll(userId, filters, pagination);
   }
 
+  @Get("categories")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Get all distinct mission categories from the database" })
+  @ApiOkResponse({
+    description: "Distinct categories retrieved successfully",
+    schema: {
+      type: "array",
+      items: { type: "string" },
+      example: ["Business", "Career", "Education", "Finance", "Health"],
+    },
+  })
+  @ApiUnauthorizedResponse({ description: "Invalid or expired access token" })
+  async getCategories(): Promise<string[]> {
+    return this.lifeMissionService.getDistinctCategories();
+  }
+
   @Get(":id")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Get details of a specific life mission" })
