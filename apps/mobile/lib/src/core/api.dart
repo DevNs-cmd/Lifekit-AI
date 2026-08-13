@@ -1,20 +1,31 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const _storage = FlutterSecureStorage();
 
+/// Default base URL for NestJS backend API depending on target platform
+String get defaultApiBaseUrl {
+  if (kIsWeb) return 'http://localhost:4000/api';
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    return 'http://10.0.2.2:4000/api';
+  }
+  return 'http://localhost:4000/api';
+}
+
 // ─── Dio provider ────────────────────────────────────────────────────────────
 final dioProvider = Provider<Dio>((ref) {
+  const envUrl = String.fromEnvironment('API_URL');
+  final baseUrl = envUrl.isNotEmpty ? envUrl : defaultApiBaseUrl;
+
   final dio = Dio(BaseOptions(
-    baseUrl: const String.fromEnvironment(
-      'API_URL',
-      defaultValue: 'http://192.168.29.237:4000/api',
-    ),
+    baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 60),
     headers: {'Content-Type': 'application/json'},
   ));
+
 
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {

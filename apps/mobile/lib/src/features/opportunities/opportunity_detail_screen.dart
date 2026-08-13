@@ -3,27 +3,116 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/design/tokens.dart';
+import '../../core/repository.dart';
 
-class OpportunityDetailScreen extends ConsumerWidget {
+class OpportunityDetailScreen extends ConsumerStatefulWidget {
   const OpportunityDetailScreen({required this.id, this.itemData, super.key});
 
   final String id;
   final Map<String, dynamic>? itemData;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OpportunityDetailScreen> createState() =>
+      _OpportunityDetailScreenState();
+}
+
+class _OpportunityDetailScreenState
+    extends ConsumerState<OpportunityDetailScreen> {
+  Map<String, dynamic>? _item;
+  bool _loading = false;
+  bool _saving = false;
+  bool _saved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.itemData != null && widget.itemData!.isNotEmpty) {
+      _item = widget.itemData;
+      _saved = _item!['isSaved'] == true;
+    } else {
+      _fetch();
+    }
+  }
+
+  Future<void> _fetch() async {
+    setState(() => _loading = true);
+    try {
+      final res = await ref.read(repositoryProvider).opportunityDetail(widget.id);
+      if (!mounted) return;
+      setState(() {
+        _item = res;
+        _saved = res['isSaved'] == true;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    setState(() => _saving = true);
+    final newStatus = !_saved;
+    final ok = await ref.read(repositoryProvider).saveOpportunity(widget.id, saved: newStatus);
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      if (ok) _saved = newStatus;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_saved
+            ? 'Opportunity saved to your Bookmarks!'
+            : 'Opportunity removed from Bookmarks'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final t = context.tokens;
-    final item = itemData ??
-        {
-          'title': 'Senior AI Developer #$id',
-          'company': 'NexusAI Labs',
-          'location': 'Remote',
-          'salary': '₹30 - 45 LPA',
-          'deadline': 'In 5 days',
-          'matchScore': 94,
-          'description':
-              'Work on cutting-edge AI orchestration software and high-throughput agent workflows.',
-        };
+
+    if (_loading && _item == null) {
+      return Scaffold(
+        backgroundColor: t.background,
+        appBar: AppBar(title: const Text('Opportunity Details')),
+        body: Center(child: CircularProgressIndicator(color: t.primary)),
+      );
+    }
+
+    if (_item == null) {
+      return Scaffold(
+        backgroundColor: t.background,
+        appBar: AppBar(title: const Text('Opportunity Details')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.circleAlert, size: 48, color: t.destructive),
+                const SizedBox(height: 12),
+                Text('Could not load opportunity',
+                    style: TextStyle(color: t.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                ElevatedButton(onPressed: _fetch, child: const Text('Retry')),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final item = _item!;
+
+    final title = item['title'] ?? 'Opportunity Title';
+    final company = item['company'] ?? item['organisation'] ?? 'LifeKit Partner';
+    final location = item['location'] ?? 'Remote';
+    final salary = item['salary'] ?? 'Competitive';
+    final deadline = item['deadline'] ?? 'Open';
+    final matchScore = item['matchScore'] ?? 90;
+    final description = item['description'] ?? '';
 
     return Scaffold(
       backgroundColor: t.background,
@@ -55,60 +144,67 @@ class OpportunityDetailScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
                         child: Text(
-                            '${item['matchScore'] ?? 90}% AI Goal Match',
-                            style: TextStyle(
-                                color: t.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11)),
+                          '$matchScore% AI Goal Match',
+                          style: TextStyle(
+                            color: t.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
                       ),
                       const Spacer(),
-                      Text(item['deadline'] ?? '',
-                          style: TextStyle(color: t.textMuted, fontSize: 12)),
+                      Text(
+                        deadline,
+                        style: TextStyle(color: t.textMuted, fontSize: 12),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    item['title'] ?? 'Title',
+                    title,
                     style: Theme.of(context)
                         .textTheme
                         .titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
-                  Text('${item['company']} • ${item['location']}',
-                      style: TextStyle(color: t.textMuted)),
+                  Text(
+                    '$company • $location',
+                    style: TextStyle(color: t.textMuted),
+                  ),
                   const SizedBox(height: 12),
-                  Text(item['salary'] ?? '',
-                      style: TextStyle(
-                          color: t.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18)),
+                  Text(
+                    salary,
+                    style: TextStyle(
+                      color: t.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-            Text('Description & Requirements',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Description & Requirements',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text(item['description'] ?? '',
-                style: TextStyle(color: t.textSecondary, height: 1.5)),
+            Text(
+              description,
+              style: TextStyle(color: t.textSecondary, height: 1.5),
+            ),
             const SizedBox(height: 30),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text('Opportunity saved to your Bookmarks!')),
-                      );
-                    },
-                    icon: const Icon(LucideIcons.bookmark),
-                    label: const Text('Bookmark'),
+                    onPressed: _saving ? null : _toggleSave,
+                    icon: Icon(_saved ? LucideIcons.bookmarkCheck : LucideIcons.bookmark),
+                    label: Text(_saved ? 'Bookmarked' : 'Bookmark'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -117,8 +213,8 @@ class OpportunityDetailScreen extends ConsumerWidget {
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content:
-                                Text('Redirecting to Application Portal...')),
+                          content: Text('Redirecting to Application Portal...'),
+                        ),
                       );
                     },
                     icon: const Icon(LucideIcons.externalLink),
