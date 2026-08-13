@@ -45,7 +45,7 @@ class MissionData {
           : (j['id'] ?? 0) as int,
       title: (j['title'] ?? '').toString(),
       goal: (j['description'] ?? j['goal'] ?? '').toString(),
-      category: (j['category'] ?? 'Lifestyle').toString(),
+      category: (j['category'] ?? j['missionCategory'] ?? '').toString(),
       status: _normalizeStatus(j['status']?.toString()),
       priority: (j['priority'] ?? 'medium').toString().toLowerCase(),
       progress: progress.clamp(0.0, 1.0),
@@ -5991,10 +5991,9 @@ class _SuggestedPrompts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -6045,7 +6044,6 @@ class _SuggestedPrompts extends StatelessWidget {
                 ).staggered(item.$1),
               )),
         ]),
-      ),
     );
   }
 }

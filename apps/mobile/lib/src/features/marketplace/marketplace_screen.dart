@@ -1,4 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import '../../core/design/animations.dart';
 import '../../core/design/tokens.dart';
 import '../../core/repository.dart';
 import '../../core/widgets/premium_card.dart';
+import '../../core/widgets/premium_side_nav.dart';
 
 // ─────────────────────────────────────────────
 //  CATEGORY META
@@ -52,6 +54,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   bool _searchOpen = false;
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -109,13 +112,32 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
     final filtered = _filtered;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: t.background,
+      drawer: PremiumSideNav(
+        currentIndex: -1, // no tab is "active" — this is a feature page
+        userInitials: 'U',
+        userName: '',
+        onTabTap: (index) {
+          _scaffoldKey.currentState?.closeDrawer();
+          const routes = ['/home', '/missions', '/ai-coach', '/tasks', '/profile'];
+          if (index >= 0 && index < routes.length) {
+            context.go(routes[index]);
+          }
+        },
+        onSecondaryTap: (route) {
+          _scaffoldKey.currentState?.closeDrawer();
+          if (route == '/marketplace') return; // already here
+          context.push(route);
+        },
+      ),
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
             // ── Header ────────────────────────────────────────
             _MarketplaceHeader(
-              searchOpen:  _searchOpen,
+              searchOpen:     _searchOpen,
+              onMenuTap:      () => _scaffoldKey.currentState?.openDrawer(),
               onSearchToggle: () {
                 setState(() => _searchOpen = !_searchOpen);
                 if (!_searchOpen) {
@@ -131,7 +153,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
               visible:    _searchOpen,
               controller: _searchCtrl,
               hint:       'Search marketplace…',
-              onChanged:  (v) =>
+              onChanged: (v) =>
                   ref.read(_marketplaceSearchProvider.notifier).state = v,
               onDismiss: () {
                 setState(() => _searchOpen = false);
@@ -143,7 +165,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
             // ── Category chips ────────────────────────────────
             if (!_searchOpen)
               _CategoryChips(
-                categories:      _kCategories,
+                categories:       _kCategories,
                 selectedCategory: category,
                 onSelect: (cat) {
                   ref.read(_marketplaceCategoryProvider.notifier).state = cat;
@@ -176,14 +198,14 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                               onRefresh: _load,
                               color:     t.primary,
                               child: GridView.builder(
-                                controller:  _scrollCtrl,
+                                controller: _scrollCtrl,
                                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                                 gridDelegate:
                                     const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount:   2,
                                   crossAxisSpacing: 12,
                                   mainAxisSpacing:  12,
-                                  childAspectRatio: 0.72,
+                                  childAspectRatio: 0.65,
                                 ),
                                 itemCount: filtered.length,
                                 itemBuilder: (_, i) => _MarketplaceCard(
@@ -199,7 +221,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
             ),
           ]),
 
-          // ── Floating back-to-AI shortcut ──────────────────
+          // ── Floating shortcut bar ──────────────────────────
           _MarketplaceFloatingBar(),
         ]),
       ),
@@ -213,10 +235,12 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
 class _MarketplaceHeader extends ConsumerWidget {
   const _MarketplaceHeader({
     required this.searchOpen,
+    required this.onMenuTap,
     required this.onSearchToggle,
     required this.onRefresh,
   });
   final bool searchOpen;
+  final VoidCallback onMenuTap;
   final VoidCallback onSearchToggle;
   final VoidCallback onRefresh;
 
@@ -224,8 +248,15 @@ class _MarketplaceHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(56, 18, 12, 12),
+      padding: const EdgeInsets.fromLTRB(8, 10, 12, 10),
       child: Row(children: [
+        // ── Hamburger / back button ───────────────────────
+        _GlassNavButton(
+          icon: LucideIcons.menu,
+          onTap: onMenuTap,
+          tokens: t,
+        ),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
@@ -236,10 +267,10 @@ class _MarketplaceHeader extends ConsumerWidget {
                     letterSpacing: -1.0,
                   ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Text(
               'Execution tools, plans & expertise',
-              style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.4),
+              style: TextStyle(color: t.textMuted, fontSize: 12, height: 1.3),
             ),
           ]),
         ),
@@ -255,6 +286,44 @@ class _MarketplaceHeader extends ConsumerWidget {
           icon: Icon(LucideIcons.refreshCw, size: 18, color: t.textSecondary),
         ),
       ]).pageEntrance(),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  GLASS NAV BUTTON  (hamburger / back)
+// ─────────────────────────────────────────────
+class _GlassNavButton extends StatelessWidget {
+  const _GlassNavButton({
+    required this.icon,
+    required this.onTap,
+    required this.tokens,
+  });
+  final IconData icon;
+  final VoidCallback onTap;
+  final AppTokens tokens;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            width:  38,
+            height: 38,
+            decoration: BoxDecoration(
+              color:        tokens.surface.withValues(alpha: 0.88),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border:       Border.all(color: tokens.border),
+              boxShadow:    AppShadows.xs,
+            ),
+            child: Icon(icon, size: 18, color: tokens.textPrimary),
+          ),
+        ),
+      ),
     );
   }
 }
