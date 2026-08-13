@@ -133,6 +133,11 @@ export class MarketplaceService {
     await this._refreshForUser(event.userId);
   }
 
+  /** Public interface to force clear and re-seed AI marketplace listings for a user */
+  async refreshForUser(userId: number): Promise<void> {
+    await this._refreshForUser(userId);
+  }
+
   // ── Private helpers ─────────────────────────────────────────────────────────
 
   /** Delete and reseed listings for a single user. Catches all errors. */

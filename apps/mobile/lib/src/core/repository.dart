@@ -518,9 +518,11 @@ class LifeKitRepository {
   }
 
   // ── Opportunities & Marketplace ────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> opportunities({String? category}) async {
+  Future<List<Map<String, dynamic>>> opportunities({String? category, bool forceRefresh = false}) async {
     try {
-      final res = await _dio.get<dynamic>('/opportunities');
+      final res = forceRefresh
+          ? await _dio.post<dynamic>('/opportunities/refresh')
+          : await _dio.get<dynamic>('/opportunities');
       final list = _asList(_unwrap(res.data));
       final normalized = list.map((item) => _normalizeOpportunity(item)).toList();
       if (category == null || category.isEmpty || category == 'All') {
@@ -557,9 +559,11 @@ class LifeKitRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> marketplace({String? category}) async {
+  Future<List<Map<String, dynamic>>> marketplace({String? category, bool forceRefresh = false}) async {
     try {
-      final res = await _dio.get<dynamic>('/marketplace');
+      final res = forceRefresh
+          ? await _dio.post<dynamic>('/marketplace/refresh')
+          : await _dio.get<dynamic>('/marketplace');
       final list = _asList(_unwrap(res.data));
       final normalized = list.map((item) => _normalizeMarketplace(item)).toList();
       if (category == null || category.isEmpty || category == 'All') {

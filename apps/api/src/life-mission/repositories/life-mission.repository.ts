@@ -20,25 +20,34 @@ export class LifeMissionRepository implements ILifeMissionRepository {
     data: CreateLifeMissionDto,
   ): Promise<LifeMission> {
     try {
-      // Serialize array fields into description to prevent data loss
+      const textDesc = data.description || (data as any).goal || data.title;
+      const goals = data.goals?.length ? data.goals : [data.title];
+      const values = data.values?.length ? data.values : ["Growth", "Excellence"];
+      const longTermObjectives = data.longTermObjectives?.length
+        ? data.longTermObjectives
+        : [textDesc];
+
       const serializedDescription = JSON.stringify({
-        text: data.description,
-        goals: data.goals,
-        values: data.values,
-        longTermObjectives: data.longTermObjectives,
+        text: textDesc,
+        goals,
+        values,
+        longTermObjectives,
         constraints: data.constraints ?? [],
       });
+
+      const defaultTargetDate = new Date();
+      defaultTargetDate.setDate(defaultTargetDate.getDate() + 180);
 
       const mission = await this.prisma.missions.create({
         data: {
           user_id: userId,
           title: data.title,
           description: serializedDescription,
-          category: data.category ?? null,
+          category: data.category ?? "Career",
           priority: PriorityLevel.MEDIUM,
           status: MissionStatus.ACTIVE,
           start_date: data.startDate ? new Date(data.startDate) : new Date(),
-          target_date: data.targetDate ? new Date(data.targetDate) : null,
+          target_date: data.targetDate ? new Date(data.targetDate) : defaultTargetDate,
           progress: 0,
         },
       });

@@ -69,16 +69,17 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final cat = ref.read(_marketplaceCategoryProvider);
-      final res = await ref
-          .read(repositoryProvider)
-          .marketplace(category: cat == 'All' ? null : cat);
+      final res = await ref.read(repositoryProvider).marketplace(
+            category: cat == 'All' ? null : cat,
+            forceRefresh: forceRefresh,
+          );
       if (!mounted) return;
       setState(() {
         _items = res;
@@ -145,7 +146,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                   ref.read(_marketplaceSearchProvider.notifier).state = '';
                 }
               },
-              onRefresh: _load,
+              onRefresh: () => _load(forceRefresh: true),
             ),
 
             // ── Search bar ────────────────────────────────────
@@ -195,7 +196,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                               query:    query,
                             )
                           : RefreshIndicator(
-                              onRefresh: _load,
+                              onRefresh: () => _load(forceRefresh: true),
                               color:     t.primary,
                               child: GridView.builder(
                                 controller: _scrollCtrl,

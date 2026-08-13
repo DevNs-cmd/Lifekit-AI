@@ -74,6 +74,18 @@ export class MarketplaceController {
     return this.marketplaceService.findAll(userId, filters, pagination);
   }
 
+  /**
+   * POST /api/marketplace/refresh
+   * Force re-seed AI marketplace listings based on user's active missions.
+   */
+  @Post("refresh")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Force re-seed AI marketplace listings for user's active missions" })
+  async refresh(@CurrentUser("user_id") userId: number) {
+    await this.marketplaceService.refreshForUser(userId);
+    return this.marketplaceService.findAll(userId, {});
+  }
+
   @Get(":id")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Get details of a specific listing" })

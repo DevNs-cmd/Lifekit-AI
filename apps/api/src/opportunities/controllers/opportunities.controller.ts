@@ -58,6 +58,18 @@ export class OpportunitiesController {
   }
 
   /**
+   * POST /api/opportunities/refresh
+   * Force re-seed AI opportunities based on user's active missions.
+   */
+  @Post("refresh")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Force re-seed AI opportunities for user's active missions" })
+  async refresh(@CurrentUser("user_id") userId: number) {
+    await this.opportunitiesService.refreshForUser(userId);
+    return this.opportunitiesService.findAll(userId, {} as OpportunityQueryDto);
+  }
+
+  /**
    * GET /api/opportunities/:id
    * Get a single opportunity by ID (must belong to the authenticated user).
    */
