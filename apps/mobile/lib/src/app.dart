@@ -5,12 +5,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'core/api.dart';
 import 'core/theme.dart';
 import 'core/design/tokens.dart';
 import 'core/widgets/premium_side_nav.dart';
+import 'features/admin/admin_screens.dart';
+import 'features/agents/agent_chat_screen.dart';
+import 'features/agents/agents_screen.dart';
+import 'features/ai_coach/planner_screen.dart';
+import 'features/analytics/analytics_screen.dart';
 import 'features/auth/auth_screen.dart';
-import 'features/dashboard/screens.dart';
+import 'features/dashboard/screens.dart'
+    hide
+        OnboardingScreen,
+        PlannerScreen,
+        AgentsScreen,
+        OpportunitiesScreen,
+        MemoryScreen,
+        NotificationsScreen;
 import 'features/landing/landing_screen.dart';
+import 'features/marketing/public_info_screen.dart';
+import 'features/marketplace/marketplace_detail_screen.dart';
+import 'features/marketplace/marketplace_screen.dart';
+import 'features/memory/memory_screen.dart';
+import 'features/missions/create_mission_wizard_screen.dart';
+import 'features/notifications/notifications_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
+import 'features/opportunities/opportunities_screen.dart';
+import 'features/opportunities/opportunity_detail_screen.dart';
+import 'features/settings/settings_hub_screen.dart';
+import 'features/settings/settings_sub_screens.dart';
+import 'features/support/support_screen.dart';
 
 // ─────────────────────────────────────────────
 //  THEME MODE PROVIDER
@@ -21,7 +46,6 @@ final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 //  PAGE TRANSITION BUILDERS
 // ─────────────────────────────────────────────
 
-/// Default push: fade + subtle slide-up. 280 ms, easeOut.
 CustomTransitionPage<T> _fadeSlide<T>(
   BuildContext context,
   GoRouterState state,
@@ -34,20 +58,20 @@ CustomTransitionPage<T> _fadeSlide<T>(
       reverseTransitionDuration: const Duration(milliseconds: 200),
       transitionsBuilder: (_, animation, __, child) {
         final fade = CurvedAnimation(
-          parent: animation, curve: Curves.easeOut,
+          parent: animation,
+          curve: Curves.easeOut,
         );
         final slide = Tween<Offset>(
           begin: const Offset(0, 0.03),
-          end:   Offset.zero,
+          end: Offset.zero,
         ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut));
         return FadeTransition(
           opacity: fade,
-          child:   SlideTransition(position: slide, child: child),
+          child: SlideTransition(position: slide, child: child),
         );
       },
     );
 
-/// Modal / sheet: slide up from bottom. 320 ms, easeOutCubic.
 CustomTransitionPage<T> _modalSlide<T>(
   BuildContext context,
   GoRouterState state,
@@ -61,7 +85,7 @@ CustomTransitionPage<T> _modalSlide<T>(
       transitionsBuilder: (_, animation, __, child) {
         final slide = Tween<Offset>(
           begin: const Offset(0, 1),
-          end:   Offset.zero,
+          end: Offset.zero,
         ).animate(
             CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
         return SlideTransition(position: slide, child: child);
@@ -69,14 +93,72 @@ CustomTransitionPage<T> _modalSlide<T>(
     );
 
 // ─────────────────────────────────────────────
-//  ROUTER
+//  ROUTER NOTIFIER & CONFIGURATION
 // ─────────────────────────────────────────────
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AsyncValue<bool>>(
+      authProvider,
+      (_, __) => notifyListeners(),
+    );
+  }
+
+  String? redirect(BuildContext context, GoRouterState state) {
+    final authAsync = _ref.read(authProvider);
+
+    // Keep current route while checking initial auth status from secure storage
+    if (authAsync.isLoading) return null;
+
+    final isAuthenticated = authAsync.value ?? false;
+    final loc = state.matchedLocation;
+
+    final isAuthOrWelcomeRoute = loc == '/' ||
+        loc == '/welcome' ||
+        loc.startsWith('/auth');
+
+    if (isAuthenticated) {
+      // If signed in and accessing landing/auth screens, navigate to /home
+      if (isAuthOrWelcomeRoute) {
+        return '/home';
+      }
+    } else {
+      // If signed out and trying to access protected routes, redirect to sign in
+      final isPublicRoute = isAuthOrWelcomeRoute ||
+          const [
+            '/product',
+            '/solutions',
+            '/pricing',
+            '/enterprise',
+            '/about',
+            '/contact',
+            '/marketplace-info',
+          ].contains(loc);
+
+      if (!isPublicRoute) {
+        return '/auth/sign-in';
+      }
+    }
+
+    return null;
+  }
+}
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
+  final notifier = ref.watch(routerNotifierProvider);
+
   return GoRouter(
     initialLocation: '/welcome',
-    debugLogDiagnostics: true,
+    refreshListenable: notifier,
+    redirect: notifier.redirect,
+    debugLogDiagnostics: false,
     routes: [
-      // ── Public ──────────────────────────────
+      // ── Public / Marketing ──────────────────
       GoRoute(
         path: '/',
         redirect: (_, __) => '/welcome',
@@ -86,37 +168,54 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (ctx, state) =>
             _fadeSlide(ctx, state, const LandingScreen()),
       ),
+      for (final path in const [
+        '/product',
+        '/solutions',
+        '/pricing',
+        '/enterprise',
+        '/about',
+        '/contact',
+        '/marketplace-info',
+      ])
+        GoRoute(
+          path: path,
+          pageBuilder: (ctx, state) => _fadeSlide(
+            ctx,
+            state,
+            PublicInfoScreen(path: state.uri.path),
+          ),
+        ),
 
       // ── Auth ────────────────────────────────
       GoRoute(
         path: '/auth/sign-in',
-        pageBuilder: (ctx, state) => _fadeSlide(
-            ctx, state, const AuthScreen(mode: AuthMode.signIn)),
+        pageBuilder: (ctx, state) =>
+            _fadeSlide(ctx, state, const AuthScreen(mode: AuthMode.signIn)),
       ),
       GoRoute(
         path: '/auth/sign-up',
-        pageBuilder: (ctx, state) => _fadeSlide(
-            ctx, state, const AuthScreen(mode: AuthMode.signUp)),
+        pageBuilder: (ctx, state) =>
+            _fadeSlide(ctx, state, const AuthScreen(mode: AuthMode.signUp)),
       ),
       GoRoute(
         path: '/auth/forgot-password',
-        pageBuilder: (ctx, state) => _modalSlide(
-            ctx, state, const AuthScreen(mode: AuthMode.forgot)),
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const AuthScreen(mode: AuthMode.forgot)),
       ),
       GoRoute(
         path: '/auth/reset-password',
-        pageBuilder: (ctx, state) => _modalSlide(
-            ctx, state, const AuthScreen(mode: AuthMode.reset)),
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const AuthScreen(mode: AuthMode.reset)),
       ),
       GoRoute(
         path: '/auth/verify-email',
-        pageBuilder: (ctx, state) => _fadeSlide(
-            ctx, state, const AuthScreen(mode: AuthMode.verify)),
+        pageBuilder: (ctx, state) =>
+            _fadeSlide(ctx, state, const AuthScreen(mode: AuthMode.verify)),
       ),
       GoRoute(
         path: '/auth/two-factor',
-        pageBuilder: (ctx, state) => _fadeSlide(
-            ctx, state, const AuthScreen(mode: AuthMode.twoFactor)),
+        pageBuilder: (ctx, state) =>
+            _fadeSlide(ctx, state, const AuthScreen(mode: AuthMode.twoFactor)),
       ),
 
       // ── Onboarding ──────────────────────────
@@ -126,7 +225,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             _fadeSlide(ctx, state, const OnboardingScreen()),
       ),
 
-      // ── Main shell with custom nav ──────────
+      // ── Main Shell with Navigation Drawer ───
       StatefulShellRoute.indexedStack(
         builder: (_, __, shell) => AppShell(shell: shell),
         branches: [
@@ -144,11 +243,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                   _fadeSlide(ctx, state, const MissionsScreen()),
               routes: [
                 GoRoute(
+                  path: 'new',
+                  pageBuilder: (ctx, state) => _modalSlide(
+                    ctx,
+                    state,
+                    const CreateMissionWizardScreen(),
+                  ),
+                ),
+                GoRoute(
                   path: ':id',
                   pageBuilder: (ctx, state) => _fadeSlide(
-                    ctx, state,
-                    MissionDetailScreen(
-                        id: state.pathParameters['id']!),
+                    ctx,
+                    state,
+                    MissionDetailScreen(id: state.pathParameters['id']!),
                   ),
                 ),
               ],
@@ -178,25 +285,146 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // ── Feature / secondary screens ─────────
-      for (final path in const [
-        '/planner', '/agents', '/memory', '/opportunities',
-        '/marketplace', '/notifications', '/analytics',
-        '/settings', '/settings/profile', '/settings/appearance',
-        '/settings/ai', '/settings/privacy', '/settings/security',
-        '/settings/integrations', '/settings/subscription',
-        '/settings/billing', '/support',
-      ])
-        GoRoute(
-          path: path,
-          pageBuilder: (ctx, state) => _modalSlide(
-              ctx, state, FeatureScreen(path: state.uri.path)),
-        ),
-
+      // ── Standalone Feature Pages ─────────────
       GoRoute(
-        path: '/marketplace/:id',
-        pageBuilder: (ctx, state) => _modalSlide(
-            ctx, state, FeatureScreen(path: state.uri.path)),
+        path: '/planner',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const PlannerScreen()),
+      ),
+      GoRoute(
+        path: '/agents',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const AgentsScreen()),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (ctx, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              return _modalSlide(
+                ctx,
+                state,
+                AgentChatScreen(
+                  agentId: state.pathParameters['id']!,
+                  agentData: extra,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/marketplace',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const MarketplaceScreen()),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (ctx, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              return _modalSlide(
+                ctx,
+                state,
+                MarketplaceDetailScreen(
+                  id: state.pathParameters['id']!,
+                  itemData: extra,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/opportunities',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const OpportunitiesScreen()),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (ctx, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              return _modalSlide(
+                ctx,
+                state,
+                OpportunityDetailScreen(
+                  id: state.pathParameters['id']!,
+                  itemData: extra,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/memory',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const MemoryScreen()),
+      ),
+      GoRoute(
+        path: '/analytics',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const AnalyticsScreen()),
+      ),
+      GoRoute(
+        path: '/notifications',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const NotificationsScreen()),
+      ),
+      GoRoute(
+        path: '/settings',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const SettingsHubScreen()),
+        routes: [
+          GoRoute(
+            path: 'general',
+            pageBuilder: (ctx, state) =>
+                _modalSlide(ctx, state, const GeneralSettingsScreen()),
+          ),
+          GoRoute(
+            path: 'appearance',
+            pageBuilder: (ctx, state) =>
+                _modalSlide(ctx, state, const AppearanceSettingsScreen()),
+          ),
+          GoRoute(
+            path: 'ai',
+            pageBuilder: (ctx, state) =>
+                _modalSlide(ctx, state, const AiSettingsScreen()),
+          ),
+          GoRoute(
+            path: 'privacy',
+            pageBuilder: (ctx, state) =>
+                _modalSlide(ctx, state, const PrivacySettingsScreen()),
+          ),
+          GoRoute(
+            path: 'security',
+            pageBuilder: (ctx, state) =>
+                _modalSlide(ctx, state, const SecuritySettingsScreen()),
+          ),
+          GoRoute(
+            path: 'integrations',
+            pageBuilder: (ctx, state) =>
+                _modalSlide(ctx, state, const IntegrationsSettingsScreen()),
+          ),
+          GoRoute(
+            path: 'subscription',
+            pageBuilder: (ctx, state) =>
+                _modalSlide(ctx, state, const SubscriptionSettingsScreen()),
+          ),
+          GoRoute(
+            path: 'billing',
+            pageBuilder: (ctx, state) =>
+                _modalSlide(ctx, state, const BillingSettingsScreen()),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/support',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const SupportScreen()),
+      ),
+      GoRoute(
+        path: '/admin',
+        pageBuilder: (ctx, state) =>
+            _modalSlide(ctx, state, const AdminDashboardScreen()),
       ),
     ],
   );
@@ -210,13 +438,12 @@ class LifeKitApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Pre-warm flutter_animate
     Animate.restartOnHotReload = true;
 
     return MaterialApp.router(
-      title:                   'LifeKit',
+      title: 'LifeKit',
       debugShowCheckedModeBanner: false,
-      theme:     lifeKitTheme(Brightness.light),
+      theme: lifeKitTheme(Brightness.light),
       darkTheme: lifeKitTheme(Brightness.dark),
       themeMode: ref.watch(themeModeProvider),
       routerConfig: ref.watch(routerProvider),
@@ -241,9 +468,8 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   String get _userInitials {
     final profile = ref.read(profileProvider);
-    final name = (profile['fullName'] ?? profile['full_name'] ?? '')
-        .toString()
-        .trim();
+    final name =
+        (profile['fullName'] ?? profile['full_name'] ?? '').toString().trim();
     if (name.isEmpty) return 'U';
     final parts = name.split(' ');
     if (parts.length >= 2) {
@@ -259,21 +485,17 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final t          = context.tokens;
+    final t = context.tokens;
     final currentIdx = widget.shell.currentIndex;
-    // Watch profile so initials update when profile loads
     ref.watch(profileProvider);
 
     return Scaffold(
-      key:             _scaffoldKey,
+      key: _scaffoldKey,
       backgroundColor: t.background,
-
-      // Hamburger button shown in screens that need it — we expose
-      // the scaffold key via a provider so any screen can open the drawer.
       drawer: PremiumSideNav(
-        currentIndex:  currentIdx,
-        userInitials:  _userInitials,
-        userName:      _userName,
+        currentIndex: currentIdx,
+        userInitials: _userInitials,
+        userName: _userName,
         onTabTap: (index) {
           _scaffoldKey.currentState?.closeDrawer();
           widget.shell.goBranch(
@@ -286,15 +508,11 @@ class _AppShellState extends ConsumerState<AppShell> {
           context.push(route);
         },
       ),
-
       body: Stack(
         children: [
-          // Tab content
           widget.shell,
-
-          // Persistent hamburger FAB — top-left, above SafeArea
           Positioned(
-            top:  MediaQuery.of(context).padding.top + 8,
+            top: MediaQuery.of(context).padding.top + 8,
             left: 12,
             child: _NavToggleButton(
               onTap: () => _scaffoldKey.currentState?.openDrawer(),
@@ -307,7 +525,6 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-// Small frosted-glass hamburger button overlaid on every shell screen
 class _NavToggleButton extends StatelessWidget {
   const _NavToggleButton({required this.onTap, required this.tokens});
   final VoidCallback onTap;
@@ -322,15 +539,15 @@ class _NavToggleButton extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color:        tokens.surface.withValues(alpha: 0.88),
+              color: tokens.surface.withValues(alpha: 0.88),
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border:       Border.all(color: tokens.border),
-              boxShadow:    AppShadows.xs,
+              border: Border.all(color: tokens.border),
+              boxShadow: AppShadows.xs,
             ),
-            child: Icon(LucideIcons.menu,
-                size: 18, color: tokens.textPrimary),
+            child: Icon(LucideIcons.menu, size: 18, color: tokens.textPrimary),
           ),
         ),
       ),

@@ -5,6 +5,9 @@ import '../design/tokens.dart';
 
 // ─────────────────────────────────────────────
 //  PREMIUM INPUT FIELD
+//  • Focused border becomes primary (2px)
+//  • Focused state adds a soft primary glow via BoxShadow
+//  • Content area is taller (min 52px effective height)
 // ─────────────────────────────────────────────
 class PremiumInputField extends StatefulWidget {
   const PremiumInputField({
@@ -53,18 +56,20 @@ class _PremiumInputFieldState extends State<PremiumInputField>
   late final FocusNode _focus = widget.focusNode ?? FocusNode();
   bool _isFocused = false;
 
-  late final AnimationController _borderCtrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 200),
-  );
+  late final AnimationController _borderCtrl;
 
   @override
   void initState() {
     super.initState();
+    _borderCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
     _focus.addListener(_onFocusChange);
   }
 
   void _onFocusChange() {
+    if (!mounted) return;
     setState(() => _isFocused = _focus.hasFocus);
     if (_focus.hasFocus) {
       _borderCtrl.forward();
@@ -75,6 +80,7 @@ class _PremiumInputFieldState extends State<PremiumInputField>
 
   @override
   void dispose() {
+    _focus.removeListener(_onFocusChange);
     if (widget.focusNode == null) _focus.dispose();
     _borderCtrl.dispose();
     super.dispose();
@@ -93,6 +99,24 @@ class _PremiumInputFieldState extends State<PremiumInputField>
     final borderWidth = _isFocused || hasError ? 2.0 : 1.0;
     final fillColor = _isFocused ? t.primarySurface : t.surface;
 
+    // Focus glow: soft primary shadow when focused
+    final glowShadow = _isFocused && !hasError
+        ? [
+            BoxShadow(
+              color: t.primary.withValues(alpha: 0.20),
+              blurRadius: 8,
+              spreadRadius: 0,
+            ),
+          ]
+        : hasError
+            ? [
+                BoxShadow(
+                  color: t.destructive.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                ),
+              ]
+            : <BoxShadow>[];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -100,44 +124,50 @@ class _PremiumInputFieldState extends State<PremiumInputField>
         AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color:        fillColor,
+            color: fillColor,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border:       Border.all(color: borderColor, width: borderWidth),
+            border: Border.all(color: borderColor, width: borderWidth),
+            boxShadow: glowShadow,
           ),
+          // Enforce minimum 52px height for single-line inputs
+          constraints: widget.maxLines == 1
+              ? const BoxConstraints(minHeight: 52)
+              : const BoxConstraints(),
           child: TextField(
-            controller:      widget.controller,
-            focusNode:       _focus,
-            obscureText:     widget.obscureText,
-            keyboardType:    widget.keyboardType,
+            controller: widget.controller,
+            focusNode: _focus,
+            obscureText: widget.obscureText,
+            keyboardType: widget.keyboardType,
             textInputAction: widget.textInputAction,
-            onSubmitted:     widget.onSubmitted,
-            onChanged:       widget.onChanged,
-            autofocus:       widget.autofocus,
-            maxLines:        widget.maxLines,
-            minLines:        widget.minLines,
-            enabled:         widget.enabled,
+            onSubmitted: widget.onSubmitted,
+            onChanged: widget.onChanged,
+            autofocus: widget.autofocus,
+            maxLines: widget.maxLines,
+            minLines: widget.minLines,
+            enabled: widget.enabled,
             style: TextStyle(
-              fontSize:   14,
-              color:      t.textPrimary,
+              fontSize: 14,
+              color: t.textPrimary,
               fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
-              hintText:        widget.hint,
-              labelText:       widget.label,
-              prefixIcon:      widget.prefixIcon != null
+              hintText: widget.hint,
+              labelText: widget.label,
+              prefixIcon: widget.prefixIcon != null
                   ? IconTheme(
                       data: IconThemeData(color: t.textMuted, size: 18),
                       child: widget.prefixIcon!,
                     )
                   : null,
               suffixIcon: widget.suffixIcon,
-              border:         InputBorder.none,
-              enabledBorder:  InputBorder.none,
-              focusedBorder:  InputBorder.none,
-              errorBorder:    InputBorder.none,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
               disabledBorder: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
+              // Vertical padding gives the field its taller feel
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               hintStyle: TextStyle(color: t.textMuted, fontSize: 14),
               labelStyle: TextStyle(color: t.textSecondary, fontSize: 14),
               floatingLabelStyle: TextStyle(
@@ -148,6 +178,7 @@ class _PremiumInputFieldState extends State<PremiumInputField>
             ),
           ),
         ),
+
         // Error text — fades in
         if (widget.errorText != null)
           Padding(
@@ -168,8 +199,9 @@ class _PremiumInputFieldState extends State<PremiumInputField>
 
 // ─────────────────────────────────────────────
 //  PREMIUM BUTTON — gradient fill + shadowGreen
+//  Default height 52px, full-width by default.
 // ─────────────────────────────────────────────
-class PremiumButton extends StatelessWidget {
+class PremiumButton extends StatefulWidget {
   const PremiumButton({
     super.key,
     required this.label,
@@ -196,56 +228,70 @@ class PremiumButton extends StatelessWidget {
   final double minWidth;
 
   @override
+  State<PremiumButton> createState() => _PremiumButtonState();
+}
+
+class _PremiumButtonState extends State<PremiumButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final isDisabled = onPressed == null || loading;
+    final isDisabled = widget.onPressed == null || widget.loading;
 
     return MouseRegion(
-      cursor: isDisabled
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
+      cursor: isDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: isDisabled ? null : onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          height: height,
-          constraints: BoxConstraints(minWidth: minWidth),
-          decoration: BoxDecoration(
-            gradient:     isDisabled ? null : gradient,
-            color:        isDisabled ? const Color(0xFFD9DDD6) : null,
-            borderRadius: BorderRadius.circular(borderRadius),
-            boxShadow:    isDisabled ? [] : shadows,
-          ),
-          child: Center(
-            child: loading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: textColor.withValues(alpha: 0.8),
-                    ),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (icon != null) ...[
-                        IconTheme(
-                          data: IconThemeData(color: textColor, size: 18),
-                          child: icon!,
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        label.toUpperCase(),
-                        style: TextStyle(
-                          color:         textColor,
-                          fontSize:      12,
-                          fontWeight:    FontWeight.w700,
-                          letterSpacing: 1.2,
-                        ),
+        onTap: isDisabled ? null : widget.onPressed,
+        onTapDown: isDisabled ? null : (_) => setState(() => _pressed = true),
+        onTapUp: isDisabled ? null : (_) => setState(() => _pressed = false),
+        onTapCancel: isDisabled ? null : () => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            height: widget.height,
+            constraints: BoxConstraints(minWidth: widget.minWidth),
+            decoration: BoxDecoration(
+              gradient: isDisabled ? null : widget.gradient,
+              color: isDisabled ? const Color(0xFFD9DDD6) : null,
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+              boxShadow: isDisabled || _pressed ? [] : widget.shadows,
+            ),
+            child: Center(
+              child: widget.loading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: widget.textColor.withValues(alpha: 0.8),
                       ),
-                    ],
-                  ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.icon != null) ...[
+                          IconTheme(
+                            data: IconThemeData(
+                                color: widget.textColor, size: 18),
+                            child: widget.icon!,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          widget.label.toUpperCase(),
+                          style: TextStyle(
+                            color: widget.textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),
@@ -289,11 +335,13 @@ class _SocialButtonState extends State<SocialButton> {
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        height: 48,
+        height: 52,
         decoration: BoxDecoration(
           color: _pressed ? t.backgroundSubtle : t.surface,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(color: t.border),
+          boxShadow:
+              _pressed ? [] : AppElevation.level1(Theme.of(context).brightness),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -303,15 +351,15 @@ class _SocialButtonState extends State<SocialButton> {
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2, color: t.primary),
+                        strokeWidth: 2, color: t.primary),
                   )
                 : widget.logoWidget,
             const SizedBox(width: 8),
             Text(
               widget.label,
               style: TextStyle(
-                color:      t.textPrimary,
-                fontSize:   13,
+                color: t.textPrimary,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),

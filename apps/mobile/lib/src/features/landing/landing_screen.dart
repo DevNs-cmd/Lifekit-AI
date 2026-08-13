@@ -16,10 +16,12 @@ class LandingScreen extends StatefulWidget {
 class _LandingScreenState extends State<LandingScreen>
     with TickerProviderStateMixin {
   late final AnimationController _blob1 = AnimationController(
-    vsync: this, duration: const Duration(seconds: 8),
+    vsync: this,
+    duration: const Duration(seconds: 8),
   )..repeat(reverse: true);
   late final AnimationController _blob2 = AnimationController(
-    vsync: this, duration: const Duration(seconds: 11),
+    vsync: this,
+    duration: const Duration(seconds: 11),
   )..repeat(reverse: true);
 
   @override
@@ -54,13 +56,17 @@ class _LandingScreenState extends State<LandingScreen>
                   ),
 
                   // Animated blobs — non-interactive
+                  // Animated blobs — non-interactive
+                  // Positioned.fill must be a direct Stack child.
+                  // AnimatedBuilder goes INSIDE Positioned.fill, not the other way around.
                   if (!reduceMotion) ...[
-                    IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: _blob1,
-                        builder: (_, __) => Positioned.fill(
-                          child: Transform.translate(
-                            offset: Offset(14 * _blob1.value, -10 * _blob1.value),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: _blob1,
+                          builder: (_, __) => Transform.translate(
+                            offset:
+                                Offset(14 * _blob1.value, -10 * _blob1.value),
                             child: const DecoratedBox(
                               decoration: BoxDecoration(
                                 gradient: AppGradients.meshBlob1,
@@ -70,12 +76,13 @@ class _LandingScreenState extends State<LandingScreen>
                         ),
                       ),
                     ),
-                    IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: _blob2,
-                        builder: (_, __) => Positioned.fill(
-                          child: Transform.translate(
-                            offset: Offset(-10 * _blob2.value, 12 * _blob2.value),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: _blob2,
+                          builder: (_, __) => Transform.translate(
+                            offset:
+                                Offset(-10 * _blob2.value, 12 * _blob2.value),
                             child: const DecoratedBox(
                               decoration: BoxDecoration(
                                 gradient: AppGradients.meshBlob2,
@@ -103,9 +110,9 @@ class _LandingScreenState extends State<LandingScreen>
                               const Text(
                                 'LifeKit',
                                 style: TextStyle(
-                                  color:         Colors.white,
-                                  fontSize:      22,
-                                  fontWeight:    FontWeight.w900,
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
                                   letterSpacing: -0.5,
                                 ),
                               ),
@@ -140,9 +147,9 @@ class _LandingScreenState extends State<LandingScreen>
                             child: const Text(
                               'THE AI-POWERED LIFE OS',
                               style: TextStyle(
-                                color:         Color(0xFFD8FFB9),
-                                fontSize:      10,
-                                fontWeight:    FontWeight.w800,
+                                color: Color(0xFFD8FFB9),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
                                 letterSpacing: 1.2,
                               ),
                             ),
@@ -154,10 +161,10 @@ class _LandingScreenState extends State<LandingScreen>
                           const Text(
                             'From ambition\nto measurable\noutcome.',
                             style: TextStyle(
-                              color:         Colors.white,
-                              fontSize:      40,
-                              height:        1.05,
-                              fontWeight:    FontWeight.w900,
+                              color: Colors.white,
+                              fontSize: 40,
+                              height: 1.05,
+                              fontWeight: FontWeight.w900,
                               letterSpacing: -1.5,
                             ),
                           ),
@@ -170,8 +177,8 @@ class _LandingScreenState extends State<LandingScreen>
                             'intelligent plans, and the right next action — '
                             'powered by specialist AI agents.',
                             style: TextStyle(
-                              color:    Colors.white.withValues(alpha: 0.75),
-                              height:   1.55,
+                              color: Colors.white.withValues(alpha: 0.75),
+                              height: 1.55,
                               fontSize: 15,
                             ),
                           ),
@@ -180,10 +187,10 @@ class _LandingScreenState extends State<LandingScreen>
 
                           // CTA button
                           PremiumButton(
-                            label:     'Start building your life',
-                            icon:      const Icon(LucideIcons.arrowRight),
+                            label: 'Start building your life',
+                            icon: const Icon(LucideIcons.arrowRight),
                             onPressed: () => context.push('/auth/sign-up'),
-                            minWidth:  double.infinity,
+                            minWidth: double.infinity,
                           ),
                         ],
                       ),
@@ -210,8 +217,8 @@ class _LandingScreenState extends State<LandingScreen>
 
                 Text(
                   'A complete execution platform — not another disconnected productivity tool.',
-                  style: TextStyle(
-                      color: context.tokens.textMuted, height: 1.5),
+                  style:
+                      TextStyle(color: context.tokens.textMuted, height: 1.5),
                 ),
 
                 const SizedBox(height: 24),
@@ -228,8 +235,7 @@ class _LandingScreenState extends State<LandingScreen>
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               color: context.tokens.primarySurface,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                             child: Icon(item.$2.icon,
                                 color: context.tokens.primary, size: 20),
@@ -247,8 +253,8 @@ class _LandingScreenState extends State<LandingScreen>
                                 Text(
                                   item.$2.desc,
                                   style: TextStyle(
-                                    color:    context.tokens.textMuted,
-                                    height:   1.5,
+                                    color: context.tokens.textMuted,
+                                    height: 1.5,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -265,7 +271,7 @@ class _LandingScreenState extends State<LandingScreen>
 
                 // Secondary CTA
                 PremiumButton(
-                  label:     'Get started free',
+                  label: 'Get started free',
                   onPressed: () => context.push('/auth/sign-up'),
                 ),
 
@@ -277,7 +283,7 @@ class _LandingScreenState extends State<LandingScreen>
                     child: Text(
                       'Already have an account? Sign in',
                       style: TextStyle(
-                          color:      context.tokens.primary,
+                          color: context.tokens.primary,
                           fontWeight: FontWeight.w600),
                     ),
                   ),

@@ -53,6 +53,7 @@ final dioProvider = Provider<Dio>((ref) {
         handler.resolve(await dio.fetch(req));
       } catch (_) {
         await _storage.deleteAll();
+        ref.read(authProvider.notifier).forceSignOutState();
         handler.next(error);
       }
     },
@@ -66,8 +67,7 @@ final authProvider =
 
 class AuthController extends AsyncNotifier<bool> {
   @override
-  Future<bool> build() async =>
-      await _storage.containsKey(key: 'access_token');
+  Future<bool> build() async => await _storage.containsKey(key: 'access_token');
 
   /// POST /auth/login
   Future<bool> signIn(String email, String password) async {
@@ -132,6 +132,11 @@ class AuthController extends AsyncNotifier<bool> {
       }
     } catch (_) {}
     await _storage.deleteAll();
+    state = const AsyncData(false);
+  }
+
+  /// Force auth state update to signed out
+  void forceSignOutState() {
     state = const AsyncData(false);
   }
 }
