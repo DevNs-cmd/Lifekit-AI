@@ -7,6 +7,8 @@ import '../../core/design/tokens.dart';
 import '../../core/repository.dart';
 import '../../core/widgets/empty_state_view.dart';
 
+import '../../core/widgets/premium_card.dart';
+
 class MemoryScreen extends ConsumerStatefulWidget {
   const MemoryScreen({super.key});
 
@@ -61,29 +63,38 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: context.tokens.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
       builder: (ctx) {
         final t = ctx.tokens;
         return Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            top: 24,
             left: 20,
             right: 20,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Add Life Memory Fact',
-                  style: Theme.of(ctx)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
               Text(
-                  'Save key facts, preferences, or context for AI personalized coaching.',
-                  style: TextStyle(color: t.textMuted, fontSize: 13)),
-              const SizedBox(height: 16),
+                'Add Life Memory Fact',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: t.textPrimary,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Save key facts, preferences, or context for AI personalized coaching.',
+                style: TextStyle(color: t.textMuted, fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 20),
               TextField(
                 controller: textCtrl,
                 maxLines: 3,
@@ -93,7 +104,7 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
                       'e.g. Prefer morning focus work, targeting ₹5L savings by October.',
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               TextField(
                 controller: tagCtrl,
                 decoration: const InputDecoration(
@@ -101,7 +112,7 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
                   hintText: 'productivity, finance, schedule',
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               FilledButton(
                 onPressed: () async {
                   final text = textCtrl.text.trim();
@@ -134,16 +145,17 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
       backgroundColor: t.background,
       appBar: AppBar(
         title: const Text('Life Memory Workspace'),
+        centerTitle: false,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddMemorySheet,
-        icon: const Icon(LucideIcons.plus),
+        icon: const Icon(LucideIcons.plus, size: 18),
         label: const Text('Add Memory'),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: TextField(
               controller: _searchCtrl,
               onChanged: (q) => _loadMemories(q),
@@ -176,66 +188,97 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
                     : RefreshIndicator(
                         onRefresh: _loadMemories,
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                           itemCount: _memories.length,
                           itemBuilder: (ctx, idx) {
                             final item = _memories[idx];
                             final id = item['id'] as int? ?? 0;
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
+                            final tags = (item['tags'] as List? ?? []);
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: PremiumCard(
+                                padding: const EdgeInsets.all(16),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       children: [
-                                        Icon(LucideIcons.brain,
-                                            color: t.primary, size: 18),
-                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: t.primarySurface,
+                                            borderRadius:
+                                                BorderRadius.circular(AppRadius.sm),
+                                          ),
+                                          child: Icon(LucideIcons.brain,
+                                              color: t.primary, size: 16),
+                                        ),
+                                        const SizedBox(width: 10),
                                         Expanded(
                                           child: Text(
                                             (item['type'] ?? 'note')
                                                 .toString()
                                                 .toUpperCase(),
                                             style: TextStyle(
-                                                color: t.primary,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 11),
+                                              color: t.primary,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11,
+                                              letterSpacing: 1.0,
+                                            ),
                                           ),
                                         ),
                                         IconButton(
-                                          icon: const Icon(LucideIcons.trash2,
-                                              size: 16),
+                                          icon: Icon(LucideIcons.trash2,
+                                              size: 16, color: t.textMuted),
                                           onPressed: () => _deleteMemory(id),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                              minWidth: 28, minHeight: 28),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 10),
                                     Text(
                                       item['content'] ?? '',
                                       style: TextStyle(
-                                          color: t.textPrimary,
-                                          fontSize: 14,
-                                          height: 1.4),
+                                        color: t.textPrimary,
+                                        fontSize: 14,
+                                        height: 1.5,
+                                      ),
                                     ),
-                                    const SizedBox(height: 10),
-                                    Wrap(
-                                      spacing: 6,
-                                      children: (item['tags'] as List? ?? [])
-                                          .map((tag) {
-                                        return Chip(
-                                          label: Text('#$tag',
-                                              style: const TextStyle(
-                                                  fontSize: 10)),
-                                          padding: EdgeInsets.zero,
-                                        );
-                                      }).toList(),
-                                    ),
+                                    if (tags.isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 6,
+                                        children: tags.map((tag) {
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 9, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: t.backgroundSubtle,
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      AppRadius.full),
+                                              border: Border.all(
+                                                  color: t.border),
+                                            ),
+                                            child: Text(
+                                              '#$tag',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: t.textSecondary,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ],
                                   ],
                                 ),
-                              ),
-                            ).animate().fadeIn(duration: (150 + idx * 100).ms);
+                              ).animate().fadeIn(duration: (120 + idx * 50).ms),
+                            );
                           },
                         ),
                       ),
@@ -245,3 +288,4 @@ class _MemoryScreenState extends ConsumerState<MemoryScreen> {
     );
   }
 }
+

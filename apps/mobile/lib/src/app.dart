@@ -9,6 +9,7 @@ import 'core/api.dart';
 import 'core/theme.dart';
 import 'core/design/tokens.dart';
 import 'core/widgets/premium_side_nav.dart';
+import 'core/widgets/premium_bottom_nav.dart';
 import 'features/admin/admin_screens.dart';
 import 'features/agents/agent_chat_screen.dart';
 import 'features/agents/agents_screen.dart';
@@ -506,6 +507,15 @@ class _AppShellState extends ConsumerState<AppShell> {
         onSecondaryTap: (route) {
           _scaffoldKey.currentState?.closeDrawer();
           context.push(route);
+        },
+      ),
+      bottomNavigationBar: PremiumBottomNav(
+        currentIndex: currentIdx,
+        onTap: (index) {
+          widget.shell.goBranch(
+            index,
+            initialLocation: index == currentIdx,
+          );
         },
       ),
       body: Stack(
