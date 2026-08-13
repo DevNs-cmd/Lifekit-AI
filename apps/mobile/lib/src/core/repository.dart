@@ -131,32 +131,45 @@ class LifeKitRepository {
     String? category,
     String? targetDate,
   }) async {
+    final descText = description ?? title;
     final payload = {
       'title': title,
-      'goal': description ?? title,
-      if (category != null) 'category': category,
-      if (targetDate != null) 'targetDate': targetDate,
+      'description': descText,
+      'category': category ?? 'Career',
+      'goals': [title],
+      'values': ['Growth', 'Excellence'],
+      'longTermObjectives': [descText],
+      'startDate': DateTime.now().toIso8601String(),
+      'targetDate': targetDate ?? DateTime.now().add(const Duration(days: 180)).toIso8601String(),
     };
+    Map<String, dynamic>? createdMission;
     try {
       final res = await _dio.post<dynamic>('/life-missions', data: payload);
       final map = _asMap(_unwrap(res.data));
       if (map.isNotEmpty) {
         _localMissions.insert(0, map);
-        return map;
+        createdMission = map;
       }
     } catch (_) {}
 
-    final newMission = {
-      'id': DateTime.now().millisecondsSinceEpoch,
-      'title': title,
-      'goal': description ?? title,
-      'category': category ?? 'Career',
-      'status': 'ACTIVE',
-      'progress': 0.0,
-      'targetDate': targetDate ?? DateTime.now().add(const Duration(days: 90)).toIso8601String(),
-    };
-    _localMissions.insert(0, newMission);
-    return newMission;
+    if (createdMission == null) {
+      createdMission = {
+        'id': DateTime.now().millisecondsSinceEpoch,
+        'title': title,
+        'goal': descText,
+        'category': category ?? 'Career',
+        'status': 'ACTIVE',
+        'progress': 0.0,
+        'targetDate': targetDate ?? DateTime.now().add(const Duration(days: 180)).toIso8601String(),
+      };
+      _localMissions.insert(0, createdMission);
+    }
+
+    // Trigger AI re-seeding in background so recommendations align with new mission
+    opportunities(forceRefresh: true).catchError((_) => <Map<String, dynamic>>[]);
+    marketplace(forceRefresh: true).catchError((_) => <Map<String, dynamic>>[]);
+
+    return createdMission;
   }
 
   Future<Map<String, dynamic>> updateMission(
