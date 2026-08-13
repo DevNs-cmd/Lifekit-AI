@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/design/tokens.dart';
 import '../../core/repository.dart';
 
+import '../../core/widgets/premium_card.dart';
+
 class OpportunitiesScreen extends ConsumerStatefulWidget {
   const OpportunitiesScreen({super.key});
 
@@ -50,14 +52,15 @@ class _OpportunitiesScreenState extends ConsumerState<OpportunitiesScreen> {
       backgroundColor: t.background,
       appBar: AppBar(
         title: const Text('Goal Opportunities'),
+        centerTitle: false,
       ),
       body: Column(
         children: [
           SizedBox(
-            height: 48,
+            height: 44,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               itemCount: categories.length,
               itemBuilder: (ctx, idx) {
                 final cat = categories[idx];
@@ -82,20 +85,26 @@ class _OpportunitiesScreenState extends ConsumerState<OpportunitiesScreen> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                       itemCount: _items.length,
                       itemBuilder: (ctx, idx) {
                         final item = _items[idx];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: InkWell(
-                            onTap: () {
-                              context.push('/opportunities/${item['id']}',
-                                  extra: item);
-                            },
-                            borderRadius: BorderRadius.circular(AppRadius.xl),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
+                        final matchScore = item['matchScore'] ?? 90;
+                        final company = (item['company'] ?? '').toString();
+                        final location = (item['location'] ?? '').toString();
+                        final salary = (item['salary'] ?? '').toString();
+                        final deadline = (item['deadline'] ?? '').toString();
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: PremiumCard(
+                            padding: const EdgeInsets.all(18),
+                            child: InkWell(
+                              onTap: () {
+                                context.push('/opportunities/${item['id']}',
+                                    extra: item);
+                              },
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -103,65 +112,82 @@ class _OpportunitiesScreenState extends ConsumerState<OpportunitiesScreen> {
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
+                                            horizontal: 9, vertical: 4),
                                         decoration: BoxDecoration(
                                           color: t.primarySurface,
                                           borderRadius: BorderRadius.circular(
                                               AppRadius.full),
+                                          border: Border.all(
+                                              color: t.primary
+                                                  .withValues(alpha: 0.2)),
                                         ),
                                         child: Text(
-                                          '${item['matchScore'] ?? 90}% Match',
+                                          '$matchScore% Match',
                                           style: TextStyle(
-                                              color: t.primary,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11),
+                                            color: t.primary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 11,
+                                          ),
                                         ),
                                       ),
                                       const Spacer(),
-                                      Text(item['deadline'] ?? 'Soon',
-                                          style: TextStyle(
-                                              color: t.textMuted,
-                                              fontSize: 12)),
+                                      Text(
+                                        deadline.isEmpty ? 'Soon' : deadline,
+                                        style: TextStyle(
+                                          color: t.textMuted,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 12),
                                   Text(
                                     item['title'] ?? 'Opportunity Title',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                      color: t.textPrimary,
+                                      letterSpacing: -0.3,
+                                    ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                      '${item['company']} • ${item['location']}',
+                                  if (company.isNotEmpty || location.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '$company${company.isNotEmpty && location.isNotEmpty ? ' • ' : ''}$location',
                                       style: TextStyle(
-                                          color: t.textMuted, fontSize: 12)),
-                                  const SizedBox(height: 8),
-                                  Text(item['description'] ?? '',
-                                      style: TextStyle(
-                                          color: t.textSecondary,
-                                          fontSize: 13)),
-                                  const SizedBox(height: 12),
+                                        color: t.textMuted,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 14),
                                   Row(
                                     children: [
-                                      Text(item['salary'] ?? '',
+                                      if (salary.isNotEmpty)
+                                        Text(
+                                          salary,
                                           style: TextStyle(
-                                              color: t.primary,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13)),
+                                            color: t.primary,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 14,
+                                          ),
+                                        ),
                                       const Spacer(),
-                                      Text('View Opportunity →',
-                                          style: TextStyle(
-                                              color: t.primary,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12)),
+                                      Text(
+                                        'View Details →',
+                                        style: TextStyle(
+                                          color: t.primary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                        ).animate().fadeIn(duration: (150 + idx * 100).ms);
+                          ).animate().fadeIn(duration: (120 + idx * 50).ms),
+                        );
                       },
                     ),
                   ),
@@ -171,3 +197,4 @@ class _OpportunitiesScreenState extends ConsumerState<OpportunitiesScreen> {
     );
   }
 }
+

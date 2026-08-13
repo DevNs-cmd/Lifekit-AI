@@ -6,6 +6,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/api.dart';
 import '../../core/design/tokens.dart';
 
+import '../../core/widgets/premium_card.dart';
+
 class SettingsHubScreen extends ConsumerWidget {
   const SettingsHubScreen({super.key});
 
@@ -67,31 +69,58 @@ class SettingsHubScreen extends ConsumerWidget {
       backgroundColor: t.background,
       appBar: AppBar(
         title: const Text('Settings Hub'),
+        centerTitle: false,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
         children: [
           ...options.map((opt) {
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Icon(opt.$3, color: t.primary),
-                title: Text(opt.$1,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(opt.$2,
-                    style: TextStyle(color: t.textMuted, fontSize: 12)),
-                trailing: const Icon(LucideIcons.chevronRight, size: 18),
-                onTap: () => context.push(opt.$4),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: PremiumCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: t.primarySurface,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Icon(opt.$3, color: t.primary, size: 18),
+                  ),
+                  title: Text(
+                    opt.$1,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: t.textPrimary,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  subtitle: Text(
+                    opt.$2,
+                    style: TextStyle(color: t.textMuted, fontSize: 12),
+                  ),
+                  trailing: Icon(LucideIcons.chevronRight,
+                      size: 16, color: t.textMuted),
+                  onTap: () => context.push(opt.$4),
+                ),
               ),
             );
           }),
-          const SizedBox(height: 20),
-          FilledButton.icon(
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
             onPressed: () async {
               await ref.read(authProvider.notifier).signOut();
               if (context.mounted) context.go('/auth/sign-in');
             },
-            style: FilledButton.styleFrom(backgroundColor: t.destructive),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: t.destructive,
+              side: BorderSide(color: t.destructive.withValues(alpha: 0.3)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
             icon: const Icon(LucideIcons.logOut, size: 16),
             label: const Text('Sign Out'),
           ),
@@ -100,3 +129,4 @@ class SettingsHubScreen extends ConsumerWidget {
     );
   }
 }
+
