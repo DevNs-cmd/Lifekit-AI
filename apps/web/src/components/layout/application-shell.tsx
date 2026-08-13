@@ -76,35 +76,29 @@ export function ApplicationShell({ children }: ApplicationShellProps) {
               // Full-height pages: no ScrollArea wrapper, no padding — they
               // control their own layout with h-[calc(100dvh-4rem)] overflow-hidden
               <div className="flex-1 overflow-hidden">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={pathname}
-                    className="relative z-[1] h-full"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
+                <motion.div
+                  key={pathname}
+                  className="relative z-[1] h-full"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
+                  {children}
+                </motion.div>
               </div>
             ) : (
               <ScrollArea className="flex-1">
                 {/* pb-20 clears the fixed bottom nav on mobile; lg:pb-8 on desktop */}
                 <main className="app-canvas min-h-[calc(100dvh-4rem)] pb-20 lg:pb-8">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={pathname}
-                      className="relative z-[1]"
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.18, ease: "easeOut" }}
-                    >
-                      {children}
-                    </motion.div>
-                  </AnimatePresence>
+                  <motion.div
+                    key={pathname}
+                    className="relative z-[1]"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                  >
+                    {children}
+                  </motion.div>
                 </main>
               </ScrollArea>
             )}
