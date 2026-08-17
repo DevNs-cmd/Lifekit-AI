@@ -1,6 +1,8 @@
 // ignore_for_file: non_constant_identifier_names
-/// LifeKit Mobile Design System Tokens
-/// Adheres to 80% neutral, 15% structure, 5% organic forest green (#217C45) ratio.
+// LifeKit Mobile Design System Tokens
+// Adheres to 80% neutral, 15% structure, 5% organic forest green (#217C45) ratio.
+library;
+
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────

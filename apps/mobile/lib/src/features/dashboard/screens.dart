@@ -142,24 +142,25 @@ final dashboardProvider = FutureProvider<void>((ref) async {
     repo.missions().catchError((_) => <Map<String, dynamic>>[]),
     repo.profile().catchError((_) => <String, dynamic>{}),
     repo.unreadNotificationCount().catchError((_) => 0),
+    repo.tasks().catchError((_) => <Map<String, dynamic>>[]),
   ]);
   final rawMissions = results[0] as List<Map<String, dynamic>>;
   ref.read(profileProvider.notifier).state = results[1] as Map<String, dynamic>;
   ref.read(notifCountProvider.notifier).state = results[2] as int;
   final missions = rawMissions.map(MissionData.fromJson).toList();
   ref.read(missionsProvider.notifier).state = missions;
-  if (missions.isNotEmpty) {
-    final taskResults = await Future.wait(
-      missions.take(3).map((m) => repo
-          .tasks(missionId: m.id)
-          .catchError((_) => <Map<String, dynamic>>[])),
-    );
-    final allTasks = taskResults.indexed
-        .expand((item) =>
-            item.$2.map((t) => TaskData.fromJson(t, missions[item.$1].title)))
-        .toList();
-    ref.read(tasksProvider.notifier).state = allTasks;
-  }
+
+  final rawTasks = results[3] as List<Map<String, dynamic>>;
+  final missionTitleMap = <dynamic, String>{
+    for (final m in missions) m.id: m.title,
+  };
+  final tasks = rawTasks
+      .map((t) => TaskData.fromJson(
+            t,
+            missionTitleMap[t['missionId']] ?? 'General Task',
+          ))
+      .toList();
+  ref.read(tasksProvider.notifier).state = tasks;
 });
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -2571,6 +2572,7 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                       .read(repositoryProvider)
                       .createTask(missionId: selectedMissionId!, title: title)
                       .catchError((_) => <String, dynamic>{});
+                  ref.invalidate(dashboardProvider);
                 },
               ),
             ]),
@@ -4504,7 +4506,7 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
                   .read(repositoryProvider)
                   .setTaskStatus(
                       item.$2.id, item.$2.done ? 'PENDING' : 'COMPLETED')
-                  .catchError((_) {});
+                  .catchError((_) => <String, dynamic>{});
               widget.onRefresh();
             },
           )),
@@ -4980,6 +4982,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           ),
         ),
       );
+      return <String, dynamic>{};
     });
   }
 

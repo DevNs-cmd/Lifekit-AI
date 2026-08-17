@@ -103,11 +103,77 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             setState(() => _error = msg);
           }
         case AuthMode.signUp:
-          if (mounted) context.go('/onboarding');
+          final name = _nameCtrl.text.trim().isEmpty ? 'LifeKit User' : _nameCtrl.text.trim();
+          final ok = await ref
+              .read(authProvider.notifier)
+              .register(name, _emailCtrl.text.trim(), _passwordCtrl.text);
+          if (!mounted) return;
+          if (ok) {
+            context.go('/onboarding');
+          } else {
+            final authState = ref.read(authProvider);
+            final msg = authState.error != null
+                ? _friendlyError(authState.error!)
+                : 'Registration failed. Please check your information.';
+            setState(() => _error = msg);
+          }
         case AuthMode.forgot:
           if (mounted) context.go('/auth/verify-email');
         default:
           if (mounted) context.go('/auth/sign-in');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = _friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _handleSocialAuth(String providerId) async {
+    final email = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _SocialAuthBottomSheet(providerId: providerId),
+    );
+
+    if (email == null || email.trim().isEmpty) return;
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      const password = 'SocialPass123!';
+      final emailPrefix = email.trim().split('@')[0];
+      final parts = emailPrefix.split(RegExp(r'[._\-+]'));
+      final parsedName = parts
+          .where((p) => p.isNotEmpty)
+          .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+          .join(' ');
+      final fullName = parsedName.isEmpty
+          ? '${providerId[0].toUpperCase()}${providerId.substring(1)} User'
+          : parsedName;
+
+      try {
+        await ref
+            .read(authProvider.notifier)
+            .register(fullName, email.trim(), password);
+      } catch (_) {}
+
+      final ok =
+          await ref.read(authProvider.notifier).signIn(email.trim(), password);
+
+      if (!mounted) return;
+      if (ok) {
+        if (widget.mode == AuthMode.signUp) {
+          context.go('/onboarding');
+        } else {
+          context.go('/home');
+        }
+      } else {
+        setState(() => _error = 'Social authentication failed.');
       }
     } catch (e) {
       if (mounted) setState(() => _error = _friendlyError(e));
@@ -159,8 +225,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                   ),
                 ),
                 // Animated blobs
-                // Animated blobs — Positioned.fill must be a direct Stack child.
-                // AnimatedBuilder goes INSIDE Positioned.fill.
                 if (!reduceMotion) ...[
                   Positioned.fill(
                     child: IgnorePointer(
@@ -304,6 +368,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
                         loading: _loading,
                         error: _error,
                         onSubmit: _submit,
+                        onSocialAuth: _handleSocialAuth,
                         onForgot: () => context.push('/auth/forgot-password'),
                         onToggleMode: () => context.go(
                           widget.mode == AuthMode.signIn
@@ -341,6 +406,7 @@ class _FormContent extends StatelessWidget {
     required this.loading,
     required this.error,
     required this.onSubmit,
+    required this.onSocialAuth,
     required this.onForgot,
     required this.onToggleMode,
   });
@@ -351,6 +417,7 @@ class _FormContent extends StatelessWidget {
   final bool obscure, loading;
   final String? error;
   final VoidCallback onToggleObscure, onSubmit, onForgot, onToggleMode;
+  final ValueChanged<String> onSocialAuth;
 
   @override
   Widget build(BuildContext context) {
@@ -520,7 +587,7 @@ class _FormContent extends StatelessWidget {
                         child: SocialButton(
                           label: p.label,
                           logoWidget: p.icon,
-                          onTap: () {},
+                          onTap: () => onSocialAuth(p.id),
                         ),
                       ),
                     ),
@@ -549,30 +616,200 @@ class _FormContent extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  SOCIAL AUTH BOTTOM SHEET
+// ─────────────────────────────────────────────────────────────────
+class _SocialAuthBottomSheet extends StatefulWidget {
+  const _SocialAuthBottomSheet({required this.providerId});
+  final String providerId;
+
+  @override
+  State<_SocialAuthBottomSheet> createState() => _SocialAuthBottomSheetState();
+}
+
+class _SocialAuthBottomSheetState extends State<_SocialAuthBottomSheet> {
+  final _emailCtrl = TextEditingController();
+
+  List<String> get _suggestedEmails => switch (widget.providerId.toLowerCase()) {
+        'google' => const [
+            'arjun.sharma@gmail.com',
+            'harshita.dev@gmail.com',
+            'demo.user@gmail.com',
+          ],
+        'github' => const [
+            'git.coder@github.com',
+            'harshita-pc@github.com',
+            'open-source-fan@github.com',
+          ],
+        _ => const [
+            'harshita.pc@linkedin.com',
+            'professional.lead@linkedin.com',
+            'h.pc@linkedin.com',
+          ],
+      };
+
+  String get _providerName =>
+      widget.providerId[0].toUpperCase() + widget.providerId.substring(1);
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        20,
+        24,
+        24 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      decoration: BoxDecoration(
+        color: t.surface,
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        boxShadow: AppShadows.xl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: t.border,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _kSocials
+                  .firstWhere(
+                    (s) => s.id == widget.providerId.toLowerCase(),
+                    orElse: () => _kSocials.first,
+                  )
+                  .icon,
+              const SizedBox(width: 10),
+              Text(
+                'Continue with $_providerName',
+                style: TextStyle(
+                  color: t.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Select a suggested account or enter your email to continue:',
+            style: TextStyle(color: t.textMuted, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          for (final email in _suggestedEmails) ...[
+            InkWell(
+              onTap: () => Navigator.of(context).pop(email),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: t.background,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: t.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.mail, size: 16, color: t.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        email,
+                        style: TextStyle(
+                          color: t.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Icon(LucideIcons.chevronRight,
+                        size: 16, color: t.textMuted),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: Divider(color: t.border)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text('OR USE CUSTOM EMAIL',
+                    style: TextStyle(color: t.textMuted, fontSize: 10, fontWeight: FontWeight.w700)),
+              ),
+              Expanded(child: Divider(color: t.border)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          PremiumInputField(
+            controller: _emailCtrl,
+            hint: 'you@example.com',
+            prefixIcon: const Icon(LucideIcons.mail),
+            keyboardType: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 16),
+          PremiumButton(
+            label: 'Continue with Email',
+            onPressed: () {
+              final e = _emailCtrl.text.trim();
+              if (e.isNotEmpty && e.contains('@')) {
+                Navigator.of(context).pop(e);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  SOCIAL PROVIDER DATA
 // ─────────────────────────────────────────────────────────────────
 class _SocialProvider {
-  const _SocialProvider({required this.label, required this.icon});
+  const _SocialProvider({required this.id, required this.label, required this.icon});
+  final String id;
   final String label;
   final Widget icon;
 }
 
-const _kSocials = [
-  _SocialProvider(
+final _kSocials = [
+  const _SocialProvider(
+    id: 'google',
     label: 'Google',
     icon: _GoogleIcon(),
   ),
-  _SocialProvider(
+  const _SocialProvider(
+    id: 'github',
     label: 'GitHub',
-    icon: Icon(LucideIcons.code, size: 18),
+    icon: _GitHubIcon(),
   ),
-  _SocialProvider(
+  const _SocialProvider(
+    id: 'linkedin',
     label: 'LinkedIn',
     icon: _LinkedInIcon(),
   ),
 ];
 
-// ── Google icon ───────────────────────────────
+// ── Official Google "G" icon painter ──────────────────────────────
 class _GoogleIcon extends StatelessWidget {
   const _GoogleIcon();
 
@@ -589,33 +826,121 @@ class _GoogleIcon extends StatelessWidget {
 class _GooglePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paints = [
-      Paint()..color = const Color(0xFF4285F4),
-      Paint()..color = const Color(0xFF34A853),
-      Paint()..color = const Color(0xFFFBBC05),
-      Paint()..color = const Color(0xFFEA4335),
-    ];
-    // Four coloured quadrant arcs as a simplified Google-style icon
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width / 2;
-    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r), -1.57,
-        1.57, true, paints[0]);
-    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r), 0, 1.57,
-        true, paints[1]);
-    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r), 1.57,
-        1.57, true, paints[2]);
-    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r), 3.14,
-        1.57, true, paints[3]);
-    // White centre circle
-    canvas.drawCircle(Offset(cx, cy), r * 0.55, Paint()..color = Colors.white);
+    final double w = size.width;
+    final double h = size.height;
+    final double cx = w / 2;
+    final double cy = h / 2;
+    final double strokeW = w * 0.22;
+    final double r = (w - strokeW) / 2;
+    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r);
+
+    // Blue (#4285F4)
+    final bluePaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.butt;
+    canvas.drawArc(rect, -0.7, 1.2, false, bluePaint);
+
+    // Green (#34A853)
+    final greenPaint = Paint()
+      ..color = const Color(0xFF34A853)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.butt;
+    canvas.drawArc(rect, 0.5, 1.8, false, greenPaint);
+
+    // Yellow (#FBBC05)
+    final yellowPaint = Paint()
+      ..color = const Color(0xFFFBBC05)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.butt;
+    canvas.drawArc(rect, 2.3, 1.2, false, yellowPaint);
+
+    // Red (#EA4335)
+    final redPaint = Paint()
+      ..color = const Color(0xFFEA4335)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.butt;
+    canvas.drawArc(rect, 3.5, 1.4, false, redPaint);
+
+    // Blue horizontal arm for "G"
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(
+      Rect.fromLTRB(cx - 1, cy - strokeW / 2, w, cy + strokeW / 2),
+      barPaint,
+    );
   }
 
   @override
-  bool shouldRepaint(_) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// ── LinkedIn icon ─────────────────────────────
+// ── Official GitHub icon painter ──────────────────────────────────
+class _GitHubIcon extends StatelessWidget {
+  const _GitHubIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: CustomPaint(painter: _GitHubPainter()),
+    );
+  }
+}
+
+class _GitHubPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF24292F)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    final w = size.width;
+    final h = size.height;
+
+    path.moveTo(w * 0.5, h * 0.08);
+    path.cubicTo(w * 0.27, h * 0.08, w * 0.08, h * 0.27, w * 0.08, h * 0.5);
+    path.cubicTo(w * 0.08, h * 0.68, w * 0.2, h * 0.84, w * 0.37, h * 0.9);
+    path.cubicTo(w * 0.39, h * 0.9, w * 0.4, h * 0.89, w * 0.4, h * 0.88);
+    path.cubicTo(w * 0.4, h * 0.84, w * 0.4, h * 0.77, w * 0.4, h * 0.73);
+    path.cubicTo(w * 0.28, h * 0.76, w * 0.26, h * 0.68, w * 0.26, h * 0.68);
+    path.cubicTo(w * 0.24, h * 0.63, h * 0.21, w * 0.62, h * 0.21, w * 0.62);
+    path.cubicTo(w * 0.17, h * 0.59, w * 0.21, h * 0.59, w * 0.21, h * 0.59);
+    path.cubicTo(w * 0.25, h * 0.6, w * 0.28, h * 0.64, w * 0.28, h * 0.64);
+    path.cubicTo(w * 0.32, h * 0.7, w * 0.38, h * 0.68, w * 0.4, h * 0.67);
+    path.cubicTo(w * 0.41, h * 0.64, w * 0.42, h * 0.62, w * 0.43, h * 0.61);
+    path.cubicTo(w * 0.34, h * 0.6, w * 0.24, h * 0.56, w * 0.24, h * 0.4);
+    path.cubicTo(w * 0.24, h * 0.35, w * 0.26, h * 0.31, w * 0.28, h * 0.28);
+    path.cubicTo(w * 0.28, h * 0.27, w * 0.26, h * 0.23, w * 0.29, h * 0.17);
+    path.cubicTo(w * 0.29, h * 0.17, w * 0.33, h * 0.16, w * 0.41, h * 0.21);
+    path.cubicTo(w * 0.44, h * 0.2, w * 0.47, h * 0.2, w * 0.5, h * 0.2);
+    path.cubicTo(w * 0.53, h * 0.2, w * 0.56, h * 0.2, w * 0.59, h * 0.21);
+    path.cubicTo(w * 0.67, h * 0.16, w * 0.71, h * 0.17, w * 0.71, h * 0.17);
+    path.cubicTo(w * 0.74, h * 0.23, w * 0.72, h * 0.27, w * 0.72, h * 0.28);
+    path.cubicTo(w * 0.74, h * 0.31, w * 0.76, h * 0.35, w * 0.76, h * 0.4);
+    path.cubicTo(w * 0.76, h * 0.56, w * 0.66, h * 0.6, w * 0.57, h * 0.61);
+    path.cubicTo(w * 0.58, h * 0.62, w * 0.6, h * 0.65, w * 0.6, h * 0.69);
+    path.cubicTo(w * 0.6, h * 0.75, w * 0.6, h * 0.79, w * 0.6, h * 0.81);
+    path.cubicTo(w * 0.6, h * 0.82, w * 0.61, h * 0.83, w * 0.63, h * 0.83);
+    path.cubicTo(w * 0.79, h * 0.77, w * 0.92, h * 0.61, w * 0.92, h * 0.43);
+    path.cubicTo(w * 0.92, h * 0.24, w * 0.73, h * 0.08, w * 0.5, h * 0.08);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ── Official LinkedIn icon ────────────────────────────────────────
 class _LinkedInIcon extends StatelessWidget {
   const _LinkedInIcon();
 
@@ -624,7 +949,7 @@ class _LinkedInIcon extends StatelessWidget {
         width: 18,
         height: 18,
         decoration: BoxDecoration(
-          color: const Color(0xFF0077B5),
+          color: const Color(0xFF0A66C2),
           borderRadius: BorderRadius.circular(3),
         ),
         child: const Center(
@@ -633,7 +958,8 @@ class _LinkedInIcon extends StatelessWidget {
             style: TextStyle(
               color: Colors.white,
               fontSize: 10,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
             ),
           ),
         ),

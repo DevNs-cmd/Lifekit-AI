@@ -35,7 +35,7 @@ import { LifeMission } from "../entities/life-mission.entity";
 @ApiTags("Life Missions")
 @ApiBearerAuth("JWT-auth")
 @UseGuards(JwtAuthGuard)
-@Controller("life-missions")
+@Controller(["life-missions", "missions"])
 export class LifeMissionController {
   constructor(private readonly lifeMissionService: LifeMissionService) {}
 

@@ -35,7 +35,7 @@ import { Memory } from "../entities/memory.entity";
 @ApiTags("Memories")
 @ApiBearerAuth("JWT-auth")
 @UseGuards(JwtAuthGuard)
-@Controller("memories")
+@Controller(["memories", "user/memories"])
 export class MemoryController {
   constructor(private readonly memoryService: MemoryService) {}
 

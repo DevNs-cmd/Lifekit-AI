@@ -57,7 +57,7 @@ class _AgentChatScreenState extends ConsumerState<AgentChatScreen> {
       setState(() {
         _messages.add({
           'sender': 'agent',
-          'text': res['message'] ?? 'Action plan updated.',
+          'text': res['output'] ?? res['message'] ?? 'Action plan updated.',
           'time': 'Just now',
         });
         _sending = false;

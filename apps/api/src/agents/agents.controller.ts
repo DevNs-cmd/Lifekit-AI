@@ -1,4 +1,4 @@
-﻿import {
+import {
   Controller,
   Get,
   Post,
@@ -26,7 +26,7 @@ import { SetTimeout } from "../common/interceptors/timeout.interceptor";
 @ApiTags("Agents")
 @ApiBearerAuth("JWT-auth")
 @UseGuards(JwtAuthGuard)
-@Controller("agents")
+@Controller(["agents", "ai/agents"])
 export class AgentsController {
   constructor(private readonly agentsService: AgentsService) {}
 
@@ -65,13 +65,13 @@ export class AgentsController {
     return this.agentsService.getAgent(id);
   }
 
-  @Post("run")
+  @Post(["run", ":agentId/chat"])
   @HttpCode(HttpStatus.CREATED)
   // Orchestrator makes 6+ sequential LLM calls and is allowed up to 90s
   // internally (see agents.service.ts) - override the global 60s
   // TimeoutInterceptor default so Nest doesn't kill the request early.
   @SetTimeout(95_000)
-  @ApiOperation({ summary: "Run an AI agent task execution" })
+  @ApiOperation({ summary: "Run an AI agent task execution or chat session" })
   @ApiBody({ type: AgentRequestDto })
   @ApiCreatedResponse({
     description: "AI agent task completed successfully",
@@ -79,8 +79,15 @@ export class AgentsController {
   })
   async runAgent(
     @CurrentUser("user_id") userId: number,
-    @Body() dto: AgentRequestDto,
+    @Param("agentId") paramAgentId: string,
+    @Body() dto: any,
   ): Promise<AgentResponseDto> {
-    return this.agentsService.run(userId, dto);
+    const agentType = dto.agentType || paramAgentId || "agent-coach";
+    const userInput = dto.userInput || dto.message || "Analyze my goals";
+    return this.agentsService.run(userId, {
+      agentType,
+      userInput,
+      contextData: dto.contextData || {},
+    });
   }
 }

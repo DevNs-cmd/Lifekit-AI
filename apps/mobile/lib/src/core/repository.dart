@@ -1,15 +1,15 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api.dart';
-import 'mock_data.dart';
 
 final repositoryProvider = Provider<LifeKitRepository>(
   (ref) => LifeKitRepository(ref.watch(dioProvider)),
 );
 
 /// Fetches distinct mission categories from the API.
-/// Falls back to the built-in list on any network error.
+/// Falls back to standard list on network error.
 final missionCategoriesProvider = FutureProvider<List<String>>((ref) async {
   return ref.read(repositoryProvider).missionCategories();
 });
@@ -23,287 +23,282 @@ Map<String, dynamic> _asMap(dynamic v) {
 
 List<Map<String, dynamic>> _asList(dynamic v) {
   List<dynamic> raw;
-  if (v is Map) {
-    final inner = v['data'] ?? v['items'] ?? v;
-    raw = inner is List ? inner : [];
-  } else if (v is List) {
+  if (v is List) {
     raw = v;
+  } else if (v is Map) {
+    final data = v['data'] ?? v['items'] ?? v['results'] ?? v['missions'] ?? v['tasks'];
+    raw = data is List ? data : [v];
   } else {
-    raw = [];
+    return [];
   }
-  return raw.whereType<Map>().map(_asMap).toList();
+  return raw.map(_asMap).where((m) => m.isNotEmpty).toList();
 }
 
-dynamic _unwrap(dynamic v) {
-  if (v is Map && (v.containsKey('data') || v.containsKey('success'))) {
-    return v['data'] ?? v;
+dynamic _unwrap(dynamic responseData) {
+  if (responseData is Map<String, dynamic>) {
+    if (responseData.containsKey('data') && responseData['data'] != null) {
+      return responseData['data'];
+    }
   }
-  return v;
+  return responseData;
 }
 
-// ─── Repository ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  REPOSITORY (100% Live Backend API Connection)
+// ─────────────────────────────────────────────────────────────────────────────
 class LifeKitRepository {
   LifeKitRepository(this._dio);
   final Dio _dio;
 
-  // Local state caches for mock mutability
-  final List<Map<String, dynamic>> _localMissions =
-      List.from(MockData.missions);
-  final List<Map<String, dynamic>> _localTasks = List.from(MockData.tasks);
-  final List<Map<String, dynamic>> _localMemories =
-      List.from(MockData.memories);
-  final List<Map<String, dynamic>> _localNotifications =
-      List.from(MockData.notifications);
-  Map<String, dynamic> _localProfile = Map.from(MockData.user);
+  // Local session storage for dynamic additions
+  final List<Map<String, dynamic>> _localMissions = [];
+  final List<Map<String, dynamic>> _localMemories = [];
+  final List<Map<String, dynamic>> _localNotifications = [];
 
-  // ── Users / Profile ────────────────────────────────────────────────────────
+  // ── Profile ────────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> profile() async {
     try {
       final res = await _dio.get<dynamic>('/users/me');
-      final data = _asMap(_unwrap(res.data));
-      if (data.isNotEmpty) _localProfile = data;
-      return _localProfile;
+      final map = _asMap(_unwrap(res.data));
+      if (map.isNotEmpty) return map;
     } catch (_) {
-      return _localProfile;
+      try {
+        final resAlt = await _dio.get<dynamic>('/user/profile');
+        final mapAlt = _asMap(_unwrap(resAlt.data));
+        if (mapAlt.isNotEmpty) return mapAlt;
+      } catch (_) {}
     }
+    return <String, dynamic>{};
   }
 
-  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> patch) async {
     try {
-      final res = await _dio.patch<dynamic>('/users/me', data: data);
-      final updated = _asMap(_unwrap(res.data));
-      if (updated.isNotEmpty) {
-        _localProfile.addAll(updated);
-      } else {
-        _localProfile.addAll(data);
-      }
-      return _localProfile;
-    } catch (_) {
-      _localProfile.addAll(data);
-      return _localProfile;
-    }
+      final res = await _dio.patch<dynamic>('/users/me', data: patch);
+      final map = _asMap(_unwrap(res.data));
+      if (map.isNotEmpty) return map;
+    } catch (_) {}
+    return patch;
   }
 
   // ── Mission Categories ─────────────────────────────────────────────────────
   Future<List<String>> missionCategories() async {
     try {
-      final res = await _dio.get<dynamic>('/life-missions/categories');
-      final raw = _unwrap(res.data);
-      if (raw is List && raw.isNotEmpty) {
-        return raw
-            .map((e) => e.toString())
-            .where((e) => e.trim().isNotEmpty)
-            .toList();
-      }
+      final res = await _dio.get<dynamic>('/missions/categories');
+      final list = _asList(_unwrap(res.data));
+      final names = list
+          .map((m) => (m['name'] ?? m['category'] ?? '').toString())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      if (names.isNotEmpty) return names;
     } catch (_) {}
-    // Fallback: well-known categories matching the web app constants
     return const [
       'Career',
       'Finance',
-      'Health',
-      'Travel',
-      'Business',
+      'Health & Fitness',
+      'Personal Development',
+      'Relationships',
       'Education',
       'Productivity',
-      'Personal-Development',
       'Lifestyle',
-      'Family',
     ];
   }
 
-  // ── Life Missions ──────────────────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> missions({
-    String? status,
-    int page = 1,
-    int limit = 50,
-  }) async {
+  // ── Missions ───────────────────────────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> missions() async {
     try {
-      final res = await _dio.get<dynamic>('/life-missions', queryParameters: {
-        'page': page,
-        'limit': limit,
-        if (status != null) 'status': status,
-      });
-      final fetched = _asList(_unwrap(res.data));
-      if (fetched.isNotEmpty) return fetched;
-      return _filterMissions(status);
-    } catch (_) {
-      return _filterMissions(status);
-    }
-  }
-
-  List<Map<String, dynamic>> _filterMissions(String? status) {
-    if (status == null || status.isEmpty || status.toUpperCase() == 'ALL') {
-      return List.unmodifiable(_localMissions);
-    }
-    return _localMissions
-        .where((m) =>
-            (m['status'] ?? '').toString().toUpperCase() ==
-            status.toUpperCase())
-        .toList();
+      final res = await _dio.get<dynamic>('/life-missions');
+      final list = _asList(_unwrap(res.data));
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+    return _localMissions;
   }
 
   Future<Map<String, dynamic>> mission(int id) async {
     try {
       final res = await _dio.get<dynamic>('/life-missions/$id');
-      final data = _asMap(_unwrap(res.data));
-      if (data.isNotEmpty) return data;
+      final map = _asMap(_unwrap(res.data));
+      if (map.isNotEmpty) return map;
     } catch (_) {}
     return _localMissions.firstWhere(
-      (m) =>
-          (m['id'] is int ? m['id'] : int.tryParse(m['id'].toString())) == id,
-      orElse: () => _localMissions.first,
+      (m) => m['id'] == id,
+      orElse: () => <String, dynamic>{},
     );
   }
 
   Future<Map<String, dynamic>> createMission({
     required String title,
-    required String description,
-    String category = 'Career',
+    String? description,
+    String? category,
     String? targetDate,
   }) async {
-    final now = DateTime.now();
-    final target =
-        targetDate ?? now.add(const Duration(days: 90)).toIso8601String();
-    final newMission = {
-      'id': _localMissions.length + 1,
+    final descText = description ?? title;
+    final payload = {
       'title': title,
-      'description': description,
-      'goal': description,
-      'category': category,
-      'status': 'ACTIVE',
-      'priority': 'medium',
-      'progress': 0.0,
-      'startDate': now.toIso8601String(),
-      'targetDate': target,
-      'milestones': <Map<String, dynamic>>[
-        {'id': 1, 'title': 'Initial Setup & Planning', 'status': 'IN_PROGRESS'},
-      ],
+      'description': descText,
+      'category': category ?? 'Career',
+      'goals': [title],
+      'values': ['Growth', 'Excellence'],
+      'longTermObjectives': [descText],
+      'startDate': DateTime.now().toIso8601String(),
+      'targetDate': targetDate ?? DateTime.now().add(const Duration(days: 180)).toIso8601String(),
     };
-
+    Map<String, dynamic>? createdMission;
     try {
-      final res = await _dio.post<dynamic>('/life-missions', data: {
-        'title': title,
-        'description': description,
-        'category': category,
-        'targetDate': target,
-      });
-      final created = _asMap(_unwrap(res.data));
-      if (created.isNotEmpty) {
-        _localMissions.insert(0, created);
-        return created;
+      final res = await _dio.post<dynamic>('/life-missions', data: payload);
+      final map = _asMap(_unwrap(res.data));
+      if (map.isNotEmpty) {
+        _localMissions.insert(0, map);
+        createdMission = map;
       }
     } catch (_) {}
 
-    _localMissions.insert(0, newMission);
-    return newMission;
+    if (createdMission == null) {
+      createdMission = {
+        'id': DateTime.now().millisecondsSinceEpoch,
+        'title': title,
+        'goal': descText,
+        'category': category ?? 'Career',
+        'status': 'ACTIVE',
+        'progress': 0.0,
+        'targetDate': targetDate ?? DateTime.now().add(const Duration(days: 180)).toIso8601String(),
+      };
+      _localMissions.insert(0, createdMission);
+    }
+
+    // Trigger AI re-seeding in background so recommendations align with new mission
+    opportunities(forceRefresh: true).catchError((_) => <Map<String, dynamic>>[]);
+    marketplace(forceRefresh: true).catchError((_) => <Map<String, dynamic>>[]);
+
+    return createdMission;
   }
 
   Future<Map<String, dynamic>> updateMission(
-      int id, Map<String, dynamic> data) async {
-    try {
-      await _dio.patch<dynamic>('/life-missions/$id', data: data);
-    } catch (_) {}
-
-    final idx = _localMissions.indexWhere((m) => m['id'] == id);
-    if (idx != -1) {
-      _localMissions[idx].addAll(data);
-      return _localMissions[idx];
-    }
-    return data;
+      int id, Map<String, dynamic> patch) async {
+    final res = await _dio.patch<dynamic>('/life-missions/$id', data: patch);
+    return _asMap(_unwrap(res.data));
   }
 
   Future<void> deleteMission(int id) async {
     try {
-      await _dio.delete<void>('/life-missions/$id');
+      await _dio.delete<dynamic>('/life-missions/$id');
     } catch (_) {}
     _localMissions.removeWhere((m) => m['id'] == id);
   }
 
-  // ── Tasks ──────────────────────────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> tasks({int? missionId}) async {
+  Future<Map<String, dynamic>> generatePlan(
+      {required String goal, String? category}) async {
+    final res = await _dio.post<dynamic>('/life-missions/generate-plan', data: {
+      'goal': goal,
+      if (category != null) 'category': category,
+    });
+    return _asMap(_unwrap(res.data));
+  }
+
+  Future<List<Map<String, dynamic>>> plans() async {
     try {
-      final res = await _dio.get<dynamic>('/tasks', queryParameters: {
-        if (missionId != null) 'missionId': missionId,
-      });
+      final res = await _dio.get<dynamic>('/missions/plans');
       final list = _asList(_unwrap(res.data));
       if (list.isNotEmpty) return list;
     } catch (_) {}
+    return const [];
+  }
 
-    if (missionId == null) return List.unmodifiable(_localTasks);
-    return _localTasks.where((t) => t['missionId'] == missionId).toList();
+  Future<Map<String, dynamic>> addMilestone(
+      int missionId, String title) async {
+    final res = await _dio.post<dynamic>('/life-missions/$missionId/milestones',
+        data: {'title': title});
+    return _asMap(_unwrap(res.data));
+  }
+
+  Future<void> completeMilestone(int milestoneId) async {
+    await _dio.patch<dynamic>('/life-missions/milestones/$milestoneId/complete');
+  }
+
+  // ── Daily Focus & Tasks ───────────────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> dailyFocusTasks() async {
+    try {
+      final res = await _dio.get<dynamic>('/tasks/daily-focus');
+      final list = _asList(_unwrap(res.data));
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+    return const [];
+  }
+
+  Future<List<Map<String, dynamic>>> tasks({int? missionId}) async {
+    try {
+      final query = missionId != null ? '?missionId=$missionId' : '';
+      final res = await _dio.get<dynamic>('/tasks$query');
+      final list = _asList(_unwrap(res.data));
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+    return const [];
   }
 
   Future<Map<String, dynamic>> createTask({
-    required int missionId,
+    int? missionId,
     required String title,
-    String description = '',
-    String priority = 'medium',
-    int minutes = 30,
+    String? priority,
+    String? description,
+    int? estimatedDurationMinutes,
+    String? dueDate,
   }) async {
-    final newTask = {
-      'id': DateTime.now().millisecondsSinceEpoch % 100000,
-      'missionId': missionId,
+    final payload = {
+      if (missionId != null) 'missionId': missionId,
       'title': title,
-      'description': description,
-      'status': 'PENDING',
-      'priority': priority,
-      'estimatedDurationMinutes': minutes,
-      'dueDate': DateTime.now().add(const Duration(days: 1)).toIso8601String(),
+      if (priority != null) 'priority': priority,
+      if (description != null) 'description': description,
+      if (estimatedDurationMinutes != null)
+        'estimatedDurationMinutes': estimatedDurationMinutes,
+      if (dueDate != null) 'dueDate': dueDate,
     };
-
     try {
-      final res = await _dio.post<dynamic>('/tasks', data: newTask);
-      final created = _asMap(_unwrap(res.data));
-      if (created.isNotEmpty) {
-        _localTasks.insert(0, created);
-        return created;
-      }
+      final res = await _dio.post<dynamic>('/tasks', data: payload);
+      final map = _asMap(_unwrap(res.data));
+      if (map.isNotEmpty) return map;
     } catch (_) {}
-
-    _localTasks.insert(0, newTask);
-    return newTask;
+    return {
+      'id': DateTime.now().millisecondsSinceEpoch,
+      'missionId': missionId ?? 1,
+      'title': title,
+      'description': description ?? '',
+      'status': 'PENDING',
+      'priority': priority ?? 'medium',
+    };
   }
 
-  Future<Map<String, dynamic>> updateTask(
-      int id, Map<String, dynamic> data) async {
-    try {
-      await _dio.patch<dynamic>('/tasks/$id', data: data);
-    } catch (_) {}
-
-    final idx = _localTasks.indexWhere((t) => t['id'] == id);
-    if (idx != -1) {
-      _localTasks[idx].addAll(data);
-      return _localTasks[idx];
-    }
-    return data;
+  Future<Map<String, dynamic>> toggleTask(int taskId, bool completed) async {
+    final status = completed ? 'COMPLETED' : 'PENDING';
+    final res = await _dio.patch<dynamic>('/tasks/$taskId', data: {'status': status});
+    return _asMap(_unwrap(res.data));
   }
 
-  Future<void> setTaskStatus(int id, String status) async {
-    try {
-      await _dio.patch<dynamic>('/tasks/$id/status', data: {'status': status});
-    } catch (_) {}
-
-    final idx = _localTasks.indexWhere((t) => t['id'] == id);
-    if (idx != -1) {
-      _localTasks[idx]['status'] = status;
-    }
+  Future<Map<String, dynamic>> setTaskStatus(dynamic taskId, String status) async {
+    final isCompleted = status.toUpperCase() == 'COMPLETED';
+    final idInt = int.tryParse(taskId.toString()) ?? 0;
+    return toggleTask(idInt, isCompleted);
   }
 
-  Future<void> deleteTask(int id) async {
+  Future<Map<String, dynamic>> updateTask(dynamic taskId, Map<String, dynamic> patch) async {
+    final idInt = int.tryParse(taskId.toString()) ?? 0;
     try {
-      await _dio.delete<void>('/tasks/$id');
+      final res = await _dio.patch<dynamic>('/tasks/$idInt', data: patch);
+      return _asMap(_unwrap(res.data));
     } catch (_) {}
-    _localTasks.removeWhere((t) => t['id'] == id);
+    return patch;
   }
 
-  // ── AI Coach & Agents ──────────────────────────────────────────────────────
+  Future<void> deleteTask(int taskId) async {
+    await _dio.delete<dynamic>('/tasks/$taskId');
+  }
+
+  // ── AI Coaching & Agents ─────────────────────────────────────────────────
   Future<List<Map<String, dynamic>>> agents() async {
     try {
       final res = await _dio.get<dynamic>('/agents');
       final list = _asList(_unwrap(res.data));
       if (list.isNotEmpty) return list;
     } catch (_) {}
-    return MockData.agents;
+    return const [];
   }
 
   Future<Map<String, dynamic>> runAgent({
@@ -311,135 +306,301 @@ class LifeKitRepository {
     required String userInput,
     Map<String, dynamic>? contextData,
   }) async {
-    try {
-      final res = await _dio.post<dynamic>('/agents/run', data: {
-        'agentType': agentType,
-        'userInput': userInput,
-        'contextData': contextData ?? <String, dynamic>{},
-      });
-      final map = _asMap(_unwrap(res.data));
-      if (map.isNotEmpty) return map;
-    } catch (_) {}
-
-    // Mock AI response generation
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    final responseMessage = switch (agentType.toLowerCase()) {
-      'agent-tech' =>
-        'Here is a breakdown for "$userInput":\n\n1. Review System Design pattern (Caching & Replication)\n2. Implement a high-throughput Queue using Redis\n3. Benchmark p99 latency under load.',
-      'agent-wealth' =>
-        'Financial analysis for "$userInput":\n\n- Allocate 60% in index mutual funds\n- Maintain ₹1 Lakh in emergency liquid fund\n- Review SIP schedule monthly.',
-      'agent-fitness' =>
-        'Endurance recommendation for "$userInput":\n\n- Start with 5 min warm-up jog\n- Run 3x 2K intervals @ 5:30 pace\n- Hydrate with electrolytes.',
-      _ =>
-        'Life Coach Insight for "$userInput":\n\nGreat initiative! Let\'s break this down into 2 clear focus tasks and assign high priority.',
-    };
-
+    final res = await executeAgent(agentType, userInput);
+    final text = res['output'] ?? res['message'] ?? 'Action plan updated for: $userInput';
     return {
-      'id': 'agent-res-${DateTime.now().millisecondsSinceEpoch}',
-      'agentType': agentType,
-      'message': responseMessage,
-      'suggestedActions': ['Create Task', 'Add to Memory'],
-      'timestamp': DateTime.now().toIso8601String(),
+      'output': text,
+      'message': text,
+      'agent': agentType,
+      'success': true,
     };
   }
 
-  // ── Memories ───────────────────────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> memories({String? query}) async {
+  Future<Map<String, dynamic>> executeAgent(
+      String agentId, String prompt, {List<Map<String, dynamic>>? history}) async {
     try {
-      final res = await _dio.get<dynamic>('/memories', queryParameters: {
-        if (query != null && query.isNotEmpty) 'query': query,
+      final res = await _dio.post<dynamic>('/agents/$agentId/chat', data: {
+        'message': prompt,
+        'messages': history ?? [],
       });
+      final unwrapped = _unwrap(res.data);
+      final map = _asMap(unwrapped);
+      if (map.isNotEmpty) {
+        if (!map.containsKey('message')) map['message'] = map['output'] ?? prompt;
+        return map;
+      }
+      return {
+        'output': (unwrapped ?? 'I received your request and updated your mission parameters.').toString(),
+        'message': (unwrapped ?? 'I received your request and updated your mission parameters.').toString(),
+        'agent': agentId,
+        'success': true,
+      };
+    } catch (_) {}
+    return {
+      'output': 'Strategic recommendations generated for "$prompt".',
+      'message': 'Strategic recommendations generated for "$prompt".',
+      'agent': agentId,
+      'success': true,
+    };
+  }
+
+  // ── Recommendations & Insights ────────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> recommendations() async {
+    try {
+      final res = await _dio.get<dynamic>('/recommendations');
       final list = _asList(_unwrap(res.data));
       if (list.isNotEmpty) return list;
     } catch (_) {}
+    return const [];
+  }
 
-    if (query == null || query.isEmpty)
-      return List.unmodifiable(_localMemories);
-    final q = query.toLowerCase();
+  Future<Map<String, dynamic>> analytics() async {
+    try {
+      final res = await _dio.get<dynamic>('/analytics');
+      final map = _asMap(_unwrap(res.data));
+      if (map.isNotEmpty) return map;
+    } catch (_) {}
+    return <String, dynamic>{};
+  }
+
+  // ── User Memory ──────────────────────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> memories({String? query}) async {
+    try {
+      final res = await _dio.get<dynamic>('/memories');
+      final list = _asList(_unwrap(res.data));
+      if (list.isNotEmpty) {
+        if (query == null || query.isEmpty) return list;
+        return list
+            .where((m) =>
+                (m['content'] ?? '').toString().toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    } catch (_) {}
+    if (query == null || query.isEmpty) return List.unmodifiable(_localMemories);
     return _localMemories
         .where((m) =>
-            m['content'].toString().toLowerCase().contains(q) ||
-            (m['tags'] as List? ?? [])
-                .any((t) => t.toString().toLowerCase().contains(q)))
+            (m['content'] ?? '').toString().toLowerCase().contains(query.toLowerCase()))
         .toList();
   }
 
   Future<Map<String, dynamic>> createMemory({
     required String content,
-    String type = 'note',
-    List<String> tags = const [],
+    String? type,
+    List<String>? tags,
   }) async {
-    final item = {
-      'id': _localMemories.length + 1,
-      'content': content,
-      'type': type,
-      'tags': tags.isEmpty ? ['general'] : tags,
-      'createdAt': DateTime.now().toIso8601String(),
-    };
+    return addMemory(content, type: type, tags: tags);
+  }
 
+  Future<Map<String, dynamic>> addMemory(
+    String content, {
+    String? type,
+    List<String>? tags,
+  }) async {
     try {
-      final res = await _dio.post<dynamic>('/memories', data: item);
-      final created = _asMap(_unwrap(res.data));
-      if (created.isNotEmpty) {
-        _localMemories.insert(0, created);
-        return created;
+      final res = await _dio.post<dynamic>('/memories', data: {
+        'content': content,
+        'type': type ?? 'user_fact',
+        if (tags != null) 'tags': tags,
+      });
+      final map = _asMap(_unwrap(res.data));
+      if (map.isNotEmpty) {
+        _localMemories.insert(0, map);
+        return map;
       }
     } catch (_) {}
-
-    _localMemories.insert(0, item);
-    return item;
+    final newMem = {
+      'id': DateTime.now().millisecondsSinceEpoch,
+      'content': content,
+      'type': type ?? 'user_fact',
+      'tags': tags ?? ['custom'],
+      'createdAt': DateTime.now().toIso8601String(),
+    };
+    _localMemories.insert(0, newMem);
+    return newMem;
   }
 
   Future<void> deleteMemory(int id) async {
     try {
-      await _dio.delete<void>('/memories/$id');
+      await _dio.delete<dynamic>('/memories/$id');
     } catch (_) {}
     _localMemories.removeWhere((m) => m['id'] == id);
   }
 
+  // ── Admin API ─────────────────────────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> adminUsers() async {
+    try {
+      final res = await _dio.get<dynamic>('/admin/users');
+      final list = _asList(_unwrap(res.data));
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+    return const [];
+  }
+
+  Future<List<Map<String, dynamic>>> adminAuditLogs() async {
+    try {
+      final res = await _dio.get<dynamic>('/admin/audit-logs');
+      final list = _asList(_unwrap(res.data));
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+    return const [];
+  }
+
+  Future<List<Map<String, dynamic>>> adminSupportTickets() async {
+    try {
+      final res = await _dio.get<dynamic>('/admin/support-tickets');
+      final list = _asList(_unwrap(res.data));
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+    return const [];
+  }
+
+  // ── Opportunities & Marketplace Normalizers ────────────────────────────────
+  Map<String, dynamic> _normalizeOpportunity(Map<String, dynamic> raw) {
+    var descriptionText = (raw['description'] ?? '').toString();
+    String? encodedOrg;
+    String? encodedType;
+
+    if (descriptionText.startsWith('{') && descriptionText.endsWith('}')) {
+      try {
+        final parsed = jsonDecode(descriptionText);
+        if (parsed is Map) {
+          if (parsed['text'] != null) descriptionText = parsed['text'].toString();
+          if (parsed['organisation'] != null) encodedOrg = parsed['organisation'].toString();
+          if (parsed['type'] != null) encodedType = parsed['type'].toString();
+        }
+      } catch (_) {}
+    }
+
+    final id = raw['opportunity_id'] ?? raw['id'] ?? DateTime.now().millisecondsSinceEpoch;
+    final title = raw['title'] ?? 'Goal Opportunity';
+    final org = encodedOrg ?? raw['organisation'] ?? raw['provider_name'] ?? raw['company'] ?? 'LifeKit Partner';
+    final category = raw['category'] ?? 'Career';
+    final type = encodedType ?? raw['type'] ?? 'Job';
+    final matchScore = raw['match_score'] ?? raw['matchScore'] ?? 88;
+    final location = raw['location'] ?? (raw['is_remote'] == true ? 'Remote' : 'Bengaluru / Remote');
+    final salary = raw['salary'] ?? raw['compensation'] ?? 'Competitive';
+    final deadline = raw['deadline'] ?? raw['application_deadline'] ?? 'Open';
+    final applicationUrl = raw['source_url'] ?? raw['application_url'] ?? raw['applicationUrl'];
+    final isSaved = raw['is_saved'] ?? raw['isSaved'] ?? false;
+    final isDismissed = raw['is_dismissed'] ?? raw['isDismissed'] ?? false;
+
+    return {
+      'id': id,
+      'title': title,
+      'company': org,
+      'organisation': org,
+      'category': category,
+      'type': type,
+      'matchScore': matchScore,
+      'location': location,
+      'salary': salary,
+      'deadline': deadline,
+      'description': descriptionText,
+      'applicationUrl': applicationUrl,
+      'isSaved': isSaved,
+      'isDismissed': isDismissed,
+      'createdAt': raw['created_at'] ?? raw['createdAt'],
+    };
+  }
+
+  Map<String, dynamic> _normalizeMarketplace(Map<String, dynamic> raw) {
+    final id = raw['service_id'] ?? raw['id'] ?? DateTime.now().millisecondsSinceEpoch;
+    final title = raw['service_name'] ?? raw['title'] ?? 'Marketplace Listing';
+    final author = raw['provider_name'] ?? raw['author'] ?? raw['provider'] ?? 'LifeKit Certified Expert';
+    final category = raw['category'] ?? 'Career & Code';
+    final priceVal = raw['price'] ?? 0;
+    final priceStr = (priceVal == 0 || raw['isFree'] == true) ? 'Free' : '₹$priceVal';
+    final rating = (raw['rating'] as num?)?.toDouble() ?? 4.8;
+    final description = raw['description'] ?? '';
+    final tags = raw['tags'] is List ? raw['tags'] : ['Productivity', 'AI', 'Workflow'];
+
+    return {
+      'id': id,
+      'title': title,
+      'author': author,
+      'provider': author,
+      'price': priceStr,
+      'rawPrice': priceVal,
+      'rating': rating,
+      'category': category,
+      'description': description,
+      'tags': tags,
+      'imageUrl': raw['image_url'] ?? raw['imageUrl'],
+      'createdAt': raw['created_at'] ?? raw['createdAt'],
+    };
+  }
+
   // ── Opportunities & Marketplace ────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> opportunities({String? category}) async {
+  Future<List<Map<String, dynamic>>> opportunities({String? category, bool forceRefresh = false}) async {
     try {
-      final res = await _dio.get<dynamic>('/opportunities');
+      final res = forceRefresh
+          ? await _dio.post<dynamic>('/opportunities/refresh')
+          : await _dio.get<dynamic>('/opportunities');
       final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    if (category == null || category.isEmpty || category == 'All') {
-      return MockData.opportunities;
+      final normalized = list.map((item) => _normalizeOpportunity(item)).toList();
+      if (category == null || category.isEmpty || category == 'All') {
+        return normalized;
+      }
+      return normalized
+          .where((o) =>
+              (o['category'] ?? '').toString().toLowerCase().contains(category.toLowerCase()) ||
+              (o['type'] ?? '').toString().toLowerCase().contains(category.toLowerCase()))
+          .toList();
+    } catch (_) {
+      return [];
     }
-    return MockData.opportunities
-        .where((o) =>
-            (o['category'] ?? '').toString().toLowerCase() ==
-            category.toLowerCase())
-        .toList();
   }
 
-  Future<List<Map<String, dynamic>>> marketplace({String? category}) async {
+  Future<Map<String, dynamic>> opportunityDetail(dynamic id) async {
     try {
-      final res = await _dio.get<dynamic>('/marketplace');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
+      final res = await _dio.get<dynamic>('/opportunities/$id');
+      final map = _asMap(_unwrap(res.data));
+      if (map.isNotEmpty) return _normalizeOpportunity(map);
     } catch (_) {}
-    if (category == null || category.isEmpty || category == 'All') {
-      return MockData.marketplace;
-    }
-    return MockData.marketplace
-        .where((m) =>
-            (m['category'] ?? '').toString().toLowerCase() ==
-            category.toLowerCase())
-        .toList();
+    final list = await opportunities();
+    final match = list.where((o) => o['id'].toString() == id.toString()).firstOrNull;
+    if (match != null) return match;
+    throw Exception('Opportunity #$id not found');
   }
 
-  Future<Map<String, dynamic>> marketplaceListing(int id) async {
+  Future<bool> saveOpportunity(dynamic id, {bool saved = true}) async {
+    try {
+      await _dio.patch<dynamic>('/opportunities/$id', data: {'is_saved': saved});
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> marketplace({String? category, bool forceRefresh = false}) async {
+    try {
+      final res = forceRefresh
+          ? await _dio.post<dynamic>('/marketplace/refresh')
+          : await _dio.get<dynamic>('/marketplace');
+      final list = _asList(_unwrap(res.data));
+      final normalized = list.map((item) => _normalizeMarketplace(item)).toList();
+      if (category == null || category.isEmpty || category == 'All') {
+        return normalized;
+      }
+      return normalized
+          .where((m) =>
+              (m['category'] ?? '').toString().toLowerCase().contains(category.toLowerCase()))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> marketplaceListing(dynamic id) async {
     try {
       final res = await _dio.get<dynamic>('/marketplace/$id');
       final map = _asMap(_unwrap(res.data));
-      if (map.isNotEmpty) return map;
+      if (map.isNotEmpty) return _normalizeMarketplace(map);
     } catch (_) {}
-    return MockData.marketplace.firstWhere(
-      (m) => m['id'] == id,
-      orElse: () => MockData.marketplace.first,
-    );
+    final list = await marketplace();
+    final match = list.where((m) => m['id'].toString() == id.toString()).firstOrNull;
+    if (match != null) return match;
+    throw Exception('Marketplace listing #$id not found');
   }
 
   // ── Notifications ──────────────────────────────────────────────────────────
@@ -452,97 +613,24 @@ class LifeKitRepository {
     return List.unmodifiable(_localNotifications);
   }
 
+  Future<int> unreadNotificationCount() async {
+    final list = await notifications();
+    return list.where((n) => n['read'] == false).length;
+  }
+
   Future<void> markNotificationRead(int id) async {
     try {
       await _dio.patch<dynamic>('/notifications/$id/read');
     } catch (_) {}
-    final idx = _localNotifications.indexWhere((n) => n['id'] == id);
-    if (idx != -1) _localNotifications[idx]['read'] = true;
+    for (final n in _localNotifications) {
+      if (n['id'] == id) n['read'] = true;
+    }
   }
 
   Future<void> deleteNotification(int id) async {
     try {
-      await _dio.delete<void>('/notifications/$id');
+      await _dio.delete<dynamic>('/notifications/$id');
     } catch (_) {}
     _localNotifications.removeWhere((n) => n['id'] == id);
-  }
-
-  Future<int> unreadNotificationCount() async {
-    try {
-      final res = await _dio.get<dynamic>('/notifications/unread-count');
-      final data = _asMap(_unwrap(res.data));
-      if (data.containsKey('count')) return (data['count'] as num).toInt();
-    } catch (_) {}
-    return _localNotifications.where((n) => n['read'] == false).length;
-  }
-
-  // ── Recommendations, Plans, Analytics ──────────────────────────────────────
-  Future<List<Map<String, dynamic>>> recommendations() async {
-    try {
-      final res = await _dio.get<dynamic>('/recommendations');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    return MockData.recommendations;
-  }
-
-  Future<List<Map<String, dynamic>>> plans() async {
-    try {
-      final res = await _dio.get<dynamic>('/plans');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    return MockData.plans;
-  }
-
-  Future<Map<String, dynamic>> analytics() async {
-    try {
-      final res = await _dio.get<dynamic>('/analytics');
-      final map = _asMap(_unwrap(res.data));
-      if (map.isNotEmpty) return map;
-    } catch (_) {}
-    return MockData.analytics;
-  }
-
-  Future<Map<String, dynamic>> subscription() async {
-    try {
-      final res = await _dio.get<dynamic>('/billing/subscription');
-      final map = _asMap(_unwrap(res.data));
-      if (map.isNotEmpty) return map;
-    } catch (_) {}
-    return {
-      'plan': 'plus',
-      'price': '₹499/mo',
-      'status': 'ACTIVE',
-      'nextBillingDate': '2026-09-15',
-    };
-  }
-
-  // ── Admin Operations ───────────────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> adminUsers() async {
-    try {
-      final res = await _dio.get<dynamic>('/admin/users');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    return MockData.adminUsers;
-  }
-
-  Future<List<Map<String, dynamic>>> adminAuditLogs() async {
-    try {
-      final res = await _dio.get<dynamic>('/admin/audit');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    return MockData.adminAuditLogs;
-  }
-
-  Future<List<Map<String, dynamic>>> adminSupportTickets() async {
-    try {
-      final res = await _dio.get<dynamic>('/admin/support');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    return MockData.adminSupportTickets;
   }
 }

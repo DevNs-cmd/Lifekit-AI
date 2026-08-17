@@ -118,6 +118,11 @@ export class OpportunitiesService {
     await this._refreshForUser(event.userId);
   }
 
+  /** Public interface to force clear and re-seed AI opportunities for a user */
+  async refreshForUser(userId: number): Promise<void> {
+    await this._refreshForUser(userId);
+  }
+
   // ── Private helpers ─────────────────────────────────────────────────────────
 
   /** Delete and reseed opportunities for a single user. Catches all errors. */

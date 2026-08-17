@@ -27,11 +27,12 @@ class _OpportunitiesScreenState extends ConsumerState<OpportunitiesScreen> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     setState(() => _loading = true);
     try {
       final repo = ref.read(repositoryProvider);
-      final res = await repo.opportunities(category: _category);
+      final res = await repo.opportunities(
+          category: _category, forceRefresh: forceRefresh);
       if (!mounted) return;
       setState(() {
         _items = res;
@@ -53,6 +54,13 @@ class _OpportunitiesScreenState extends ConsumerState<OpportunitiesScreen> {
       appBar: AppBar(
         title: const Text('Goal Opportunities'),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sync_rounded),
+            tooltip: 'Sync AI with Active Missions',
+            onPressed: () => _load(forceRefresh: true),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -83,7 +91,7 @@ class _OpportunitiesScreenState extends ConsumerState<OpportunitiesScreen> {
             child: _loading
                 ? Center(child: CircularProgressIndicator(color: t.primary))
                 : RefreshIndicator(
-                    onRefresh: _load,
+                    onRefresh: () => _load(forceRefresh: true),
                     child: ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                       itemCount: _items.length,

@@ -28,6 +28,7 @@ import { OpportunityQueryDto } from "../dto/opportunity-query.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { IntValidationPipe } from "../../common/decorators/int-validation.decorator";
+import { SetTimeout } from "../../common/interceptors/timeout.interceptor";
 import { Opportunity } from "../entities/opportunity.entity";
 
 @ApiTags("Opportunities")
@@ -55,6 +56,19 @@ export class OpportunitiesController {
     @Query() query: OpportunityQueryDto,
   ) {
     return this.opportunitiesService.findAll(userId, query);
+  }
+
+  /**
+   * POST /api/opportunities/refresh
+   * Force re-seed AI opportunities based on user's active missions.
+   */
+  @SetTimeout(120000)
+  @Post("refresh")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Force re-seed AI opportunities for user's active missions" })
+  async refresh(@CurrentUser("user_id") userId: number) {
+    await this.opportunitiesService.refreshForUser(userId);
+    return this.opportunitiesService.findAll(userId, {} as OpportunityQueryDto);
   }
 
   /**

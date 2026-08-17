@@ -28,14 +28,14 @@ import { UserPreference } from "../entities/user-preference.entity";
 @ApiTags("Users")
 @ApiBearerAuth("JWT-auth")
 @UseGuards(JwtAuthGuard)
-@Controller("users")
+@Controller(["users", "user"])
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   /**
    * Retrieves the authenticated user's profile.
    */
-  @Get("me")
+  @Get(["me", "profile"])
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Get current user profile" })
   @ApiResponse({
@@ -58,7 +58,7 @@ export class UsersController {
   /**
    * Updates the authenticated user's profile.
    */
-  @Patch("me")
+  @Patch(["me", "profile"])
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Update current user profile" })
   @ApiBody({ type: UpdateProfileDto })
