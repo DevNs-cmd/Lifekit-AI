@@ -28,6 +28,7 @@ import { OpportunityQueryDto } from "../dto/opportunity-query.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { IntValidationPipe } from "../../common/decorators/int-validation.decorator";
+import { SetTimeout } from "../../common/interceptors/timeout.interceptor";
 import { Opportunity } from "../entities/opportunity.entity";
 
 @ApiTags("Opportunities")
@@ -61,6 +62,7 @@ export class OpportunitiesController {
    * POST /api/opportunities/refresh
    * Force re-seed AI opportunities based on user's active missions.
    */
+  @SetTimeout(120000)
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Force re-seed AI opportunities for user's active missions" })

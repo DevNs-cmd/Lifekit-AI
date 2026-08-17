@@ -30,6 +30,7 @@ import { MarketplaceQueryDto } from "../dto/marketplace-query.dto";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { IntValidationPipe } from "../../common/decorators/int-validation.decorator";
+import { SetTimeout } from "../../common/interceptors/timeout.interceptor";
 import { MarketplaceListing } from "../entities/marketplace-listing.entity";
 
 @ApiTags("Marketplace")
@@ -78,6 +79,7 @@ export class MarketplaceController {
    * POST /api/marketplace/refresh
    * Force re-seed AI marketplace listings based on user's active missions.
    */
+  @SetTimeout(120000)
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Force re-seed AI marketplace listings for user's active missions" })
