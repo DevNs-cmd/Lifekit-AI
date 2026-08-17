@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app.dart';
@@ -336,53 +337,20 @@ class _IntegrationsSettingsScreenState
   }
 }
 
-// 7. Subscription Settings
+// 7. Subscription Settings — redirects to the full SubscriptionScreen
 class SubscriptionSettingsScreen extends ConsumerWidget {
   const SubscriptionSettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Immediately push to the full subscription screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) context.replace('/settings/subscription');
+    });
     final t = context.tokens;
     return Scaffold(
       backgroundColor: t.background,
-      appBar: AppBar(title: const Text('Subscription Plan')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: t.primarySurface,
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                border: Border.all(color: t.primary),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('LifeKit Plus Plan',
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: t.primary)),
-                      const Spacer(),
-                      Chip(
-                          label: Text('ACTIVE',
-                              style:
-                                  TextStyle(color: t.primary, fontSize: 10))),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                      'Unlimited AI Coach runs, 50 Specialist Agent queries/day, Vector Life Memory.'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      body: Center(child: CircularProgressIndicator(color: t.primary)),
     );
   }
 }

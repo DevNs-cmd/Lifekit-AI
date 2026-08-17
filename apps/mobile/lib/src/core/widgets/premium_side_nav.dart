@@ -56,6 +56,8 @@ const List<SideNavSecondaryItem> kSideNavSecondaryItems = [
   SideNavSecondaryItem(
       icon: LucideIcons.barChart2, label: 'Analytics', route: '/analytics'),
   SideNavSecondaryItem(
+      icon: LucideIcons.crown, label: 'Subscription', route: '/settings/subscription'),
+  SideNavSecondaryItem(
       icon: LucideIcons.bell, label: 'Notifications', route: '/notifications'),
   SideNavSecondaryItem(
       icon: LucideIcons.settings, label: 'Settings', route: '/settings'),

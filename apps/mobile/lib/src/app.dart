@@ -36,6 +36,7 @@ import 'features/opportunities/opportunities_screen.dart';
 import 'features/opportunities/opportunity_detail_screen.dart';
 import 'features/settings/settings_hub_screen.dart';
 import 'features/settings/settings_sub_screens.dart';
+import 'features/subscription/subscription_screen.dart';
 import 'features/support/support_screen.dart';
 
 // ─────────────────────────────────────────────
@@ -408,7 +409,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'subscription',
             pageBuilder: (ctx, state) =>
-                _modalSlide(ctx, state, const SubscriptionSettingsScreen()),
+                _modalSlide(ctx, state, const SubscriptionScreen()),
           ),
           GoRoute(
             path: 'billing',

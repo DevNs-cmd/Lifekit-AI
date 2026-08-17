@@ -70,5 +70,29 @@ void main() {
       expect(task.status, equals('Done'));
       expect(task.done, isTrue);
     });
+
+    test('fromJson parses description, dueDate, and camelCase missionId', () {
+      final json = {
+        'id': 1003,
+        'missionId': 5,
+        'title': 'Implement auth flow',
+        'description': 'Handle JWT and refresh token storage',
+        'dueDate': '2026-08-20T12:00:00.000Z',
+        'estimatedDurationMinutes': 60,
+        'status': 'PENDING',
+        'priority': 'HIGH',
+      };
+
+      final task = TaskData.fromJson(json, 'Mobile App Dev');
+      expect(task.id, equals(1003));
+      expect(task.missionId, equals(5));
+      expect(task.title, equals('Implement auth flow'));
+      expect(task.description, equals('Handle JWT and refresh token storage'));
+      expect(task.dueDate, equals('2026-08-20T12:00:00.000Z'));
+      expect(task.minutes, equals(60));
+      expect(task.status, equals('To Do'));
+      expect(task.priority, equals('high'));
+      expect(task.done, isFalse);
+    });
   });
 }

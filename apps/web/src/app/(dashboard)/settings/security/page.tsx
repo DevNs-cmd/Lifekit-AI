@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Shield, Lock, MonitorSmartphone } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -14,15 +14,23 @@ import { changePasswordSchema, type ChangePasswordFormData } from "@/lib/validat
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { usersApi } from "@/lib/api";
+import { get, del } from "@/lib/api/client";
 
-const MOCK_SESSIONS = [
-  { id: "s1", device: "Chrome on Windows", location: "Bengaluru, India", lastActive: "Now", isCurrent: true },
-  { id: "s2", device: "Safari on iPhone", location: "Bengaluru, India", lastActive: "2 days ago", isCurrent: false },
-];
+
 
 export default function SecurityPage() {
   const router = useRouter();
-  const [sessions, setSessions] = useState(MOCK_SESSIONS);
+  const [sessions, setSessions] = useState<{ id: string; device: string; location: string; lastActive: string; isCurrent: boolean }[]>([]);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    get<any>("/auth/sessions")
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        setSessions(list);
+      })
+      .catch(() => setSessions([]));
+  }, []);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ChangePasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
@@ -91,7 +99,15 @@ export default function SecurityPage() {
                 <Button
                   variant="outline"
                   size="xs"
-                  onClick={() => { setSessions(p => p.filter(s => s.id !== session.id)); toast("Session revoked."); }}
+                  onClick={async () => {
+                    try {
+                      await del(`/auth/sessions/${session.id}`);
+                      setSessions((p) => p.filter((s) => s.id !== session.id));
+                      toast("Session revoked.");
+                    } catch {
+                      toast.error("Failed to revoke session.");
+                    }
+                  }}
                 >
                   Revoke
                 </Button>
@@ -101,7 +117,15 @@ export default function SecurityPage() {
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => { setSessions(p => p.filter(s => s.isCurrent)); toast("All other sessions revoked."); }}
+            onClick={async () => {
+              try {
+                await del("/auth/sessions");
+                setSessions((p) => p.filter((s) => s.isCurrent));
+                toast("All other sessions revoked.");
+              } catch {
+                toast.error("Failed to revoke sessions.");
+              }
+            }}
           >
             Revoke all other sessions
           </Button>

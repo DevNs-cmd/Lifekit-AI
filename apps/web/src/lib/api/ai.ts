@@ -2,7 +2,7 @@
 import { get, post, patch } from "./client";
 import type { ConversationMessage, AiRecommendation, Agent } from "@/types/ai";
 
-export const MOCK_AGENTS: Agent[] = [
+export const _FALLBACK_AGENTS: Agent[] = [
   {
     id: "agent-career",
     name: "Career Agent",
@@ -83,14 +83,14 @@ export const MOCK_AGENTS: Agent[] = [
 export async function getAgents(): Promise<Agent[]> {
   const list = await get<Agent[]>("/agents");
   if (list && list.length > 0) return list;
-  return MOCK_AGENTS;
+  return _FALLBACK_AGENTS;
 }
 
 export async function getAgent(id: string): Promise<Agent> {
   try {
     return await get<Agent>(`/agents/${id}`);
   } catch (error) {
-    const a = MOCK_AGENTS.find((x) => x.id === id);
+    const a = _FALLBACK_AGENTS.find((x) => x.id === id);
     if (!a) throw error;
     return a;
   }

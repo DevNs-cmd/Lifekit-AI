@@ -98,6 +98,17 @@ class AuthController extends AsyncNotifier<bool> {
       if (refresh != null) {
         await _storage.write(key: 'refresh_token', value: refresh);
       }
+      final userObj = data['user'];
+      if (userObj is Map) {
+        final name = (userObj['fullName'] ?? userObj['full_name'] ?? '').toString();
+        if (name.isNotEmpty) {
+          await _storage.write(key: 'user_full_name', value: name);
+        }
+        final emailStr = (userObj['email'] ?? email).toString();
+        if (emailStr.isNotEmpty) {
+          await _storage.write(key: 'user_email', value: emailStr);
+        }
+      }
       state = const AsyncData(true);
       return true;
     } catch (e, s) {
@@ -123,6 +134,12 @@ class AuthController extends AsyncNotifier<bool> {
       await _storage.write(key: 'access_token', value: access);
       if (refresh != null) {
         await _storage.write(key: 'refresh_token', value: refresh);
+      }
+      if (fullName.isNotEmpty) {
+        await _storage.write(key: 'user_full_name', value: fullName);
+      }
+      if (email.isNotEmpty) {
+        await _storage.write(key: 'user_email', value: email);
       }
       state = const AsyncData(true);
       return true;

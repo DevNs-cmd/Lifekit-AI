@@ -312,10 +312,11 @@ class _CenterTab extends StatelessWidget {
       onTap:    onTap,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Elevated FAB — floats 12dp above the bar baseline
+          // Elevated FAB — floats 8dp above the bar baseline
           Transform.translate(
-            offset: const Offset(0, -12),
+            offset: const Offset(0, -8),
             child:  AnimatedBuilder(
               animation: scaleAnim,
               builder:   (_, child) => Transform.scale(
@@ -360,7 +361,7 @@ class _CenterTab extends StatelessWidget {
           ),
           // Label — offset to compensate for FAB float
           Transform.translate(
-            offset: const Offset(0, -8),
+            offset: const Offset(0, -4),
             child:  Text(
               'AI Coach',
               style: TextStyle(

@@ -17,11 +17,11 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RecentChatsSidebar } from "@/components/shared/recent-chats-sidebar";
-import { MOCK_AGENTS, sendCoachMessage } from "@/lib/api/ai";
+import { getAgent, sendCoachMessage } from "@/lib/api/ai";
 import { ROUTES } from "@/constants/routes";
 import { generateId, cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { ConversationMessage } from "@/types/ai";
+import type { ConversationMessage, Agent } from "@/types/ai";
 import { useChatHistoryStore } from "@/stores/chat-history-store";
 
 /* ── Domain config ─────────────────────────────────────── */
@@ -85,7 +85,8 @@ const FALLBACK_CFG = {
 export default function AgentDetailPage() {
   const { id: agentId } = useParams<{ id: string }>();
   const router = useRouter();
-  const agent = MOCK_AGENTS.find(a => a.id === agentId);
+  const [agent, setAgent] = useState<Agent | null>(null);
+  const [agentLoading, setAgentLoading] = useState(true);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -105,6 +106,15 @@ export default function AgentDetailPage() {
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!agentId) return;
+    setAgentLoading(true);
+    getAgent(agentId)
+      .then(setAgent)
+      .catch(() => setAgent(null))
+      .finally(() => setAgentLoading(false));
+  }, [agentId]);
 
   const recentChats = isHydrated && agentId ? getSessionsForAgent(agentId) : [];
   const storedActiveId = isHydrated && agentId ? getActiveSessionId(agentId) : undefined;
@@ -162,6 +172,14 @@ export default function AgentDetailPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [displayMessages]);
+
+  if (agentLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin h-8 w-8 rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent" />
+      </div>
+    );
+  }
 
   if (!agent) {
     return (

@@ -34,6 +34,61 @@ void main() {
       expect(tasks, isA<List<Map<String, dynamic>>>());
     });
 
+    test('createTask creates and stores a valid task payload', () async {
+      final created = await repo.createTask(
+        missionId: 1,
+        title: 'Complete System Design Module',
+        description: 'Covers caching, sharding, and load balancing',
+        priority: 'high',
+        estimatedDurationMinutes: 45,
+      );
+
+      expect(created['title'], equals('Complete System Design Module'));
+      expect(created['priority'], equals('high'));
+      expect(created['status'], equals('PENDING'));
+      expect(created['dueDate'], isNotEmpty);
+      expect(created['estimatedDurationMinutes'], equals(45));
+    });
+
+    test('updateTask updates existing task in offline store', () async {
+      final created = await repo.createTask(
+        missionId: 1,
+        title: 'Task before update',
+      );
+      final id = created['id'] as int;
+
+      final updated = await repo.updateTask(id, {
+        'title': 'Task after update',
+        'priority': 'urgent',
+      });
+
+      expect(updated['title'], equals('Task after update'));
+      expect(updated['priority'], equals('urgent'));
+    });
+
+    test('setTaskStatus updates task status', () async {
+      final created = await repo.createTask(
+        missionId: 1,
+        title: 'Status Test Task',
+      );
+      final id = created['id'] as int;
+
+      final updated = await repo.setTaskStatus(id, 'COMPLETED');
+      expect(updated['status'], equals('COMPLETED'));
+    });
+
+    test('deleteTask removes task from repository', () async {
+      final created = await repo.createTask(
+        missionId: 1,
+        title: 'Task to be deleted',
+      );
+      final id = created['id'] as int;
+
+      await repo.deleteTask(id);
+      final all = await repo.tasks(missionId: 1);
+      expect(all.any((t) => t['id'] == id), isFalse);
+    });
+
     test('agents returns list of specialist AI agents', () async {
       final agents = await repo.agents();
       expect(agents, isA<List<Map<String, dynamic>>>());
@@ -64,6 +119,32 @@ void main() {
     test('notifications unread count calculation', () async {
       final count = await repo.unreadNotificationCount();
       expect(count, isA<int>());
+    });
+
+    test('analytics returns structured productivity and completion metrics', () async {
+      final a = await repo.analytics();
+      expect(a, isA<Map<String, dynamic>>());
+      expect(a.containsKey('taskCompletionRate'), isTrue);
+      expect(a.containsKey('weeklyProductivity'), isTrue);
+    });
+
+    test('generateInsight produces rich structured insight payload', () async {
+      final insight = await repo.generateInsight(
+        missions: ['Build Mobile App', 'Learn Backend'],
+        tasksCompleted: 4,
+        tasksPending: 2,
+        streakDays: 5,
+        topCategory: 'Engineering',
+        fullName: 'Alex Doe',
+      );
+
+      expect(insight, isA<Map<String, dynamic>>());
+      expect(insight['headline'], isNotEmpty);
+      expect(insight['summary'], isNotEmpty);
+      expect(insight['momentum_score'], isA<int>());
+      expect(insight['trend'], isIn(['up', 'down', 'steady']));
+      expect(insight['highlights'], isA<List>());
+      expect(insight['nudges'], isA<List>());
     });
   });
 }

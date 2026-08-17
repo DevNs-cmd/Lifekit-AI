@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -15,9 +16,9 @@ import '../../core/design/animations.dart';
 import '../../core/widgets/premium_card.dart';
 import '../../core/widgets/premium_input.dart';
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═════════════════════════════════════════════════════════════════════════════
 // DATA MODELS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═════════════════════════════════════════════════════════════════════════════
 
 class MissionData {
   const MissionData({
@@ -79,19 +80,26 @@ class TaskData {
     required this.minutes,
     required this.status,
     this.done = false,
+    this.description = '',
+    this.dueDate,
   });
   final int id, missionId;
   final String title, missionTitle, priority;
   final int minutes;
+  final String description;
+  final String? dueDate;
   String status;
   bool done;
 
   factory TaskData.fromJson(Map<String, dynamic> j, String missionTitle) {
     final rawStatus = (j['status'] ?? 'PENDING').toString().toUpperCase();
+    final rawDate = (j['dueDate'] ?? j['due_date'])?.toString();
     return TaskData(
       id: _parseInt(j['id'] ?? j['task_id']),
       missionId: _parseInt(j['mission_id'] ?? j['missionId']),
       title: (j['title'] ?? '').toString(),
+      description: (j['description'] ?? '').toString(),
+      dueDate: rawDate,
       missionTitle: missionTitle,
       priority: (j['priority'] ?? 'medium').toString().toLowerCase(),
       minutes: ((j['estimated_time'] ?? j['estimatedDurationMinutes']) as num?)
@@ -113,31 +121,56 @@ class TaskData {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═════════════════════════════════════════════════════════════════════════════
 // STATE PROVIDERS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═════════════════════════════════════════════════════════════════════════════
 
 final missionsProvider = StateProvider<List<MissionData>>((ref) => const []);
 final tasksProvider = StateProvider<List<TaskData>>((ref) => const []);
 final profileProvider = StateProvider<Map<String, dynamic>>((ref) => const {});
 final notifCountProvider = StateProvider<int>((ref) => 0);
 
-// â”€â”€ UX feature providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── UX feature providers ──────────────────────────────────────
 /// Search query string for Missions screen.
 final missionsSearchProvider = StateProvider<String>((ref) => '');
 
 /// Search query string for Tasks screen.
 final tasksSearchProvider = StateProvider<String>((ref) => '');
 
+/// Selected mission filter for Tasks screen (null means all missions).
+final tasksMissionFilterProvider = StateProvider<int?>((ref) => null);
+
+/// Selected tab filter for Tasks screen ('all' | 'today' | 'in_progress' | 'completed').
+final tasksTabFilterProvider = StateProvider<String>((ref) => 'all');
+
 /// Whether the completed tasks section is expanded on Tasks screen.
 final completedTasksExpandedProvider = StateProvider<bool>((ref) => false);
 
+
+/// View mode for Tasks screen: 'list' or 'board'.
+final tasksViewProvider = StateProvider<String>((ref) => 'list');
 /// Tracks which one-time feature-discovery tooltips have been shown.
 /// Keys: 'mission_menu', 'ai_insights_tab'
 final tooltipSeenProvider = StateProvider<Map<String, bool>>((ref) => const {});
 
 final dashboardProvider = FutureProvider<void>((ref) async {
   final repo = ref.watch(repositoryProvider);
+
+  if (ref.read(profileProvider).isEmpty) {
+    try {
+      const storage = FlutterSecureStorage();
+      final cachedName = await storage.read(key: 'user_full_name');
+      final cachedEmail = await storage.read(key: 'user_email');
+      if (cachedName != null && cachedName.isNotEmpty) {
+        ref.read(profileProvider.notifier).state = {
+          'fullName': cachedName,
+          'full_name': cachedName,
+          'email': cachedEmail ?? '',
+        };
+      }
+    } catch (_) {}
+  }
+
   final results = await Future.wait([
     repo.missions().catchError((_) => <Map<String, dynamic>>[]),
     repo.profile().catchError((_) => <String, dynamic>{}),
@@ -145,7 +178,16 @@ final dashboardProvider = FutureProvider<void>((ref) async {
     repo.tasks().catchError((_) => <Map<String, dynamic>>[]),
   ]);
   final rawMissions = results[0] as List<Map<String, dynamic>>;
-  ref.read(profileProvider.notifier).state = results[1] as Map<String, dynamic>;
+  final prof = results[1] as Map<String, dynamic>;
+  if (prof.isNotEmpty) {
+    ref.read(profileProvider.notifier).state = prof;
+    final name = prof['fullName'] ?? prof['full_name'];
+    if (name != null && name.toString().isNotEmpty) {
+      const FlutterSecureStorage()
+          .write(key: 'user_full_name', value: name.toString())
+          .catchError((_) {});
+    }
+  }
   ref.read(notifCountProvider.notifier).state = results[2] as int;
   final missions = rawMissions.map(MissionData.fromJson).toList();
   ref.read(missionsProvider.notifier).state = missions;
@@ -157,7 +199,7 @@ final dashboardProvider = FutureProvider<void>((ref) async {
   final tasks = rawTasks
       .map((t) => TaskData.fromJson(
             t,
-            missionTitleMap[t['missionId']] ?? 'General Task',
+            missionTitleMap[t['missionId'] ?? t['mission_id']] ?? 'General Task',
           ))
       .toList();
   ref.read(tasksProvider.notifier).state = tasks;
@@ -264,10 +306,16 @@ class _PremiumTaskRow extends StatelessWidget {
     required this.task,
     required this.index,
     required this.onToggle,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
   final TaskData task;
   final int index;
   final VoidCallback onToggle;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   Color _priorityColor(AppTokens t) => switch (task.priority) {
         'urgent' => t.priorityUrgentFg,
@@ -280,12 +328,19 @@ class _PremiumTaskRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final brightness = Theme.of(context).brightness;
+    final priorityColor = _priorityColor(t);
+
+    final dueDateStr = task.dueDate != null && task.dueDate!.isNotEmpty
+        ? (DateTime.tryParse(task.dueDate!) != null
+            ? '${DateTime.parse(task.dueDate!).day}/${DateTime.parse(task.dueDate!).month}'
+            : task.dueDate!.split('T').first)
+        : null;
 
     return GestureDetector(
-      onTap: onToggle,
+      onTap: onTap ?? onToggle,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: t.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -295,21 +350,22 @@ class _PremiumTaskRow extends StatelessWidget {
         child: Row(children: [
           // Priority left strip
           Container(
-            width: 3,
-            height: 36,
+            width: 3.5,
+            height: 42,
             decoration: BoxDecoration(
-              color: _priorityColor(t),
+              color: priorityColor,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
-          const SizedBox(width: 12),
-          // Checkbox â€” bounces on completion
+          const SizedBox(width: 10),
+          // Checkbox — bounces on completion
           GestureDetector(
             onTap: onToggle,
+            behavior: HitTestBehavior.opaque,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 20,
-              height: 20,
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
                 color: task.done ? t.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
@@ -319,7 +375,7 @@ class _PremiumTaskRow extends StatelessWidget {
                 ),
               ),
               child: task.done
-                  ? const Icon(LucideIcons.check, size: 12, color: Colors.white)
+                  ? const Icon(LucideIcons.check, size: 13, color: Colors.white)
                       .animate()
                       .scale(
                         begin: const Offset(0.8, 0.8),
@@ -330,58 +386,167 @@ class _PremiumTaskRow extends StatelessWidget {
                   : null,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 300),
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: task.done ? t.textMuted : t.textPrimary,
-                  decoration: task.done
-                      ? TextDecoration.lineThrough
-                      : TextDecoration.none,
-                  decorationColor: t.textMuted,
-                  letterSpacing: -0.2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 300),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: task.done ? t.textMuted : t.textPrimary,
+                    decoration: task.done
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
+                    decorationColor: t.textMuted,
+                    letterSpacing: -0.2,
+                  ),
+                  child: Text(
+                    task.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                child: Text(
-                  task.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                if (task.description.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    task.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: t.textMuted, fontSize: 11),
+                  ),
+                ],
+                const SizedBox(height: 5),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (task.missionTitle.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: t.backgroundSubtle,
+                          borderRadius: BorderRadius.circular(AppRadius.xs),
+                        ),
+                        child: Text(
+                          task.missionTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: t.textSecondary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    if (dueDateStr != null)
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(LucideIcons.calendarDays, size: 10, color: t.textMuted),
+                        const SizedBox(width: 3),
+                        Text(
+                          dueDateStr,
+                          style: TextStyle(color: t.textMuted, fontSize: 10),
+                        ),
+                      ]),
+                    if (task.minutes > 0)
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(LucideIcons.clock3, size: 10, color: t.textMuted),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${task.minutes}m',
+                          style: TextStyle(
+                            color: t.textMuted,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ]),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: priorityColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: Text(
+                        task.priority,
+                        style: TextStyle(
+                          color: priorityColor,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                task.missionTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: t.textMuted, fontSize: 11),
-              ),
-            ]),
-          ),
-          const SizedBox(width: 8),
-          // Duration chip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: t.backgroundSubtle,
-              borderRadius: BorderRadius.circular(AppRadius.full),
+              ],
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(LucideIcons.clock3, size: 10, color: t.textMuted),
-              const SizedBox(width: 3),
-              Text(
-                '${task.minutes}m',
-                style: TextStyle(
-                  color: t.textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ]),
           ),
+          if (onEdit != null || onDelete != null || onTap != null)
+            PopupMenuButton<String>(
+              icon: Icon(LucideIcons.ellipsisVertical, size: 16, color: t.textMuted),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 120),
+              itemBuilder: (ctx) => [
+                if (onTap != null)
+                  const PopupMenuItem(
+                    value: 'view',
+                    height: 36,
+                    child: Row(children: [
+                      Icon(LucideIcons.info, size: 14),
+                      SizedBox(width: 8),
+                      Text('Details', style: TextStyle(fontSize: 13)),
+                    ]),
+                  ),
+                if (onEdit != null)
+                  const PopupMenuItem(
+                    value: 'edit',
+                    height: 36,
+                    child: Row(children: [
+                      Icon(LucideIcons.pencil, size: 14),
+                      SizedBox(width: 8),
+                      Text('Edit', style: TextStyle(fontSize: 13)),
+                    ]),
+                  ),
+                const PopupMenuItem(
+                  value: 'toggle',
+                  height: 36,
+                  child: Row(children: [
+                    Icon(LucideIcons.checkCheck, size: 14),
+                    SizedBox(width: 8),
+                    Text('Toggle status', style: TextStyle(fontSize: 13)),
+                  ]),
+                ),
+                if (onDelete != null)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    height: 36,
+                    child: Row(children: [
+                      Icon(LucideIcons.trash2, size: 14, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(fontSize: 13, color: Colors.red)),
+                    ]),
+                  ),
+              ],
+              onSelected: (val) {
+                switch (val) {
+                  case 'view':
+                    onTap?.call();
+                    break;
+                  case 'edit':
+                    onEdit?.call();
+                    break;
+                  case 'toggle':
+                    onToggle();
+                    break;
+                  case 'delete':
+                    onDelete?.call();
+                    break;
+                }
+              },
+            ),
         ]),
       ),
     ).staggered(index);
@@ -1862,6 +2027,43 @@ class _AiInsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final brightness = Theme.of(context).brightness;
+
+    // Filter active vs done tasks
+    final activeTasks = tasks.where((task) => !task.done).toList();
+    final completedCount = tasks.where((task) => task.done).length;
+    final activeMissionsCount = missions.where((m) => m.status == 'Active').length;
+
+    // Find the highest priority active task (urgent > high > medium > low)
+    TaskData? topActiveTask;
+    if (activeTasks.isNotEmpty) {
+      topActiveTask = activeTasks.firstWhere(
+        (tk) => tk.priority.toLowerCase() == 'urgent',
+        orElse: () => activeTasks.firstWhere(
+          (tk) => tk.priority.toLowerCase() == 'high',
+          orElse: () => activeTasks.first,
+        ),
+      );
+    }
+
+    String headline;
+    String subtext;
+
+    if (topActiveTask != null) {
+      headline = 'Focus next: "${topActiveTask.title}"';
+      subtext = topActiveTask.missionTitle.isNotEmpty
+          ? 'Aligned with "${topActiveTask.missionTitle}". ${topActiveTask.minutes > 0 ? "Est. ${topActiveTask.minutes}m focus." : "High impact deliverable."}'
+          : 'Protect a focused block today to maintain your momentum.';
+    } else if (tasks.isNotEmpty && activeTasks.isEmpty) {
+      headline = 'All $completedCount tasks completed! Fantastic pace.';
+      subtext = 'You have cleared all scheduled tasks. Review upcoming milestones with AI Coach.';
+    } else if (missions.isNotEmpty) {
+      headline = 'Active: $activeMissionsCount life mission${activeMissionsCount == 1 ? "" : "s"} in progress.';
+      subtext = 'Add daily action items to start building steady milestone momentum.';
+    } else {
+      headline = 'Start by creating your first mission.';
+      subtext = 'LifeKit turns your aspirations into structured, achievable daily actions.';
+    }
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -1930,9 +2132,7 @@ class _AiInsightCard extends StatelessWidget {
                         ]),
                         const SizedBox(height: 8),
                         Text(
-                          tasks.isNotEmpty
-                              ? 'Your most impactful task is "${tasks.first.title}".'
-                              : 'Start by creating your first mission.',
+                          headline,
                           style:
                               Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.w700,
@@ -1941,9 +2141,7 @@ class _AiInsightCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          missions.isEmpty
-                              ? 'LifeKit turns goals into structured missions with AI guidance.'
-                              : 'You have ${missions.where((m) => m.status == 'Active').length} active mission${missions.length == 1 ? '' : 's'} in progress.',
+                          subtext,
                           style: TextStyle(
                             color: t.textMuted,
                             height: 1.6,
@@ -1955,16 +2153,16 @@ class _AiInsightCard extends StatelessWidget {
                           onTap: () => context.go('/ai-coach'),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             Text(
-                              'Explore with AI',
+                              'Ask AI Coach',
                               style: TextStyle(
                                 color: t.primary,
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(width: 4),
                             Icon(LucideIcons.arrowRight,
-                                size: 13, color: t.primary),
+                                size: 12, color: t.primary),
                           ]),
                         ),
                       ]),
@@ -4693,6 +4891,10 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
                         final title = titleCtrl.text.trim();
                         if (title.isEmpty) return;
                         final mId = int.tryParse(widget.missionId) ?? 0;
+                        final dur = int.tryParse(durationCtrl.text.trim());
+                        final dueDateIso = (dueDate ??
+                                DateTime.now().add(const Duration(days: 1)))
+                            .toIso8601String();
                         Navigator.of(sheetCtx).pop();
                         await ref
                             .read(repositoryProvider)
@@ -4700,12 +4902,13 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
                               missionId: mId,
                               title: title,
                               priority: selectedPriority,
-                              description: dueDate != null
-                                  ? 'Due: ${dueDate!.day}/${dueDate!.month}/${dueDate!.year}'
-                                  : '',
+                              dueDate: dueDateIso,
+                              estimatedDurationMinutes:
+                                  dur != null && dur > 0 ? dur : null,
                             )
                             .catchError((_) => <String, dynamic>{});
                         widget.onRefresh();
+                        ref.invalidate(dashboardProvider);
                       },
                     ),
                   ],
@@ -4737,20 +4940,25 @@ class _InsightsTabState extends ConsumerState<_InsightsTab> {
     });
     try {
       final result = await ref.read(repositoryProvider).runAgent(
-        agentType: 'COACH',
-        userInput: 'Give strategic insights for: ${widget.missionTitle}',
+        agentType: 'agent-coach',
+        userInput: 'Give strategic insights for mission: ${widget.missionTitle}',
         contextData: {'missionTitle': widget.missionTitle},
       );
+      final text = result['output'] ?? result['message'];
       if (!mounted) return;
       setState(() {
-        _insight =
-            result['output']?.toString() ?? 'No insights available right now.';
+        _insight = (text != null && text.toString().trim().isNotEmpty)
+            ? text.toString().trim()
+            : 'Strategic focus for "${widget.missionTitle}": Break down this mission into 3 high-impact milestones, track weekly consistency, and protect deep-focus blocks.';
         _loading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
-        _insight = 'Error: $e';
+        _insight = 'Strategic guidance for "${widget.missionTitle}":\n\n'
+            '• Prioritize high-impact foundational tasks first to build momentum.\n'
+            '• Dedicate consistent daily focus blocks towards active milestones.\n'
+            '• Track completion velocity and review pacing weekly.';
         _loading = false;
       });
     }
@@ -4808,6 +5016,10 @@ class _InsightsTabState extends ConsumerState<_InsightsTab> {
 // TASKS SCREEN
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+// ═════════════════════════════════════════════════════════════════════════════
+// TASKS SCREEN
+// ═════════════════════════════════════════════════════════════════════════════
+
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
   @override
@@ -4836,19 +5048,18 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         missions = rawM.map(MissionData.fromJson).toList();
         ref.read(missionsProvider.notifier).state = missions;
       }
-      if (missions.isEmpty) {
-        setState(() => _loading = false);
-        return;
-      }
-      final results = await Future.wait(
-        missions.take(5).map((m) => repo
-            .tasks(missionId: m.id)
-            .catchError((_) => <Map<String, dynamic>>[])),
-      );
-      ref.read(tasksProvider.notifier).state = results.indexed
-          .expand((item) =>
-              item.$2.map((t) => TaskData.fromJson(t, missions[item.$1].title)))
+
+      final rawTasks = await repo.tasks();
+      final missionTitleMap = <dynamic, String>{
+        for (final m in missions) m.id: m.title,
+      };
+      final tasks = rawTasks
+          .map((t) => TaskData.fromJson(
+                t,
+                missionTitleMap[t['missionId'] ?? t['mission_id']] ?? 'General Task',
+              ))
           .toList();
+      ref.read(tasksProvider.notifier).state = tasks;
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -4868,7 +5079,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     for (final task in active) {
       groups
           .putIfAbsent(
-              task.missionTitle.isEmpty ? 'Uncategorised' : task.missionTitle,
+              task.missionTitle.isEmpty ? 'General' : task.missionTitle,
               () => [])
           .add(task);
     }
@@ -4886,19 +5097,15 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           task: task,
           index: globalIdx,
           onToggle: () => _optimisticToggle(task, ref),
-          onDelete: () async {
-            await ref
-                .read(repositoryProvider)
-                .deleteTask(task.id)
-                .catchError((_) {});
-            _loadTasks();
-          },
+          onTap: () => _showTaskDetailsSheet(context, task),
+          onEdit: () => _editTaskSheet(context, task),
+          onDelete: () => _confirmDeleteTask(context, task),
         ));
         globalIdx++;
       }
     }
 
-    // Completed section â€” collapsible
+    // Completed section — collapsible
     if (done.isNotEmpty) {
       items.add(
         GestureDetector(
@@ -4936,13 +5143,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             task: task,
             index: globalIdx,
             onToggle: () => _optimisticToggle(task, ref),
-            onDelete: () async {
-              await ref
-                  .read(repositoryProvider)
-                  .deleteTask(task.id)
-                  .catchError((_) {});
-              _loadTasks();
-            },
+            onTap: () => _showTaskDetailsSheet(context, task),
+            onEdit: () => _editTaskSheet(context, task),
+            onDelete: () => _confirmDeleteTask(context, task),
           ));
           globalIdx++;
         }
@@ -4952,7 +5155,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     return items;
   }
 
-  /// Optimistic task toggle â€” flips done locally, reverts on API error.
+  /// Optimistic task toggle — flips done locally, reverts on API error.
   void _optimisticToggle(TaskData task, WidgetRef ref) {
     final prev = task.done;
     final tasks = List<TaskData>.from(ref.read(tasksProvider));
@@ -4961,6 +5164,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
     // Flip immediately
     tasks[idx].done = !prev;
+    tasks[idx].status = !prev ? 'Done' : 'To Do';
     ref.read(tasksProvider.notifier).state = List.from(tasks);
 
     ref
@@ -4970,11 +5174,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       // Revert on failure
       final current = List<TaskData>.from(ref.read(tasksProvider));
       final i = current.indexWhere((t) => t.id == task.id);
-      if (i >= 0) current[i].done = prev;
+      if (i >= 0) {
+        current[i].done = prev;
+        current[i].status = prev ? 'Done' : 'To Do';
+      }
       ref.read(tasksProvider.notifier).state = List.from(current);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Couldn't save â€” tap to retry"),
+          content: const Text("Couldn't save — tap to retry"),
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
             label: 'Retry',
@@ -4989,17 +5196,35 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   @override
   Widget build(BuildContext context) {
     final allTasks = ref.watch(tasksProvider);
+    final missions = ref.watch(missionsProvider);
     final query = ref.watch(tasksSearchProvider).toLowerCase().trim();
+    final selectedMissionFilter = ref.watch(tasksMissionFilterProvider);
+    final selectedTabFilter = ref.watch(tasksTabFilterProvider);
     final completedExpanded = ref.watch(completedTasksExpandedProvider);
     final t = context.tokens;
 
-    // Apply search
-    final searched = query.isEmpty
+    // 1. Filter by mission
+    var filtered = selectedMissionFilter == null
         ? allTasks
-        : allTasks
+        : allTasks.where((task) => task.missionId == selectedMissionFilter).toList();
+
+    // 2. Filter by status tab
+    if (selectedTabFilter == 'in_progress') {
+      filtered = filtered.where((t) => t.status == 'In Progress' && !t.done).toList();
+    } else if (selectedTabFilter == 'completed') {
+      filtered = filtered.where((t) => t.done).toList();
+    } else if (selectedTabFilter == 'today') {
+      filtered = filtered.where((t) => !t.done).toList();
+    }
+
+    // 3. Filter by search
+    final searched = query.isEmpty
+        ? filtered
+        : filtered
             .where((task) =>
                 task.title.toLowerCase().contains(query) ||
-                task.missionTitle.toLowerCase().contains(query))
+                task.missionTitle.toLowerCase().contains(query) ||
+                task.description.toLowerCase().contains(query))
             .toList();
 
     final activeTasks = searched.where((t) => !t.done).toList();
@@ -5008,9 +5233,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     final stats = [
       (
         allTasks.length,
-        allTasks.where((t) => t.status == 'In Progress').length,
+        allTasks.where((t) => t.status == 'In Progress' && !t.done).length,
         allTasks
-            .where((t) => t.priority == 'high' || t.priority == 'urgent')
+            .where((t) => (t.priority == 'high' || t.priority == 'urgent') && !t.done)
             .length,
         allTasks.where((t) => t.done).length
       ),
@@ -5022,31 +5247,39 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       (stats[0].$4, 'Done', t.success),
     ];
 
+    final tabFilters = [
+      ('all', 'All (${allTasks.length})'),
+      ('today', 'Active (${allTasks.where((t) => !t.done).length})'),
+      ('in_progress', 'In Progress (${allTasks.where((t) => t.status == 'In Progress' && !t.done).length})'),
+      ('completed', 'Completed (${allTasks.where((t) => t.done).length})'),
+    ];
+
     return Scaffold(
       backgroundColor: t.background,
-      // FAB removed â€” QuickActionBar handles creation
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            _PageHeading('Tasks',
-                subtitle: '${activeTasks.length} remaining',
-                actions: [
-                  IconButton(
-                    onPressed: () {
-                      setState(() => _searchOpen = !_searchOpen);
-                      if (!_searchOpen) {
-                        ref.read(tasksSearchProvider.notifier).state = '';
-                      }
-                    },
-                    icon: Icon(_searchOpen ? LucideIcons.x : LucideIcons.search,
-                        size: 18, color: t.textSecondary),
-                  ),
-                  IconButton(
-                    onPressed: _loadTasks,
-                    icon: Icon(LucideIcons.refreshCw,
-                        size: 18, color: t.textSecondary),
-                  ),
-                ]).pageEntrance(),
+            _PageHeading(
+              'Tasks',
+              subtitle: '${allTasks.where((t) => !t.done).length} remaining',
+              actions: [
+                IconButton(
+                  onPressed: () {
+                    setState(() => _searchOpen = !_searchOpen);
+                    if (!_searchOpen) {
+                      ref.read(tasksSearchProvider.notifier).state = '';
+                    }
+                  },
+                  icon: Icon(_searchOpen ? LucideIcons.x : LucideIcons.search,
+                      size: 18, color: t.textSecondary),
+                ),
+                IconButton(
+                  onPressed: _loadTasks,
+                  icon: Icon(LucideIcons.refreshCw,
+                      size: 18, color: t.textSecondary),
+                ),
+              ],
+            ).pageEntrance(),
 
             // Animated search bar
             _SearchBar(
@@ -5063,7 +5296,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             // Stat chips
             if (!_searchOpen)
               SizedBox(
-                height: 90,
+                height: 84,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -5112,7 +5345,73 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       .toList(),
                 ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
+
+            // Mission filter pills (horizontal scroll)
+            if (!_searchOpen && missions.isNotEmpty)
+              SizedBox(
+                height: 34,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    _FilterChip(
+                      label: 'All Missions',
+                      active: selectedMissionFilter == null,
+                      onTap: () => ref.read(tasksMissionFilterProvider.notifier).state = null,
+                    ),
+                    ...missions.map((m) => Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: _FilterChip(
+                            label: m.title,
+                            active: selectedMissionFilter == m.id,
+                            onTap: () => ref.read(tasksMissionFilterProvider.notifier).state =
+                                selectedMissionFilter == m.id ? null : m.id,
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+            if (!_searchOpen && missions.isNotEmpty) const SizedBox(height: 8),
+
+            // Tab filter row
+            if (!_searchOpen)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: tabFilters.map((tab) {
+                      final active = selectedTabFilter == tab.$1;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: GestureDetector(
+                          onTap: () => ref.read(tasksTabFilterProvider.notifier).state = tab.$1,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: active ? t.primarySurface : t.backgroundSubtle,
+                              borderRadius: BorderRadius.circular(AppRadius.full),
+                              border: Border.all(
+                                color: active ? t.primary : t.border,
+                              ),
+                            ),
+                            child: Text(
+                              tab.$2,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                                color: active ? t.primary : t.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
 
             if (_loading)
               LinearProgressIndicator(
@@ -5133,7 +5432,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                               iconSize: 32),
                           const SizedBox(height: 20),
                           Text(
-                            'Tasks come from your missions',
+                            'No tasks found',
                             textAlign: TextAlign.center,
                             style: Theme.of(context)
                                 .textTheme
@@ -5145,8 +5444,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Create a mission to get started â€” '
-                            'tasks will appear here automatically.',
+                            'Create tasks under your missions or add your first task right away.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: t.textMuted,
@@ -5156,26 +5454,43 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                           ),
                           const SizedBox(height: 20),
                           PremiumButton(
-                            label: 'Go to Missions',
+                            label: 'Add First Task',
                             minWidth: 200,
-                            onPressed: () => context.go('/missions'),
+                            onPressed: () => _addTaskSheet(context),
                           ),
                         ]).animate().fadeIn(duration: 300.ms),
                       ),
                     )
-                  : searched.isEmpty && query.isNotEmpty
+                  : searched.isEmpty && (query.isNotEmpty || selectedMissionFilter != null || selectedTabFilter != 'all')
                       ? Center(
-                          child:
-                              Column(mainAxisSize: MainAxisSize.min, children: [
+                          child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                             Icon(LucideIcons.searchX,
                                 size: 32, color: t.textMuted),
                             const SizedBox(height: 12),
                             Text(
-                              'No results for "$query"',
+                              'No matching tasks',
+                              style: TextStyle(
+                                  color: t.textPrimary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Try adjusting your search or filters',
                               style: TextStyle(
                                   color: t.textMuted,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500),
+                                  fontSize: 13),
+                            ),
+                            const SizedBox(height: 14),
+                            OutlinedButton(
+                              onPressed: () {
+                                ref.read(tasksSearchProvider.notifier).state = '';
+                                ref.read(tasksMissionFilterProvider.notifier).state = null;
+                                ref.read(tasksTabFilterProvider.notifier).state = 'all';
+                              },
+                              child: const Text('Reset filters'),
                             ),
                           ]),
                         )
@@ -5183,7 +5498,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                           onRefresh: _loadTasks,
                           color: t.primary,
                           child: ListView(
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 4, 16, 120),
                             children: _buildGroupedItems(
                               activeTasks,
                               doneTasks,
@@ -5198,7 +5514,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
           // Floating quick-action bar
           _QuickActionBar(
-            onAddTask: () => _addTaskSheet(context, allTasks),
+            onAddTask: () => _addTaskSheet(context),
             onNewMission: () => context.go('/missions'),
             onAskAI: () => context.go('/ai-coach'),
           ),
@@ -5207,13 +5523,16 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     );
   }
 
-  void _addTaskSheet(BuildContext ctx, List<TaskData> tasks) {
+  void _addTaskSheet(BuildContext ctx, {int? preselectedMissionId}) {
     final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
     final durationCtrl = TextEditingController();
     final missions = ref.read(missionsProvider);
-    int? selectedMissionId = missions.isNotEmpty ? missions.first.id : null;
+    int? selectedMissionId = preselectedMissionId ??
+        ref.read(tasksMissionFilterProvider) ??
+        (missions.isNotEmpty ? missions.first.id : null);
     String selectedPriority = 'medium';
-    DateTime? dueDate;
+    DateTime? dueDate = DateTime.now().add(const Duration(days: 1));
     final t = ctx.tokens;
 
     const priorities = [
@@ -5275,6 +5594,17 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                     PremiumInputField(
                       controller: titleCtrl,
                       hint: 'e.g. Complete React advanced patterns module',
+                      autofocus: true,
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Description (optional)
+                    _SheetLabel('Description (optional)'),
+                    const SizedBox(height: 6),
+                    PremiumInputField(
+                      controller: descCtrl,
+                      hint: 'Key deliverables or steps...',
+                      maxLines: 2,
                     ),
                     const SizedBox(height: 14),
 
@@ -5283,7 +5613,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       _SheetLabel('Mission *'),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<int>(
-                        initialValue: selectedMissionId,
+                        value: selectedMissionId,
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: t.backgroundSubtle,
@@ -5326,7 +5656,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                   _SheetLabel('Priority'),
                                   const SizedBox(height: 6),
                                   DropdownButtonFormField<String>(
-                                    initialValue: selectedPriority,
+                                    value: selectedPriority,
                                     isDense: true,
                                     decoration: InputDecoration(
                                       filled: true,
@@ -5428,44 +5758,68 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 24),
-
                     PremiumButton(
                       label: 'Create Task',
                       onPressed: () async {
                         final title = titleCtrl.text.trim();
-                        if (title.isEmpty || selectedMissionId == null) return;
-                        final mId = selectedMissionId!;
-                        final dur = int.tryParse(durationCtrl.text.trim());
-                        Navigator.of(sheetCtx).pop();
-                        await ref
-                            .read(repositoryProvider)
-                            .createTask(
-                              missionId: mId,
-                              title: title,
-                              priority: selectedPriority,
-                              description: dueDate != null
-                                  ? 'Due: ${dueDate!.day}/${dueDate!.month}/${dueDate!.year}'
-                                  : '',
-                            )
-                            .catchError((_) => <String, dynamic>{});
-                        // If a duration was provided, patch the task
-                        if (dur != null && dur > 0) {
-                          // best-effort update â€” ignore error
-                          ref
-                              .read(repositoryProvider)
-                              .tasks(missionId: mId)
-                              .then((list) {
-                            if (list.isNotEmpty) {
-                              final newId = TaskData._parseInt(
-                                  list.last['id'] ?? list.last['task_id']);
-                              if (newId > 0) {
-                                ref.read(repositoryProvider).updateTask(
-                                    newId, {'estimatedDurationMinutes': dur});
-                              }
-                            }
-                          }).catchError((_) {});
+                        if (title.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter a task title'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
                         }
+                        final mId = selectedMissionId ??
+                            (missions.isNotEmpty ? missions.first.id : 1);
+                        final dur = int.tryParse(durationCtrl.text.trim());
+                        final desc = descCtrl.text.trim();
+                        final dueDateIso = (dueDate ??
+                                DateTime.now().add(const Duration(days: 1)))
+                            .toIso8601String();
+
+                        Navigator.of(sheetCtx).pop();
+
+                        final repo = ref.read(repositoryProvider);
+                        final created = await repo.createTask(
+                          missionId: mId,
+                          title: title,
+                          description: desc,
+                          priority: selectedPriority,
+                          dueDate: dueDateIso,
+                          estimatedDurationMinutes:
+                              (dur != null && dur > 0) ? dur : null,
+                        );
+
+                        final mTitle = missions.firstWhere(
+                          (m) => m.id == mId,
+                          orElse: () => MissionData(
+                            id: mId,
+                            title: 'Mission #$mId',
+                            goal: '',
+                            category: 'General',
+                            status: 'Active',
+                            priority: 'medium',
+                            progress: 0.0,
+                            deadline: 'No deadline',
+                          ),
+                        ).title;
+
+                        final newTask = TaskData.fromJson(created, mTitle);
+                        ref.read(tasksProvider.notifier).state = [
+                          ...ref.read(tasksProvider),
+                          newTask,
+                        ];
+
                         _loadTasks();
+
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(
+                            content: Text('Task "$title" created successfully!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
                       },
                     ),
                   ],
@@ -5477,14 +5831,545 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       ),
     );
   }
+
+  void _editTaskSheet(BuildContext ctx, TaskData task) {
+    final titleCtrl = TextEditingController(text: task.title);
+    final descCtrl = TextEditingController(text: task.description);
+    final durationCtrl = TextEditingController(text: '${task.minutes}');
+    final missions = ref.read(missionsProvider);
+    int selectedMissionId = task.missionId;
+    String selectedPriority = task.priority;
+    DateTime? dueDate = DateTime.tryParse(task.dueDate ?? '');
+    final t = ctx.tokens;
+
+    const priorities = [
+      ('low', 'Low'),
+      ('medium', 'Medium'),
+      ('high', 'High'),
+      ('urgent', 'Urgent'),
+    ];
+
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: t.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (context, setModal) {
+          final kb = MediaQuery.viewInsetsOf(context).bottom;
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.85,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            builder: (_, scrollCtrl) => Column(children: [
+              const SizedBox(height: 14),
+              const SheetHandle(),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Row(children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: t.primarySurface,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Icon(LucideIcons.pencil, size: 16, color: t.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Edit Task',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ]),
+              ),
+              Expanded(
+                child: ListView(
+                  controller: scrollCtrl,
+                  padding: EdgeInsets.fromLTRB(24, 4, 24, kb + 24),
+                  children: [
+                    _SheetLabel('Task title *'),
+                    const SizedBox(height: 6),
+                    PremiumInputField(
+                      controller: titleCtrl,
+                      hint: 'Task title...',
+                    ),
+                    const SizedBox(height: 14),
+
+                    _SheetLabel('Description'),
+                    const SizedBox(height: 6),
+                    PremiumInputField(
+                      controller: descCtrl,
+                      hint: 'Details or steps...',
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 14),
+
+                    if (missions.isNotEmpty) ...[
+                      _SheetLabel('Mission'),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<int>(
+                        value: missions.any((m) => m.id == selectedMissionId)
+                            ? selectedMissionId
+                            : missions.first.id,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: t.backgroundSubtle,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: BorderSide(color: t.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: BorderSide(color: t.border),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 14),
+                        ),
+                        items: missions
+                            .map((m) => DropdownMenuItem(
+                                  value: m.id,
+                                  child: Text(m.title,
+                                      overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null) setModal(() => selectedMissionId = v);
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
+                    Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _SheetLabel('Priority'),
+                                  const SizedBox(height: 6),
+                                  DropdownButtonFormField<String>(
+                                    value: priorities.any((p) => p.$1 == selectedPriority)
+                                        ? selectedPriority
+                                        : 'medium',
+                                    isDense: true,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: t.backgroundSubtle,
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        borderSide: BorderSide(color: t.border),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        borderSide: BorderSide(color: t.border),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 14),
+                                    ),
+                                    items: priorities
+                                        .map((p) => DropdownMenuItem(
+                                              value: p.$1,
+                                              child: Text(p.$2),
+                                            ))
+                                        .toList(),
+                                    onChanged: (v) => setModal(
+                                        () => selectedPriority = v ?? 'medium'),
+                                  ),
+                                ]),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _SheetLabel('Due date'),
+                                  const SizedBox(height: 6),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: dueDate ?? DateTime.now(),
+                                        firstDate: DateTime.now()
+                                            .subtract(const Duration(days: 365)),
+                                        lastDate: DateTime.now()
+                                            .add(const Duration(days: 3650)),
+                                      );
+                                      if (picked != null) {
+                                        setModal(() => dueDate = picked);
+                                      }
+                                    },
+                                    child: Container(
+                                      height: 50,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        color: t.backgroundSubtle,
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        border: Border.all(color: t.border),
+                                      ),
+                                      child: Row(children: [
+                                        Icon(LucideIcons.calendarDays,
+                                            size: 15, color: t.textMuted),
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            dueDate == null
+                                                ? 'Pick date'
+                                                : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: dueDate == null
+                                                  ? t.textMuted
+                                                  : t.textPrimary,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      ]),
+                                    ),
+                                  ),
+                                ]),
+                          ),
+                        ]),
+                    const SizedBox(height: 14),
+
+                    _SheetLabel('Est. duration (minutes)'),
+                    const SizedBox(height: 6),
+                    PremiumInputField(
+                      controller: durationCtrl,
+                      hint: 'e.g. 60',
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 24),
+                    Row(children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(sheetCtx).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: PremiumButton(
+                          label: 'Save Changes',
+                          onPressed: () async {
+                            final title = titleCtrl.text.trim();
+                            if (title.isEmpty) return;
+                            final dur = int.tryParse(durationCtrl.text.trim());
+                            final desc = descCtrl.text.trim();
+                            final dueDateIso = dueDate?.toIso8601String();
+
+                            Navigator.of(sheetCtx).pop();
+
+                            final repo = ref.read(repositoryProvider);
+                            final updated = await repo.updateTask(task.id, {
+                              'title': title,
+                              'description': desc,
+                              'priority': selectedPriority,
+                              'missionId': selectedMissionId,
+                              if (dueDateIso != null) 'dueDate': dueDateIso,
+                              if (dur != null) 'estimatedDurationMinutes': dur,
+                            });
+
+                            final currentList =
+                                List<TaskData>.from(ref.read(tasksProvider));
+                            final idx =
+                                currentList.indexWhere((t) => t.id == task.id);
+                            if (idx >= 0) {
+                              final mTitle = missions.firstWhere(
+                                (m) => m.id == selectedMissionId,
+                                orElse: () => MissionData(
+                                  id: selectedMissionId,
+                                  title: task.missionTitle,
+                                  goal: '',
+                                  category: 'General',
+                                  status: 'Active',
+                                  priority: 'medium',
+                                  progress: 0.0,
+                                  deadline: 'No deadline',
+                                ),
+                              ).title;
+
+                              currentList[idx] =
+                                  TaskData.fromJson(updated, mTitle);
+                              ref.read(tasksProvider.notifier).state =
+                                  currentList;
+                            }
+
+                            _loadTasks();
+
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(
+                                content: Text('Task updated'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ]),
+                  ],
+                ),
+              ),
+            ]),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showTaskDetailsSheet(BuildContext ctx, TaskData task) {
+    final t = ctx.tokens;
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: t.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.x2l))),
+      builder: (sheetCtx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Center(child: SheetHandle()),
+            const SizedBox(height: 16),
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: task.done ? t.successSurface : t.primarySurface,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Text(
+                  task.done ? 'COMPLETED' : task.status.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: task.done ? t.success : t.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: t.backgroundSubtle,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Text(
+                  '${task.priority.toUpperCase()} PRIORITY',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: t.textSecondary,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: Icon(LucideIcons.trash2, size: 18, color: t.destructive),
+                onPressed: () {
+                  Navigator.of(sheetCtx).pop();
+                  _confirmDeleteTask(ctx, task);
+                },
+              ),
+            ]),
+            const SizedBox(height: 12),
+            Text(
+              task.title,
+              style: Theme.of(ctx).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: t.textPrimary,
+                  ),
+            ),
+            if (task.description.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                task.description,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: t.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: t.backgroundSubtle,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: t.border),
+              ),
+              child: Column(children: [
+                if (task.missionTitle.isNotEmpty)
+                  Row(children: [
+                    Icon(LucideIcons.target, size: 14, color: t.textMuted),
+                    const SizedBox(width: 8),
+                    Text('Mission:',
+                        style: TextStyle(fontSize: 12, color: t.textMuted)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(task.missionTitle,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: t.textPrimary),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ]),
+                if (task.dueDate != null && task.dueDate!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Icon(LucideIcons.calendar, size: 14, color: t.textMuted),
+                    const SizedBox(width: 8),
+                    Text('Due date:',
+                        style: TextStyle(fontSize: 12, color: t.textMuted)),
+                    const SizedBox(width: 6),
+                    Text(task.dueDate!.split('T').first,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: t.textPrimary)),
+                  ]),
+                ],
+                const SizedBox(height: 8),
+                Row(children: [
+                  Icon(LucideIcons.clock, size: 14, color: t.textMuted),
+                  const SizedBox(width: 8),
+                  Text('Est. duration:',
+                      style: TextStyle(fontSize: 12, color: t.textMuted)),
+                  const SizedBox(width: 6),
+                  Text('${task.minutes} minutes',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: t.textPrimary)),
+                ]),
+              ]),
+            ),
+            const SizedBox(height: 20),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(sheetCtx).pop();
+                    _optimisticToggle(task, ref);
+                  },
+                  icon: Icon(
+                      task.done ? LucideIcons.circle : LucideIcons.checkCircle2,
+                      size: 16),
+                  label: Text(task.done ? 'Mark Incomplete' : 'Mark Complete'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PremiumButton(
+                  label: 'Edit Task',
+                  onPressed: () {
+                    Navigator.of(sheetCtx).pop();
+                    _editTaskSheet(ctx, task);
+                  },
+                ),
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteTask(BuildContext ctx, TaskData task) {
+    showDialog(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        title: const Text('Delete Task?'),
+        content: Text('Are you sure you want to delete "${task.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dCtx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dCtx).pop();
+              await ref
+                  .read(repositoryProvider)
+                  .deleteTask(task.id)
+                  .catchError((_) {});
+              _loadTasks();
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(
+                  content: Text('Task deleted'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-//  OPTIMISTIC TASK ROW
-//  Wraps _PremiumTaskRow with a shake animation
-//  triggered when the toggle fails, and a
-//  swipe-to-delete background.
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+//  FILTER CHIP (Mission Pills)
+// ─────────────────────────────────────────────────────────────────────────────
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? t.primary : t.surface,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border: Border.all(
+            color: active ? t.primary : t.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: active ? Colors.white : t.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 class _OptimisticTaskRow extends StatefulWidget {
   const _OptimisticTaskRow({
     super.key,
@@ -5492,11 +6377,15 @@ class _OptimisticTaskRow extends StatefulWidget {
     required this.index,
     required this.onToggle,
     required this.onDelete,
+    this.onTap,
+    this.onEdit,
   });
   final TaskData task;
   final int index;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
 
   @override
   State<_OptimisticTaskRow> createState() => _OptimisticTaskRowState();
@@ -5563,6 +6452,9 @@ class _OptimisticTaskRowState extends State<_OptimisticTaskRow>
           task: widget.task,
           index: widget.index,
           onToggle: widget.onToggle,
+          onTap: widget.onTap,
+          onEdit: widget.onEdit,
+          onDelete: widget.onDelete,
         ),
       ),
     );
@@ -6437,7 +7329,7 @@ class _ChatBubble extends StatelessWidget {
                 bottomRight: const Radius.circular(AppRadius.xl),
               ),
               border: isUser ? null : Border.all(color: tokens.cardBorder),
-              boxShadow: isUser ? AppShadows.greenSm : AppShadows.card,
+              boxShadow: isUser ? AppShadows.greenSm : AppShadows.sm,
             ),
             child: Text(
               message.text,
@@ -6494,7 +7386,7 @@ class _TypingBubble extends StatelessWidget {
                     bottomRight: Radius.circular(AppRadius.xl),
                   ),
                   border: Border.all(color: tokens.cardBorder),
-                  boxShadow: AppShadows.card,
+                  boxShadow: AppShadows.sm,
                 ),
                 child: BouncingDots(color: tokens.primary),
               ),

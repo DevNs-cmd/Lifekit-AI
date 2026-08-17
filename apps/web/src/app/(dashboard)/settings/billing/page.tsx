@@ -1,25 +1,44 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CreditCard, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ROUTES } from "@/constants/routes";
+import { get } from "@/lib/api/client";
 import { toast } from "sonner";
 
-const MOCK_INVOICES = [
-  { id: "inv-1", number: "LK-2025-0043", amount: 499, currency: "INR", status: "paid" as const, date: "2025-07-01", description: "LifeKit Plus — Monthly" },
-  { id: "inv-2", number: "LK-2025-0032", amount: 499, currency: "INR", status: "paid" as const, date: "2025-06-01", description: "LifeKit Plus — Monthly" },
-  { id: "inv-3", number: "LK-2025-0021", amount: 499, currency: "INR", status: "paid" as const, date: "2025-05-01", description: "LifeKit Plus — Monthly" },
-];
+type Invoice = {
+  id: string;
+  number: string;
+  amount: number;
+  currency: string;
+  status: "paid" | "open" | "void";
+  date: string;
+  description: string;
+};
 
 const STATUS_BADGE: Record<string, "success" | "destructive" | "warning"> = {
-  paid: "success", open: "warning", void: "destructive",
+  paid: "success",
+  open: "warning",
+  void: "destructive",
 };
 
 export default function BillingPage() {
   const router = useRouter();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    get<any>("/billing/invoices")
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        setInvoices(list);
+      })
+      .catch(() => setInvoices([]));
+  }, []);
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-3xl mx-auto">
@@ -65,23 +84,27 @@ export default function BillingPage() {
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />Invoice History</CardTitle></CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-[hsl(var(--border))]">
-            {MOCK_INVOICES.map(inv => (
-              <div key={inv.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-medium text-[hsl(var(--text-primary))]">{inv.description}</p>
-                  <p className="text-xs text-[hsl(var(--text-secondary))]">{inv.number} · {inv.date}</p>
+          {invoices.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-[hsl(var(--text-secondary))]">No invoices yet.</p>
+          ) : (
+            <div className="divide-y divide-[hsl(var(--border))]">
+              {invoices.map(inv => (
+                <div key={inv.id} className="flex items-center justify-between px-5 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[hsl(var(--text-primary))]">{inv.description}</p>
+                    <p className="text-xs text-[hsl(var(--text-secondary))]">{inv.number} · {inv.date}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-[hsl(var(--text-primary))]">₹{inv.amount}</span>
+                    <Badge variant={STATUS_BADGE[inv.status] ?? "outline"} className="capitalize">{inv.status}</Badge>
+                    <Button variant="ghost" size="icon-sm" onClick={() => toast("Invoice download coming soon!")} aria-label="Download invoice">
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-[hsl(var(--text-primary))]">₹{inv.amount}</span>
-                  <Badge variant={STATUS_BADGE[inv.status] ?? "outline"} className="capitalize">{inv.status}</Badge>
-                  <Button variant="ghost" size="icon-sm" onClick={() => toast("Invoice download coming soon!")} aria-label="Download invoice">
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
