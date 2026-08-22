@@ -49,10 +49,25 @@ async function bootstrap() {
   // Configure global rate limiting guard
   app.useGlobalGuards(app.get(ThrottlerGuard));
 
-  // Production-ready CORS configuration
+  // Flexible CORS configuration supporting dev environment and credentials
   const corsOrigin = appConfig.corsOrigin;
   app.enableCors({
-    origin: corsOrigin.includes(",") ? corsOrigin.split(",") : corsOrigin,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean | string) => void,
+    ) => {
+      if (!origin || process.env.NODE_ENV !== "production" || corsOrigin === "*") {
+        return callback(null, origin || "*");
+      }
+      const allowedOrigins = corsOrigin.includes(",")
+        ? corsOrigin.split(",").map((o) => o.trim())
+        : [corsOrigin.trim()];
+      if (allowedOrigins.includes(origin)) {
+        callback(null, origin);
+      } else {
+        callback(null, false);
+      }
+    },
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     credentials: true,
   });

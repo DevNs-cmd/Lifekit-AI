@@ -65,6 +65,7 @@ class LifeKitRepository {
   final List<Map<String, dynamic>> _localMissions = [];
   final List<Map<String, dynamic>> _localMemories = [];
   final List<Map<String, dynamic>> _localNotifications = [];
+  final List<Map<String, dynamic>> _localTasks = [];
 
   // ── Profile ────────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> profile() async {
@@ -236,26 +237,41 @@ class LifeKitRepository {
   }
 
   Future<List<Map<String, dynamic>>> tasks({int? missionId}) async {
+    List<Map<String, dynamic>> remoteTasks = [];
     try {
       if (missionId != null) {
         final res = await _dio.get<dynamic>('/tasks?missionId=$missionId');
-        final list = _asList(_unwrap(res.data));
-        return list;
+        remoteTasks = _asList(_unwrap(res.data));
+      } else {
+        final userMissions = await missions();
+        if (userMissions.isNotEmpty) {
+          final results = await Future.wait(
+            userMissions.map((m) {
+              final id = int.tryParse(m['id']?.toString() ?? '');
+              if (id == null) return Future.value(<Map<String, dynamic>>[]);
+              return tasks(missionId: id).catchError((_) => <Map<String, dynamic>>[]);
+            }),
+          );
+          remoteTasks = results.expand((list) => list).toList();
+        }
       }
-      // If missionId is omitted, fetch all missions and aggregate tasks (matching web app)
-      final userMissions = await missions();
-      if (userMissions.isEmpty) return const [];
-      final results = await Future.wait(
-        userMissions.map((m) {
-          final id = int.tryParse(m['id']?.toString() ?? '');
-          if (id == null) return Future.value(<Map<String, dynamic>>[]);
-          return tasks(missionId: id).catchError((_) => <Map<String, dynamic>>[]);
-        }),
-      );
-      final flattened = results.expand((list) => list).toList();
-      return flattened;
     } catch (_) {}
-    return const [];
+
+    // Combine _localTasks and remoteTasks, deduplicating by ID
+    final seenIds = <dynamic>{};
+    final combined = <Map<String, dynamic>>[];
+
+    for (final t in [..._localTasks, ...remoteTasks]) {
+      final id = t['id'] ?? t['task_id'];
+      if (missionId != null) {
+        final tMissionId = int.tryParse((t['missionId'] ?? t['mission_id'])?.toString() ?? '');
+        if (tMissionId != null && tMissionId != missionId) continue;
+      }
+      if (id != null && seenIds.contains(id.toString())) continue;
+      if (id != null) seenIds.add(id.toString());
+      combined.add(t);
+    }
+    return combined;
   }
 
   Future<Map<String, dynamic>> createTask({
@@ -296,27 +312,36 @@ class LifeKitRepository {
       if (estimatedDurationMinutes != null && estimatedDurationMinutes > 0)
         'estimatedDurationMinutes': estimatedDurationMinutes,
     };
+
+    Map<String, dynamic> taskMap = {};
     try {
       final res = await _dio.post<dynamic>('/tasks', data: payload);
-      final map = _asMap(_unwrap(res.data));
-      if (map.isNotEmpty) {
-        if (!map.containsKey('missionId') && !map.containsKey('mission_id')) {
-          map['missionId'] = resolvedMissionId;
-        }
-        return map;
-      }
+      taskMap = _asMap(_unwrap(res.data));
     } catch (_) {}
-    return {
-      'id': DateTime.now().millisecondsSinceEpoch,
-      'missionId': resolvedMissionId,
-      'title': title,
-      'description': normalizedDescription,
-      'status': 'PENDING',
-      'priority': normalizedPriority,
-      'dueDate': normalizedDueDate,
-      if (estimatedDurationMinutes != null)
-        'estimatedDurationMinutes': estimatedDurationMinutes,
-    };
+
+    if (taskMap.isEmpty) {
+      taskMap = {
+        'id': DateTime.now().millisecondsSinceEpoch,
+        'missionId': resolvedMissionId,
+        'title': title.trim(),
+        'description': normalizedDescription,
+        'status': 'PENDING',
+        'priority': normalizedPriority,
+        'dueDate': normalizedDueDate,
+        if (estimatedDurationMinutes != null)
+          'estimatedDurationMinutes': estimatedDurationMinutes,
+      };
+    } else {
+      if (!taskMap.containsKey('missionId') && !taskMap.containsKey('mission_id')) {
+        taskMap['missionId'] = resolvedMissionId;
+      }
+    }
+
+    // Cache locally so it immediately reflects in the UI
+    _localTasks.removeWhere((t) => (t['id'] ?? t['task_id']) == (taskMap['id'] ?? taskMap['task_id']));
+    _localTasks.insert(0, taskMap);
+
+    return taskMap;
   }
 
   Future<Map<String, dynamic>> setTaskStatus(dynamic taskId, String status) async {
@@ -329,15 +354,30 @@ class LifeKitRepository {
       'CANCELLED' => 'CANCELLED',
       _ => 'PENDING',
     };
+
+    final idx = _localTasks.indexWhere((t) => (t['id'] ?? t['task_id'])?.toString() == taskId.toString());
+    if (idx >= 0) {
+      _localTasks[idx]['status'] = backendStatus;
+      if (backendStatus == 'COMPLETED') {
+        _localTasks[idx]['completedAt'] = DateTime.now().toIso8601String();
+      }
+    }
+
     try {
       final res = await _dio.patch<dynamic>('/tasks/$idInt/status', data: {'status': backendStatus});
       final map = _asMap(_unwrap(res.data));
-      if (map.isNotEmpty) return map;
+      if (map.isNotEmpty) {
+        if (idx >= 0) _localTasks[idx] = map;
+        return map;
+      }
     } catch (_) {
       try {
         final resAlt = await _dio.patch<dynamic>('/tasks/$idInt', data: {'status': backendStatus});
         final mapAlt = _asMap(_unwrap(resAlt.data));
-        if (mapAlt.isNotEmpty) return mapAlt;
+        if (mapAlt.isNotEmpty) {
+          if (idx >= 0) _localTasks[idx] = mapAlt;
+          return mapAlt;
+        }
       } catch (_) {}
     }
     return {'id': idInt, 'status': backendStatus};

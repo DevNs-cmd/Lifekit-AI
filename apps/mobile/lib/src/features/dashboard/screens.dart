@@ -2766,10 +2766,22 @@ class _MissionsScreenState extends ConsumerState<MissionsScreen> {
                   final title = titleCtrl.text.trim();
                   if (title.isEmpty || selectedMissionId == null) return;
                   Navigator.of(sheetCtx).pop();
-                  await ref
+                  final created = await ref
                       .read(repositoryProvider)
                       .createTask(missionId: selectedMissionId!, title: title)
                       .catchError((_) => <String, dynamic>{});
+                  if (created.isNotEmpty) {
+                    final missions = ref.read(missionsProvider);
+                    final mTitle = missions.firstWhere(
+                      (m) => m.id == selectedMissionId,
+                      orElse: () => MissionData(id: selectedMissionId!, title: 'General', goal: '', category: 'Personal Development', status: 'Active', priority: 'medium', progress: 0.0, deadline: 'No deadline'),
+                    ).title;
+                    final newTask = TaskData.fromJson(created, mTitle);
+                    ref.read(tasksProvider.notifier).state = [
+                      newTask,
+                      ...ref.read(tasksProvider).where((t) => t.id != newTask.id),
+                    ];
+                  }
                   ref.invalidate(dashboardProvider);
                 },
               ),
@@ -4700,10 +4712,14 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
             task: item.$2,
             index: item.$1,
             onToggle: () async {
+              setState(() {
+                item.$2.done = !item.$2.done;
+                item.$2.status = item.$2.done ? 'Done' : 'To Do';
+              });
               await ref
                   .read(repositoryProvider)
                   .setTaskStatus(
-                      item.$2.id, item.$2.done ? 'PENDING' : 'COMPLETED')
+                      item.$2.id, item.$2.done ? 'COMPLETED' : 'PENDING')
                   .catchError((_) => <String, dynamic>{});
               widget.onRefresh();
             },
@@ -4896,7 +4912,7 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
                                 DateTime.now().add(const Duration(days: 1)))
                             .toIso8601String();
                         Navigator.of(sheetCtx).pop();
-                        await ref
+                        final created = await ref
                             .read(repositoryProvider)
                             .createTask(
                               missionId: mId,
@@ -4907,6 +4923,18 @@ class _DetailTasksTabState extends ConsumerState<_DetailTasksTab> {
                                   dur != null && dur > 0 ? dur : null,
                             )
                             .catchError((_) => <String, dynamic>{});
+                        if (created.isNotEmpty) {
+                          final missions = ref.read(missionsProvider);
+                          final mTitle = missions.firstWhere(
+                            (m) => m.id == mId,
+                            orElse: () => MissionData(id: mId, title: 'Mission #$mId', goal: '', category: 'General', status: 'Active', priority: 'medium', progress: 0.0, deadline: 'No deadline'),
+                          ).title;
+                          final newTask = TaskData.fromJson(created, mTitle);
+                          ref.read(tasksProvider.notifier).state = [
+                            newTask,
+                            ...ref.read(tasksProvider).where((t) => t.id != newTask.id),
+                          ];
+                        }
                         widget.onRefresh();
                         ref.invalidate(dashboardProvider);
                       },

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'package:dio/dio.dart';
 import '../../core/api.dart';
 import '../../core/design/tokens.dart';
 import '../../core/widgets/premium_input.dart';
@@ -82,6 +83,37 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       };
 
   Future<void> _submit() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    final name = _nameCtrl.text.trim();
+
+    // ── Client-side Validation ─────────────────────────────────
+    if (widget.mode == AuthMode.signIn || widget.mode == AuthMode.signUp) {
+      if (email.isEmpty) {
+        setState(() => _error = 'Please enter your email address.');
+        return;
+      }
+      if (!email.contains('@') || !email.contains('.')) {
+        setState(() => _error = 'Please provide a valid email address (e.g. user@example.com).');
+        return;
+      }
+      if (password.isEmpty) {
+        setState(() => _error = 'Please enter your password.');
+        return;
+      }
+    }
+
+    if (widget.mode == AuthMode.signUp) {
+      if (name.isEmpty) {
+        setState(() => _error = 'Please enter your full name.');
+        return;
+      }
+      if (password.length < 8) {
+        setState(() => _error = 'Password must be at least 8 characters long.');
+        return;
+      }
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -91,7 +123,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         case AuthMode.signIn:
           final ok = await ref
               .read(authProvider.notifier)
-              .signIn(_emailCtrl.text.trim(), _passwordCtrl.text);
+              .signIn(email, password);
           if (!mounted) return;
           if (ok) {
             context.go('/home');
@@ -103,10 +135,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             setState(() => _error = msg);
           }
         case AuthMode.signUp:
-          final name = _nameCtrl.text.trim().isEmpty ? 'LifeKit User' : _nameCtrl.text.trim();
           final ok = await ref
               .read(authProvider.notifier)
-              .register(name, _emailCtrl.text.trim(), _passwordCtrl.text);
+              .register(name, email, password);
           if (!mounted) return;
           if (ok) {
             context.go('/onboarding');
@@ -183,6 +214,41 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   }
 
   String _friendlyError(Object e) {
+    if (e is DioException) {
+      // 1. Extract backend validation error message if available
+      final resData = e.response?.data;
+      if (resData is Map) {
+        final msgObj = resData['message'];
+        if (msgObj is List && msgObj.isNotEmpty) {
+          return msgObj.map((m) => m.toString()).join('\n');
+        } else if (msgObj is String && msgObj.isNotEmpty) {
+          return msgObj;
+        }
+      }
+
+      // 2. Map HTTP Status Codes
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 401) {
+        return 'Invalid email or password.';
+      } else if (statusCode == 409) {
+        return 'An account with this email address already exists.';
+      } else if (statusCode == 400) {
+        return 'Invalid request details. Please check your information.';
+      } else if (statusCode != null && statusCode >= 500) {
+        return 'Server error. Please try again later.';
+      }
+
+      // 3. Network and Timeout Errors
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return 'Request timed out. Please check your network connection.';
+      }
+      if (e.type == DioExceptionType.connectionError) {
+        return 'Unable to connect to server. Please ensure the backend is running.';
+      }
+    }
+
     final raw = e.toString();
     if (raw.contains('SocketException') ||
         raw.contains('Connection refused') ||
@@ -199,6 +265,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     return raw
         .replaceFirst('Exception:', '')
         .replaceFirst('DioException [', '')
+        .split('\n')
+        .first
         .trim();
   }
 
