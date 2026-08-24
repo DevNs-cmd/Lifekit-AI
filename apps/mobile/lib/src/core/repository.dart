@@ -730,34 +730,6 @@ class LifeKitRepository {
     });
   }
 
-  // ── Admin API ─────────────────────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> adminUsers() async {
-    try {
-      final res = await _dio.get<dynamic>('/admin/users');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    return const [];
-  }
-
-  Future<List<Map<String, dynamic>>> adminAuditLogs() async {
-    try {
-      final res = await _dio.get<dynamic>('/admin/audit-logs');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    return const [];
-  }
-
-  Future<List<Map<String, dynamic>>> adminSupportTickets() async {
-    try {
-      final res = await _dio.get<dynamic>('/admin/support-tickets');
-      final list = _asList(_unwrap(res.data));
-      if (list.isNotEmpty) return list;
-    } catch (_) {}
-    return const [];
-  }
-
   // ── Opportunities & Marketplace Normalizers ────────────────────────────────
   Map<String, dynamic> _normalizeOpportunity(Map<String, dynamic> raw) {
     var descriptionText = (raw['description'] ?? '').toString();
@@ -1122,4 +1094,3 @@ class LifeKitRepository {
     };
   }
 }
-

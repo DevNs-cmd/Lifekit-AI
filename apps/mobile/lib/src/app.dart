@@ -10,7 +10,6 @@ import 'core/theme.dart';
 import 'core/design/tokens.dart';
 import 'core/widgets/premium_side_nav.dart';
 import 'core/widgets/premium_bottom_nav.dart';
-import 'features/admin/admin_screens.dart';
 import 'features/agents/agent_chat_screen.dart';
 import 'features/agents/agents_screen.dart';
 import 'features/ai_coach/planner_screen.dart';
@@ -422,11 +421,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/support',
         pageBuilder: (ctx, state) =>
             _modalSlide(ctx, state, const SupportScreen()),
-      ),
-      GoRoute(
-        path: '/admin',
-        pageBuilder: (ctx, state) =>
-            _modalSlide(ctx, state, const AdminDashboardScreen()),
       ),
     ],
   );

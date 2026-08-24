@@ -63,8 +63,6 @@ const List<SideNavSecondaryItem> kSideNavSecondaryItems = [
       icon: LucideIcons.settings, label: 'Settings', route: '/settings'),
   SideNavSecondaryItem(
       icon: LucideIcons.helpCircle, label: 'Support', route: '/support'),
-  SideNavSecondaryItem(
-      icon: LucideIcons.shieldCheck, label: 'Admin', route: '/admin'),
 ];
 
 // ─────────────────────────────────────────────
