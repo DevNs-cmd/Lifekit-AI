@@ -82,4 +82,57 @@ export class BillingController {
   async cancelSubscription(@CurrentUser("user_id") userId: number) {
     return this.billingService.cancelSubscription(userId);
   }
+
+  @Post("marketplace/create-order")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Create a Razorpay order for marketplace listing purchase" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        listingId: { type: "number", example: 1 },
+        amount: { type: "number", example: 499 },
+      },
+      required: ["listingId", "amount"],
+    },
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: "Marketplace Razorpay order created" })
+  async createMarketplaceOrder(
+    @CurrentUser("user_id") userId: number,
+    @Body("listingId") listingId: number,
+    @Body("amount") amount: number,
+  ) {
+    return this.billingService.createMarketplaceOrder(userId, listingId, amount);
+  }
+
+  @Post("marketplace/verify")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Verify payment signature for marketplace listing purchase" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        orderId: { type: "string" },
+        paymentId: { type: "string" },
+        signature: { type: "string" },
+        listingId: { type: "number" },
+        isMock: { type: "boolean" },
+      },
+      required: ["orderId", "paymentId", "listingId"],
+    },
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: "Marketplace payment verified successfully" })
+  async verifyMarketplacePayment(
+    @CurrentUser("user_id") userId: number,
+    @Body()
+    dto: {
+      orderId: string;
+      paymentId: string;
+      signature?: string;
+      listingId: number;
+      isMock?: boolean;
+    },
+  ) {
+    return this.billingService.verifyMarketplacePayment(userId, dto);
+  }
 }

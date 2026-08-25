@@ -2,14 +2,16 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ArrowLeft, ShoppingBag, Star, CheckCircle, ExternalLink } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Star, CheckCircle, ExternalLink, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RatingDisplay } from "@/components/shared/rating-display";
 import { CategoryBadge } from "@/components/shared/category-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { marketplaceApi } from "@/lib/api";
+import { post } from "@/lib/api/client";
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,9 @@ export default function MarketplaceListingPage() {
   const router = useRouter();
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
+  const [sandboxOpen, setSandboxOpen] = useState(false);
+  const [sandboxData, setSandboxData] = useState<{ orderId: string; amount: number } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -35,6 +40,113 @@ export default function MarketplaceListingPage() {
     }
     if (id) load();
   }, [id]);
+
+  async function handlePurchase() {
+    if (!listing) return;
+    if (!listing.basePrice || listing.basePrice === 0) {
+      toast.success(`Enrolled in "${listing.title}"!`);
+      return;
+    }
+
+    setPurchasing(true);
+    const toastId = toast.loading(`Preparing checkout for ${listing.title}...`);
+
+    try {
+      const order: any = await post("/billing/marketplace/create-order", {
+        listingId: listing.id,
+        amount: listing.basePrice,
+      });
+      toast.dismiss(toastId);
+
+      if (order.isMock) {
+        setSandboxData({
+          orderId: order.orderId,
+          amount: order.amount,
+        });
+        setSandboxOpen(true);
+      } else {
+        const loaded = await loadRazorpayScript();
+        if (!loaded) {
+          toast.error("Failed to load payment gateway checkout script.");
+          return;
+        }
+
+        const options = {
+          key: order.keyId,
+          amount: order.amount,
+          currency: order.currency,
+          name: "LifeKit Marketplace",
+          description: listing.title,
+          order_id: order.orderId,
+          handler: async function (response: any) {
+            const verifyId = toast.loading("Verifying purchase...");
+            try {
+              await post("/billing/marketplace/verify", {
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                listingId: listing.id,
+                isMock: false,
+              });
+              toast.dismiss(verifyId);
+              toast.success(`Successfully purchased ${listing.title}!`);
+            } catch {
+              toast.dismiss(verifyId);
+              toast.error("Payment verification failed.");
+            }
+          },
+          theme: {
+            color: "#8B5CF6",
+          },
+        };
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      }
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(`Checkout failed: ${err.message || "Please try again."}`);
+    } finally {
+      setPurchasing(false);
+    }
+  }
+
+  async function handleSandboxSuccess() {
+    if (!sandboxData || !listing) return;
+    setSandboxOpen(false);
+    const toastId = toast.loading("Simulating sandbox payment verification...");
+    try {
+      const randomHex = Math.random().toString(36).substring(2, 14);
+      const mockPaymentId = `pay_mkt_mock_${randomHex}`;
+
+      await post("/billing/marketplace/verify", {
+        orderId: sandboxData.orderId,
+        paymentId: mockPaymentId,
+        listingId: listing.id,
+        isMock: true,
+      });
+      toast.dismiss(toastId);
+      toast.success(`Successfully purchased "${listing.title}" (Sandbox)!`);
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(`Verification failed: ${err.message || "Please try again."}`);
+    } finally {
+      setSandboxData(null);
+    }
+  }
+
+  function loadRazorpayScript(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  }
 
   if (loading) {
     return <div className="p-6 text-center text-sm text-[hsl(var(--text-secondary))]">Loading listing details...</div>;
@@ -86,47 +198,17 @@ export default function MarketplaceListingPage() {
             </CardContent>
           </Card>
 
-          {/* Features */}
-          {listing.features.length > 0 && (
+          {/* Pricing Tiers */}
+          {listing.pricingTiers && listing.pricingTiers.length > 0 && (
             <Card>
-              <CardContent className="p-5">
-                <h2 className="text-sm font-semibold text-[hsl(var(--text-primary))] mb-3">What&apos;s included</h2>
-                <ul className="space-y-2">
-                  {listing.features.map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <CheckCircle className={cn("h-4 w-4 shrink-0", f.included ? "text-[hsl(var(--success))]" : "text-[hsl(var(--border))]")} />
-                      <span className={f.included ? "text-[hsl(var(--text-primary))]" : "text-[hsl(var(--text-secondary))] line-through"}>{f.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Pricing tiers */}
-          {listing.pricingTiers.length > 0 && (
-            <Card>
-              <CardContent className="p-5">
-                <h2 className="text-sm font-semibold text-[hsl(var(--text-primary))] mb-4">Choose a plan</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <CardContent className="p-6 space-y-4">
+                <h2 className="text-lg font-semibold text-[hsl(var(--text-primary))]">Pricing Tiers</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {listing.pricingTiers.map(tier => (
-                    <div key={tier.id} className={cn(
-                      "relative rounded-lg border-2 p-4 cursor-pointer transition-colors",
-                      tier.isPopular ? "border-[hsl(var(--primary))]" : "border-[hsl(var(--border))] hover:border-[hsl(var(--primary))]/50"
-                    )} onClick={() => toast.success(`Selected ${tier.name} plan!`)}>
-                      {tier.isPopular && (
-                        <div className="absolute -top-2.5 left-3">
-                          <Badge className="text-[10px]">Popular</Badge>
-                        </div>
-                      )}
+                    <div key={tier.id} className="border border-[hsl(var(--border))] rounded-lg p-4 space-y-2 bg-[hsl(var(--card))]">
                       <p className="font-semibold text-sm text-[hsl(var(--text-primary))]">{tier.name}</p>
-                      <p className="text-2xl font-black text-[hsl(var(--text-primary))] my-1">
-                        ₹{tier.price.toLocaleString("en-IN")}
-                        <span className="text-sm font-normal text-[hsl(var(--text-secondary))]">
-                          {tier.billingCycle === "one-time" ? " one-time" : `/${tier.billingCycle?.replace("ly", "")}`}
-                        </span>
-                      </p>
-                      <ul className="space-y-1 mt-2">
+                      <p className="text-xl font-bold text-[hsl(var(--primary))]">₹{tier.price.toLocaleString("en-IN")}</p>
+                      <ul className="space-y-1 mt-3">
                         {tier.features.map(f => (
                           <li key={f} className="text-xs text-[hsl(var(--text-secondary))] flex items-center gap-1.5">
                             <CheckCircle className="h-3 w-3 text-[hsl(var(--success))] shrink-0" />{f}
@@ -157,8 +239,8 @@ export default function MarketplaceListingPage() {
                 )}
               </div>
               <div className="space-y-2">
-                <Button className="w-full" onClick={() => toast.success("Proceeding to checkout!")}>
-                  {listing.basePrice ? "Purchase" : "Enrol free"}
+                <Button className="w-full" disabled={purchasing} onClick={handlePurchase}>
+                  {purchasing ? "Processing..." : listing.basePrice ? "Purchase" : "Enrol free"}
                 </Button>
                 <Button variant="outline" className="w-full" onClick={() => toast("Added to mission!")}>
                   Add to Mission
@@ -217,6 +299,49 @@ export default function MarketplaceListingPage() {
           </Card>
         </div>
       </div>
+
+      {/* Razorpay Sandbox Simulation Modal */}
+      <Dialog open={sandboxOpen} onOpenChange={setSandboxOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertCircle className="h-5 w-5" />
+              Razorpay Sandbox (Simulation)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[hsl(var(--text-secondary))] mt-1.5">
+              Live Razorpay API keys are not configured in your <code className="bg-[hsl(var(--secondary))] px-1.5 py-0.5 rounded text-xs">.env</code>. You can simulate the payment status below.
+            </DialogDescription>
+          </DialogHeader>
+
+          {sandboxData && (
+            <div className="space-y-4 py-2">
+              <div className="bg-[hsl(var(--secondary))]/40 p-3 rounded-lg border border-[hsl(var(--border))] text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-[hsl(var(--text-secondary))]">Item:</span>
+                  <span className="font-semibold text-[hsl(var(--text-primary))]">{listing?.title}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[hsl(var(--text-secondary))]">Amount:</span>
+                  <span className="font-semibold text-[hsl(var(--text-primary))]">₹{(sandboxData.amount / 100).toLocaleString("en-IN")} INR</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[hsl(var(--text-secondary))]">Mock Order ID:</span>
+                  <span className="font-mono text-[10px] text-[hsl(var(--primary))]">{sandboxData.orderId}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleSandboxSuccess}>
+                  Simulate Successful Payment
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => setSandboxOpen(false)}>
+                  Cancel Simulation
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

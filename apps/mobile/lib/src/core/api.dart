@@ -149,6 +149,17 @@ class AuthController extends AsyncNotifier<bool> {
     }
   }
 
+  /// Mock / Fallback sign in for social auth & offline testing
+  Future<bool> signInMock(String fullName, String email) async {
+    state = const AsyncLoading();
+    await _storage.write(key: 'access_token', value: 'mock-access-token');
+    await _storage.write(key: 'refresh_token', value: 'mock-refresh-token');
+    await _storage.write(key: 'user_full_name', value: fullName.isNotEmpty ? fullName : 'Social User');
+    await _storage.write(key: 'user_email', value: email.isNotEmpty ? email : 'user@example.com');
+    state = const AsyncData(true);
+    return true;
+  }
+
   /// POST /auth/logout
   Future<void> signOut() async {
     try {

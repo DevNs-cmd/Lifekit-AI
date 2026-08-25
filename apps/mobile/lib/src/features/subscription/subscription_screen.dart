@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/design/animations.dart';
 import '../../core/design/tokens.dart';
@@ -153,8 +154,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           _sandboxOpen = true;
         });
       } else {
-        // Real Razorpay — deep-link to payment URL
-        _showSnack('Real Razorpay checkout: open ${order['orderId']}');
+        // Real Razorpay — launch payment checkout portal
+        final orderId = order['orderId'].toString();
+        final checkoutUri = Uri.parse('https://api.razorpay.com/v1/checkout/embedded?order_id=$orderId');
+        if (await canLaunchUrl(checkoutUri)) {
+          await launchUrl(checkoutUri, mode: LaunchMode.externalApplication);
+          _showSnack('Opened Razorpay checkout ($orderId)');
+        } else {
+          _showSnack('Real Razorpay checkout created: $orderId');
+        }
       }
     } catch (e) {
       _showSnack('Checkout failed: ${e.toString().replaceFirst('Exception:', '').trim()}', error: true);

@@ -183,4 +183,104 @@ export class BillingService {
 
     return subscription;
   }
+
+  /**
+   * Creates a Razorpay order for marketplace purchases.
+   */
+  async createMarketplaceOrder(userId: number, listingId: number, amount: number) {
+    if (amount <= 0) {
+      throw new BadRequestException("Amount must be greater than 0");
+    }
+
+    const keyId = this.configService.get<string>("RAZORPAY_KEY_ID") || process.env.RAZORPAY_KEY_ID;
+    const keySecret = this.configService.get<string>("RAZORPAY_KEY_SECRET") || process.env.RAZORPAY_KEY_SECRET;
+
+    const amountInPaise = Math.round(amount * 100);
+
+    if (!keyId || !keySecret || keyId.includes("xxxxxxxxxxxx")) {
+      this.logger.log(`No Razorpay keys configured. Using mock order ID for marketplace listing ${listingId}, user ${userId}.`);
+      const mockOrderId = `order_mkt_mock_${crypto.randomBytes(8).toString("hex")}`;
+      return {
+        orderId: mockOrderId,
+        amount: amountInPaise,
+        currency: "INR",
+        keyId: "rzp_test_placeholder",
+        isMock: true,
+      };
+    }
+
+    try {
+      const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+      const response = await fetch("https://api.razorpay.com/v1/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${auth}`,
+        },
+        body: JSON.stringify({
+          amount: amountInPaise,
+          currency: "INR",
+          receipt: `receipt_mkt_${listingId}_${userId}_${Date.now()}`,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Razorpay API returned status ${response.status}: ${errorText}`);
+      }
+
+      const resJson: any = await response.json();
+      return {
+        orderId: resJson.id,
+        amount: resJson.amount,
+        currency: resJson.currency,
+        keyId,
+        isMock: false,
+      };
+    } catch (err: any) {
+      this.logger.error("Failed to create Razorpay marketplace order", err.stack);
+      throw new BadRequestException(`Marketplace order creation failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Verifies Razorpay payment signature for marketplace purchases.
+   */
+  async verifyMarketplacePayment(
+    userId: number,
+    dto: {
+      orderId: string;
+      paymentId: string;
+      signature?: string;
+      listingId: number;
+      isMock?: boolean;
+    },
+  ) {
+    const keySecret = this.configService.get<string>("RAZORPAY_KEY_SECRET") || process.env.RAZORPAY_KEY_SECRET;
+    const isMock = dto.isMock || !keySecret || keySecret.includes("change-me-to-your-razorpay-secret");
+
+    if (!isMock) {
+      if (!dto.signature) {
+        throw new BadRequestException("Payment signature is required for verification");
+      }
+      const text = `${dto.orderId}|${dto.paymentId}`;
+      const generatedSignature = crypto
+        .createHmac("sha256", keySecret!)
+        .update(text)
+        .digest("hex");
+
+      if (generatedSignature !== dto.signature) {
+        this.logger.warn(`Marketplace signature verification failed for user ${userId}`);
+        throw new BadRequestException("Invalid payment signature");
+      }
+    } else {
+      this.logger.log(`Verified mock marketplace payment successfully for listing ${dto.listingId}, user ${userId}.`);
+    }
+
+    return {
+      success: true,
+      message: `Successfully purchased marketplace item ${dto.listingId}`,
+      transactionId: dto.paymentId,
+    };
+  }
 }
