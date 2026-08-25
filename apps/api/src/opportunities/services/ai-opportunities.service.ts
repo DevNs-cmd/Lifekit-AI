@@ -69,7 +69,10 @@ export class AiOpportunitiesService {
 
       const res = await fetch(url, {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Secret": this.config.internalApiKey,
+        },
         body:    JSON.stringify(body),
         // 30-second timeout — LLM calls can be slow
         signal: AbortSignal.timeout(30_000),
@@ -128,6 +131,7 @@ export async function generateMarketplaceListings(
   aiServiceUrl: string,
   userContext: UserContext,
   count = 8,
+  internalApiKey?: string,
 ): Promise<AiGeneratedListing[]> {
   const url = `${aiServiceUrl}/api/v1/recommendations/listings`;
   const body = { user_context: userContext, count };
@@ -135,7 +139,10 @@ export async function generateMarketplaceListings(
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(internalApiKey ? { "X-Internal-Secret": internalApiKey } : {}),
+      },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(30_000),
     });

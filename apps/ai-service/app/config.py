@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     # Service
     service_port: int = 8000
+    internal_api_key: str = "lifekit-internal-secret-change-in-production"
 
     # Database
     database_url: str = "postgresql://lifekit:lifekit@localhost:5432/lifekit"

@@ -5641,7 +5641,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       _SheetLabel('Mission *'),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<int>(
-                        value: selectedMissionId,
+                        initialValue: selectedMissionId,
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: t.backgroundSubtle,
@@ -5684,7 +5684,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                   _SheetLabel('Priority'),
                                   const SizedBox(height: 6),
                                   DropdownButtonFormField<String>(
-                                    value: selectedPriority,
+                                    initialValue: selectedPriority,
                                     isDense: true,
                                     decoration: InputDecoration(
                                       filled: true,
@@ -5943,7 +5943,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       _SheetLabel('Mission'),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<int>(
-                        value: missions.any((m) => m.id == selectedMissionId)
+                        initialValue: missions.any((m) => m.id == selectedMissionId)
                             ? selectedMissionId
                             : missions.first.id,
                         decoration: InputDecoration(
@@ -5984,7 +5984,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                   _SheetLabel('Priority'),
                                   const SizedBox(height: 6),
                                   DropdownButtonFormField<String>(
-                                    value: priorities.any((p) => p.$1 == selectedPriority)
+                                    initialValue: priorities.any((p) => p.$1 == selectedPriority)
                                         ? selectedPriority
                                         : 'medium',
                                     isDense: true,

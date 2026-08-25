@@ -6,7 +6,7 @@ Handles intent understanding, planning, recommendations,
 memory management, and other AI-powered features.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.modules.orchestrator.router import router as orchestrator_router
@@ -27,6 +27,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def verify_internal_secret(request: Request, call_next):
+    """Enforce X-Internal-Secret header on internal API routes (/api/v1/*)."""
+    if request.url.path.startswith("/api/v1"):
+        provided_secret = request.headers.get("X-Internal-Secret") or request.headers.get("x-internal-secret")
+        expected_secret = settings.internal_api_key
+        if expected_secret and provided_secret != expected_secret:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Invalid or missing X-Internal-Secret authentication header"},
+            )
+    return await call_next(request)
+
 
 app.include_router(orchestrator_router)
 app.include_router(memory_router)

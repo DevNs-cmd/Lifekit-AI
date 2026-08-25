@@ -141,7 +141,10 @@ export class AgentsService {
     try {
       const response = await fetch(`${aiServiceUrl}/api/v1/orchestrate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Secret": this.config.internalApiKey,
+        },
         body: JSON.stringify({
           user_id:    String(userId),
           message:    dto.userInput,
