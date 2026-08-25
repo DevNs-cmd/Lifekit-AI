@@ -191,7 +191,10 @@ export class MarketplaceService {
       // Use a promise-race timeout instead of AbortSignal.timeout for Node 18 compat
       const fetchPromise = fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Secret": this.config.internalApiKey,
+        },
         body: JSON.stringify({ user_context: userContext, count }),
       });
 

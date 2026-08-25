@@ -48,6 +48,13 @@ export class AppConfigService {
     );
   }
 
+  get internalApiKey(): string {
+    return (
+      this.configService.get<string>("INTERNAL_API_KEY") ||
+      "lifekit-internal-secret-change-in-production"
+    );
+  }
+
   get corsOrigin(): string {
     return this.configService.get<string>(
       "CORS_ORIGIN",
