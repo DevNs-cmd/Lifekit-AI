@@ -101,20 +101,6 @@ Open **http://localhost:3000** — it auto-redirects to `/home` (dashboard).
 | `/settings/billing` | Billing & invoices |
 | `/support` | Help & support |
 
-### Admin (role-gated)
-| Route | Page |
-|---|---|
-| `/admin` | Admin dashboard |
-| `/admin/users` | User management |
-| `/admin/missions` | Mission monitoring |
-| `/admin/marketplace` | Listing moderation |
-| `/admin/transactions` | Transaction monitoring |
-| `/admin/subscriptions` | Subscription management |
-| `/admin/support` | Support tickets |
-| `/admin/audit` | Audit logs |
-
----
-
 ## Architecture
 
 ```
@@ -123,8 +109,7 @@ src/
 │   ├── (auth)/            # Auth pages (no sidebar)
 │   ├── (dashboard)/       # Main app (with sidebar)
 │   ├── (marketing)/       # Public website
-│   ├── (onboarding)/      # Setup wizard
-│   └── admin/             # Admin interface
+│   └── (onboarding)/      # Setup wizard
 │
 ├── components/
 │   ├── ai/                # AI Coach panel
@@ -255,7 +240,6 @@ NEXT_PUBLIC_WS_URL=wss://ws.lifekit.ai
 | Memory | ✅ Complete |
 | Analytics | ✅ Complete |
 | Settings (all 8 sub-pages) | ✅ Complete |
-| Admin interface | ✅ Complete |
 | Loading skeletons | ✅ Complete |
 | Error boundaries | ✅ Complete |
 | TypeScript (strict) | ✅ Zero errors |

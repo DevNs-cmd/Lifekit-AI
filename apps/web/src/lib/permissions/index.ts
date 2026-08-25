@@ -6,8 +6,7 @@ export type Permission =
   | "ai:agents"
   | "ai:advanced"
   | "marketplace:access"
-  | "analytics:advanced"
-  | "admin:access";
+  | "analytics:advanced";
 
 const PLAN_PERMISSIONS: Record<string, Permission[]> = {
   free: ["missions:create", "marketplace:access"],
@@ -18,7 +17,6 @@ const PLAN_PERMISSIONS: Record<string, Permission[]> = {
 
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   user: [],
-  admin: ["admin:access"],
   provider: [],
 };
 

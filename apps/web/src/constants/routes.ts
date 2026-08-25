@@ -63,16 +63,4 @@ export const ROUTES = {
   SETTINGS_SUBSCRIPTION: "/settings/subscription",
   SETTINGS_BILLING: "/settings/billing",
   SETTINGS_INVOICES: "/settings/invoices",
-
-  // Admin
-  ADMIN: "/admin",
-  ADMIN_USERS: "/admin/users",
-  ADMIN_MISSIONS: "/admin/missions",
-  ADMIN_MARKETPLACE: "/admin/marketplace",
-  ADMIN_OPPORTUNITIES: "/admin/opportunities",
-  ADMIN_TRANSACTIONS: "/admin/transactions",
-  ADMIN_SUBSCRIPTIONS: "/admin/subscriptions",
-  ADMIN_SUPPORT: "/admin/support",
-  ADMIN_ANALYTICS: "/admin/analytics",
-  ADMIN_AUDIT: "/admin/audit",
 } as const;

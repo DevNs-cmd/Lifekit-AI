@@ -51,7 +51,7 @@ export interface User {
   isTwoFactorEnabled: boolean;
   createdAt: string;
   updatedAt: string;
-  role: "user" | "admin" | "provider";
+  role: "user" | "provider";
   subscriptionPlan: "free" | "plus" | "pro" | "enterprise";
   onboardingCompleted: boolean;
 }

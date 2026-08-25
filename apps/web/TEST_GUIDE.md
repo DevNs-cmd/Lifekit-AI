@@ -251,7 +251,6 @@ All data is in `src/constants/mock-data.ts`
 - Notifications (`/notifications`)
 - Profile (`/profile`)
 - Settings (`/settings`)
-- Admin (`/admin`)
 
 ### **Features Not Yet Wired**:
 - Real backend API calls (all use mock data)
