@@ -204,7 +204,7 @@ export default function DashboardPage() {
               <CardContent className="p-5">
                 <div className="flex items-center justify-between"><div><p className="font-bold text-[hsl(var(--text-primary))]">Today’s rhythm</p><p className="text-xs text-[hsl(var(--text-secondary))]">Your protected schedule</p></div><CalendarDays className="h-5 w-5 text-[hsl(var(--primary))]" /></div>
                 <div className="mt-4 space-y-2">
-                  {[{ time: "09:30", title: "Deep work", tone: "bg-[hsl(var(--primary))]" }, { time: "12:00", title: "Admin & messages", tone: "bg-blue-400" }, { time: "15:00", title: "Mission review", tone: "bg-amber-400" }].map(block => (
+                  {[{ time: "09:30", title: "Deep work", tone: "bg-[hsl(var(--primary))]" }, { time: "12:00", title: "Messages", tone: "bg-blue-400" }, { time: "15:00", title: "Mission review", tone: "bg-amber-400" }].map(block => (
                     <div key={block.time} className="flex items-center gap-3 rounded-xl p-2.5 transition-colors hover:bg-[hsl(var(--background-subtle))]">
                       <span className="w-10 text-[11px] font-semibold tabular-nums text-[hsl(var(--text-secondary))]">{block.time}</span><span className={cn("h-8 w-1 rounded-full", block.tone)} /><span className="flex-1 text-sm font-medium">{block.title}</span><Play className="h-3.5 w-3.5 text-[hsl(var(--text-secondary))]" />
                     </div>
